@@ -12,11 +12,6 @@ public abstract class Entity {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Entity(String id) {
-        this.id = id;
-        this.createdAt = LocalDateTime.now();
-    }
-
     public String getId() { 
         return id; 
     }
