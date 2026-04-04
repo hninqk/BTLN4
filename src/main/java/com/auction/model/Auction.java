@@ -26,7 +26,7 @@ public class Auction extends Entity {
     }
 
     public void endAuction() {
-    	this.status = AuctionStatus.FINISHED;
+    	this.status = AuctionStatus.CLOSE;
     }
 
     public synchronized boolean placeBid(BidTransaction newBid) {
