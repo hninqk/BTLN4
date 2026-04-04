@@ -6,8 +6,8 @@ public class Seller extends User {
     private double rating;
     private int cntvoted;
 
-    public Seller (String id, String username, String email, String password, String shopName) {
-        super(id, username, email, password);
+    public Seller (String username, String email, String password, String shopName) {
+        super(username, email, password);
         this.shopName = shopName;
         this.rating = 0.0;
         this.cntvoted = 0;
