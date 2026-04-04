@@ -1,0 +1,19 @@
+package com.auction.model;
+
+public class Admin extends User {
+
+    public int accessLevel;
+    
+    public Admin (String id, String username, String email, String password, int acessLevel) {
+        super(id, username, email, password);
+        this.accessLevel = acessLevel;
+    }
+
+    public int getAccessLevel() {
+        return accessLevel;
+    }
+
+    public void setAccessLevel(int accessLevel) {
+        this.accessLevel = accessLevel;
+    }
+}
