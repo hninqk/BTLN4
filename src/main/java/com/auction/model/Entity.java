@@ -1,6 +1,8 @@
+package com.auction.model;
+
 public abstract class Entity {
-    protected String id;
-    protected LocalDateTime createdAt;
+    private String id;
+    protected final LocalDateTime createdAt;
 
     public Entity() {
         this.id = UUID.randomUUID().toString();

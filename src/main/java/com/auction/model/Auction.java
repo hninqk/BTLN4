@@ -1,3 +1,5 @@
+package com.auction.model;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.time.LocalDateTime;
