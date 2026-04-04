@@ -4,8 +4,8 @@ public class Admin extends User {
 
     public int accessLevel;
     
-    public Admin (String id, String username, String email, String password, int acessLevel) {
-        super(id, username, email, password);
+    public Admin (String username, String email, String password, int acessLevel) {
+        super(username, email, password);
         this.accessLevel = acessLevel;
     }
 
