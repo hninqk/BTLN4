@@ -4,7 +4,7 @@ import java.util.UUID;
 import java.time.LocalDateTime;
 
 public abstract class Entity {
-    private String id;
+    private final String id;
     protected final LocalDateTime createdAt;
 
     public Entity() {
@@ -12,7 +12,16 @@ public abstract class Entity {
         this.createdAt = LocalDateTime.now();
     }
 
+    public Entity(String id) {
+        this.id = id;
+        this.createdAt = LocalDateTime.now();
+    }
+
     public String getId() { 
         return id; 
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }

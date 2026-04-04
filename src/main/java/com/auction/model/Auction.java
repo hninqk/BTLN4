@@ -35,7 +35,7 @@ public class Auction extends Entity {
         }
 
         double currentPrice = this.highestBid;
-        double newBidAmount = newBid.getBidAmount();
+        double newBidAmount = newBid.getAmount();
 
         if (newBidAmount > currentPrice) {
             this.highestBid = newBidAmount;

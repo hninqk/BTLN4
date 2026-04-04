@@ -15,7 +15,6 @@ module com.auction.app {
     requires jdk.httpserver;
     requires java.net.http;
 
-    opens com.auction.app to javafx.fxml;
-    exports com.auction.app;
-
+    opens com.auction.model to javafx.fxml;
+    exports com.auction.model;
 }
