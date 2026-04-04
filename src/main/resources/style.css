@@ -1,0 +1,30 @@
+.root {
+    -fx-background-color: #1e1e2e; /* Modern dark theme */
+    -fx-font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+.title-text {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #cdd6f4;
+}
+
+.modern-button {
+    -fx-background-color: #89b4fa;
+    -fx-text-fill: #11111b;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 24px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.modern-button:hover {
+    -fx-background-color: #b4befe;
+}
+
+.panel-bg {
+    -fx-background-color: #313244;
+    -fx-background-radius: 12px;
+    -fx-padding: 30px;
+}
