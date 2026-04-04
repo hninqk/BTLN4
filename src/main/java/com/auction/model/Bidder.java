@@ -3,8 +3,8 @@ package com.auction.model;
 public class Bidder extends User {
     private double accountBalance;
 
-    public Bidder(String id, String username, String email, String password, double accountBalance) {
-        super(id, username, email, password);
+    public Bidder(String username, String email, String password, double accountBalance) {
+        super(username, email, password);
         this.accountBalance = accountBalance;
     }
 
