@@ -1,5 +1,8 @@
 package com.auction.model;
 
+import java.util.UUID;
+import java.time.LocalDateTime;
+
 public abstract class Entity {
     private String id;
     protected final LocalDateTime createdAt;
