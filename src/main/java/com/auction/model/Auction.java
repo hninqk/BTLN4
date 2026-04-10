@@ -4,45 +4,85 @@ import java.util.List;
 import java.util.ArrayList;
 import java.time.LocalDateTime;
 
-public class Auction extends Entity {
-	private final Seller seller;
+import java.util.List;
+import java.util.ArrayList;
+import java.time.LocalDateTime;
+
+public class Auction extends Entity implements Subject {
+    private final Seller seller;
     private final Item item;
     private AuctionStatus status;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private double highestBid;
-    private List<BidTransaction> bidHistory = new ArrayList<>(); 
+    private List<BidTransaction> bidHistory = new ArrayList<>();
+    private List<Observer> observers = new ArrayList<>();
 
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
-    	super();
-    	this.seller = seller;
-    	this.item = item;
-    	this.highestBid = 0.0;
-    	this.endTime = endTime;
+        super();
+        this.status = AuctionStatus.OPEN;
+        this.seller = seller;
+        this.item = item;
+        this.highestBid = 0.0;
+        this.endTime = endTime;
+    }
+
+    public void addObserver(Observer observer) {
+        observers.add(observer);
+    }
+
+    public void removeObserver(Observer observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObserver(BidTransaction newBid) {
+        for (Observer o : observers) {
+            o.notify(newBid);
+        }
     }
 
     public void startAuction() {
-    	this.status = AuctionStatus.OPEN;
+        if (this.status != AuctionStatus.OPEN) {
+            throw new IllgealStateException("Auction cannot start");
+        }
+        status = AuctionStatus.RUNNING;
     }
 
-    public void endAuction() {
-    	this.status = AuctionStatus.CLOSE;
-    }
-
-    public synchronized boolean placeBid(BidTransaction newBid) {
+    public synchronized void placeBid(BidTransaction newBid) {
         if (this.status != AuctionStatus.RUNNING) {
-            return false;
+            throw new IllegalStateException("Auction is not running");
         }
 
         double currentPrice = this.highestBid;
         double newBidAmount = newBid.getAmount();
 
-        if (newBidAmount > currentPrice) {
-            this.highestBid = newBidAmount;
-            this.bidHistory.add(newBid);
-            return true;
-        } else {
-            return false;
+        if (newBidAmount <= currentPrice) {
+            throw new IllegalArgumentException("Bid must be higher than current bid");
         }
+
+        this.highestBid = newBidAmount;
+        this.bidHistory.add(newBid);
+        this.notifyObserver(newBid);
+    }
+
+    public void finishAuction() {
+        if (status != AuctionStatus.RUNNING) {
+            throw new IllegalStateException("Auction cannot finish");
+        }
+        status = AuctionStatus.PAID;
+    }
+
+    public void markPaid() {
+        if (status != AuctionStatus.PAID) {
+            throw new IllegalStateException("Auction not finished");
+        }
+        status = AuctionStatus.PAID;
+    }
+
+    public void cancelAuction() {
+        if (status == AuctionStatus.PAID) {
+            throw new IllegalStateException("Paid auction cannot cancel");
+        }
+        status = AuctionStatus.CANCELED;
     }
 }
