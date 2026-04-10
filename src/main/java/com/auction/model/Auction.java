@@ -1,12 +1,10 @@
 package com.auction.model;
 
 import java.util.List;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.time.LocalDateTime;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.time.LocalDateTime;
+import com.auction.exception.InvalidBidException;
+import com.auction.exception.InvalidStatusException;
 
 public class Auction extends Entity implements Subject {
     private final Seller seller;
@@ -15,8 +13,8 @@ public class Auction extends Entity implements Subject {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private double highestBid;
-    private List<BidTransaction> bidHistory = new ArrayList<>();
-    private List<Observer> observers = new ArrayList<>();
+    private List<BidTransaction> bidHistory = new CopyOnWriteArrayList<>();
+    private List<Observer> observers = new CopyOnWriteArrayList<>();
 
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
         super();
@@ -35,29 +33,29 @@ public class Auction extends Entity implements Subject {
         observers.remove(observer);
     }
 
-    private void notifyObserver(BidTransaction newBid) {
+    public void notifyObserver(BidTransaction newBid) {
         for (Observer o : observers) {
             o.notify(newBid);
         }
     }
 
-    public void startAuction() {
+    public void startAuction() throws InvalidStatusException {
         if (this.status != AuctionStatus.OPEN) {
-            throw new IllgealStateException("Auction cannot start");
+            throw new InvalidStatusException("Auction cannot start");
         }
         status = AuctionStatus.RUNNING;
     }
 
-    public synchronized void placeBid(BidTransaction newBid) {
+    public synchronized void placeBid(BidTransaction newBid) throws InvalidBidException, InvalidStatusException {
         if (this.status != AuctionStatus.RUNNING) {
-            throw new IllegalStateException("Auction is not running");
+            throw new InvalidStatusException("Auction is not running");
         }
 
         double currentPrice = this.highestBid;
         double newBidAmount = newBid.getAmount();
 
         if (newBidAmount <= currentPrice) {
-            throw new IllegalArgumentException("Bid must be higher than current bid");
+            throw new InvalidBidException("Bid must be higher than current bid");
         }
 
         this.highestBid = newBidAmount;
@@ -65,23 +63,23 @@ public class Auction extends Entity implements Subject {
         this.notifyObserver(newBid);
     }
 
-    public void finishAuction() {
+    public void finishAuction() throws InvalidStatusException {
         if (status != AuctionStatus.RUNNING) {
-            throw new IllegalStateException("Auction cannot finish");
+            throw new InvalidStatusException("Auction cannot finish");
         }
         status = AuctionStatus.PAID;
     }
 
-    public void markPaid() {
+    public void markPaid() throws InvalidStatusException {
         if (status != AuctionStatus.PAID) {
-            throw new IllegalStateException("Auction not finished");
+            throw new InvalidStatusException("Auction not finished");
         }
         status = AuctionStatus.PAID;
     }
 
-    public void cancelAuction() {
+    public void cancelAuction() throws InvalidStatusException {
         if (status == AuctionStatus.PAID) {
-            throw new IllegalStateException("Paid auction cannot cancel");
+            throw new InvalidStatusException("Paid auction cannot cancel");
         }
         status = AuctionStatus.CANCELED;
     }
