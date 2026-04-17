@@ -1,4 +1,4 @@
-package com.auction.service;
+package com.auction.manager;
 
 import com.auction.model.Auction;
 import java.util.ArrayList;
