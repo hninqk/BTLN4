@@ -1,26 +1,32 @@
 package com.auction.manager;
 
 import com.auction.model.Auction;
-import java.util.ArrayList;
+
+import java.nio.channels.ConnectionPendingException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 
 public class AuctionManager {
 
-    private static AuctionManager instance;
+    private static volatile AuctionManager instance;
     private List<Auction> auctions;
 
     private AuctionManager() {
-        auctions = new ArrayList<>();
+        auctions = new CopyOnWriteArrayList<>();
     }
 
     public static AuctionManager getInstance() {
         if (instance == null) {
-            instance = new AuctionManager();
+            synchronized (AuctionManager.class) {
+                if (instance == null) {
+                    instance = new AuctionManager();
+                }
+            }
         }
         return instance;
     }
 
-    public void addAuction(Auction auction) {
+    public void createAuction(Auction auction) {
         auctions.add(auction);
     }
 
