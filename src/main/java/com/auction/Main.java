@@ -14,8 +14,8 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
-        Parent root = loadFXML("Login");
-        scene = new Scene(root, 600, 400);
+        Parent root = loadFXML("AuctionList");
+        scene = new Scene(root, 800, 600);
         
         stage.setTitle("Hệ thống Đấu giá trực tuyến");
         stage.setScene(scene);

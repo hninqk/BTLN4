@@ -27,6 +27,6 @@ public class Seller extends User {
 
     public void updateRating(double newRating) {
         this.cntvoted++;
-        this.rating = (this.rating + newRating) / cntvoted;
+        this.rating = (this.rating * (this.cntvoted - 1) + newRating) / cntvoted;
     }
 }

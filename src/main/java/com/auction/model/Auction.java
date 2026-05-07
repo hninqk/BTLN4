@@ -24,7 +24,6 @@ public class Auction extends Entity implements Subject {
         this.highestBid = 0.0;
         this.endTime = endTime;
     }
-    
     public void addObserver(Observer observer) {
         observers.add(observer);
     }
