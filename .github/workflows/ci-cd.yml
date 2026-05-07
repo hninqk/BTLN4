@@ -1,0 +1,110 @@
+name: Java CI/CD Pipeline (Maven + Checkstyle)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  build-test-checkstyle:
+    name: Build + Test + Checkstyle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      # Cache Maven dependencies (tăng tốc build)
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-m2
+
+      # =========================
+      # 1. Clean
+      # =========================
+      - name: Maven clean
+        run: mvn clean
+
+      # =========================
+      # 2. Validate + compile + checkstyle
+      # =========================
+      - name: Run Checkstyle
+        run: mvn validate checkstyle:check
+
+      # =========================
+      # 3. Compile
+      # =========================
+      - name: Compile project
+        run: mvn compile
+
+      # =========================
+      # 4. Test
+      # =========================
+      - name: Run tests
+        run: mvn test
+
+      # Upload test results (nếu dùng surefire report)
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+
+  package:
+    name: Package JAR
+    needs: build-test-checkstyle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      # =========================
+      # 5. Package (JAR/WAR)
+      # =========================
+      - name: Build package
+        run: mvn package -DskipTests
+
+      # Upload artifact build
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: target/*.jar
+
+  deploy:
+    name: Deploy (placeholder)
+    needs: package
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: application-jar
+
+      - name: Deploy step (customize here)
+        run: |
+          echo "Deploying application..."
+          echo "Add SCP / Docker / Kubernetes / AWS / VPS deployment here"
