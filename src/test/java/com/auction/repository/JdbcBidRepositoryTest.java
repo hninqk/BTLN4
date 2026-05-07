@@ -19,7 +19,7 @@ public class JdbcBidRepositoryTest {
 
     @Test
     void testSaveAndVerifyInDBeaver() {
-        Bidder bidder = new Bidder("JUnit_Tester", "test@unit.com", "pass", 1000.0);
+        Bidder bidder = new Bidder("JUnit_Tester", "pass", 1000.0);
         Auction auction = new Auction(null, null, LocalDateTime.now().plusDays(1));
 
         String uniqueId = "test-" + System.currentTimeMillis();
