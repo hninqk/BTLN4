@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.DashboardController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <!-- LEFT: Sidebar -->
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <!-- CENTER: Content -->
+    <center>
+        <VBox styleClass="content-area" spacing="20" fillWidth="true">
+
+            <!-- Page header -->
+            <HBox alignment="CENTER_LEFT">
+                <VBox spacing="4">
+                    <Label text="Tổng quan" styleClass="page-title"/>
+                    <Label fx:id="welcomeLabel" text="Chào mừng bạn trở lại!" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Stat cards row -->
+            <HBox spacing="16" fillHeight="false">
+                <!-- Card 1 -->
+                <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
+                    <Label text="Phiên đang diễn ra" styleClass="stat-label"/>
+                    <Label fx:id="activeAuctionsLabel" text="0" styleClass="stat-value"/>
+                    <Label text="🟢 RUNNING" styleClass="label-subtle"/>
+                </VBox>
+                <!-- Card 2 -->
+                <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
+                    <Label text="Tổng phiên đấu giá" styleClass="stat-label"/>
+                    <Label fx:id="totalAuctionsLabel" text="0" styleClass="stat-value"/>
+                    <Label text="Tất cả trạng thái" styleClass="label-subtle"/>
+                </VBox>
+                <!-- Card 3 -->
+                <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
+                    <Label text="Người dùng hệ thống" styleClass="stat-label"/>
+                    <Label fx:id="totalUsersLabel" text="0" styleClass="stat-value"/>
+                    <Label text="Bidder + Seller + Admin" styleClass="label-subtle"/>
+                </VBox>
+                <!-- Card 4 -->
+                <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
+                    <Label text="Chờ bắt đầu" styleClass="stat-label"/>
+                    <Label fx:id="openAuctionsLabel" text="0" styleClass="stat-value"/>
+                    <Label text="⏳ OPEN" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Recent auctions table -->
+            <VBox styleClass="card-no-padding" spacing="0" VBox.vgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" style="-fx-padding: 16 20 12 20;">
+                    <Label text="Phiên đấu giá gần đây" styleClass="section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Xem tất cả →" onAction="#handleViewAllAuctions"
+                            styleClass="btn-link"/>
+                </HBox>
+                <Separator/>
+                <TableView fx:id="recentAuctionsTable" VBox.vgrow="ALWAYS"
+                           style="-fx-border-width:0; -fx-background-color:transparent;">
+                    <columns>
+                        <TableColumn fx:id="colTitle"    text="Tên sản phẩm"  prefWidth="250"/>
+                        <TableColumn fx:id="colSeller"   text="Người bán"     prefWidth="130"/>
+                        <TableColumn fx:id="colStatus"   text="Trạng thái"    prefWidth="120"/>
+                        <TableColumn fx:id="colPrice"    text="Giá hiện tại"  prefWidth="130"/>
+                        <TableColumn fx:id="colEndTime"  text="Kết thúc lúc"  prefWidth="160"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Không có phiên đấu giá nào." styleClass="label-subtle"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

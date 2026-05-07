@@ -1,34 +1,32 @@
 package com.auction;
 
+import com.auction.util.NavigationManager;
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.IOException;
 
+/**
+ * Main – JavaFX entry point.
+ * Bootstraps NavigationManager and loads the Login screen.
+ */
 public class Main extends Application {
-
-    private static Scene scene;
 
     @Override
     public void start(Stage stage) throws IOException {
-        Parent root = loadFXML("AuctionList");
-        scene = new Scene(root, 800, 600);
-        
-        stage.setTitle("Hệ thống Đấu giá trực tuyến");
-        stage.setScene(scene);
+        // Register the primary stage with the navigation manager
+        NavigationManager nav = NavigationManager.getInstance();
+        nav.setPrimaryStage(stage);
+
+        stage.setTitle("Hệ thống Đấu giá Trực tuyến");
+        stage.setMinWidth(900);
+        stage.setMinHeight(600);
+
+        // Navigate to Login as the initial screen
+        nav.navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
+
+        stage.centerOnScreen();
         stage.show();
-    }
-
-    public static void setRoot(String fxml) throws IOException {
-        scene.setRoot(loadFXML(fxml));
-    }
-
-    private static Parent loadFXML(String fxml) throws IOException {
-        FXMLLoader fxmlLoader = new FXMLLoader(Main.class.getResource("/com/auction/" + fxml + ".fxml"));
-        return fxmlLoader.load();
     }
 
     public static void main(String[] args) {

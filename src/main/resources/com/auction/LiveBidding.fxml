@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.chart.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.LiveBiddingController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label fx:id="auctionTitleLabel" text="Đấu giá Trực tiếp" styleClass="page-title"/>
+                    <Label fx:id="auctionSubtitleLabel" text="" styleClass="label-subtle"/>
+                </VBox>
+                <Label fx:id="statusBadge" text="RUNNING" styleClass="badge badge-running"/>
+            </HBox>
+
+            <HBox spacing="16" fillHeight="true" VBox.vgrow="ALWAYS">
+
+                <!-- LEFT: Price + bid chart -->
+                <VBox spacing="16" HBox.hgrow="ALWAYS">
+
+                    <VBox styleClass="card" spacing="8" alignment="CENTER">
+                        <Label text="Ảnh sản phẩm" styleClass="section-title"/>
+                        <ImageView fx:id="itemImageView" fitWidth="360" fitHeight="220"
+                                   preserveRatio="true" smooth="true"/>
+                    </VBox>
+
+                    <!-- Current price big display -->
+                    <HBox styleClass="bid-panel" spacing="24" alignment="CENTER">
+                        <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="GIÁ HIỆN TẠI" styleClass="stat-label"/>
+                            <Label fx:id="livePriceLabel" text="0 ₫" styleClass="bid-current-price"/>
+                        </VBox>
+                        <Separator orientation="VERTICAL"/>
+                        <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="THỜI GIAN CÒN LẠI" styleClass="stat-label"/>
+                            <Label fx:id="liveTimerLabel" text="--:--:--" styleClass="bid-timer"/>
+                        </VBox>
+                        <Separator orientation="VERTICAL"/>
+                        <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="LƯỢT ĐẤU GIÁ" styleClass="stat-label"/>
+                            <Label fx:id="bidCountLabel" text="0" styleClass="stat-value"
+                                   style="-fx-font-size:28px;"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Bid price chart -->
+                    <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS" spacing="0">
+                        <HBox style="-fx-padding: 12 20 8 20;">
+                            <Label text="Biểu đồ giá đấu" styleClass="section-title"/>
+                        </HBox>
+                        <Separator/>
+                        <LineChart fx:id="priceChart" VBox.vgrow="ALWAYS"
+                                   style="-fx-background-color:transparent; -fx-padding:10;">
+                            <xAxis>
+                                <CategoryAxis label="Lượt đặt giá"/>
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis label="Giá (₫)"/>
+                            </yAxis>
+                        </LineChart>
+                    </VBox>
+
+                </VBox>
+
+                <!-- RIGHT: Live bid feed + place bid -->
+                <VBox spacing="16" prefWidth="320" minWidth="300">
+
+                    <!-- Place bid form -->
+                    <VBox styleClass="card" spacing="12">
+                        <Label text="Đặt giá của bạn" styleClass="section-title"/>
+                        <Separator/>
+                        <Label text="Số tiền đặt (₫):" styleClass="form-label"/>
+                        <TextField fx:id="bidAmountField" promptText="Nhập số tiền..."
+                                   styleClass="text-field"/>
+                        <Label fx:id="minBidHint" text="" styleClass="label-subtle"/>
+                        <Label fx:id="bidErrorLabel" text="" styleClass="label-error" wrapText="true"/>
+                        <Button fx:id="placeBidButton" text="🔨 ĐẶT GIÁ"
+                                onAction="#handlePlaceBid"
+                                styleClass="btn-success" maxWidth="Infinity"/>
+                    </VBox>
+
+                    <!-- Live bid feed -->
+                    <VBox styleClass="card-no-padding" spacing="0" VBox.vgrow="ALWAYS">
+                        <HBox style="-fx-padding: 12 16 8 16;" alignment="CENTER_LEFT">
+                            <Label text="📡 Cập nhật trực tiếp" styleClass="section-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="lastUpdateLabel" text="" styleClass="label-subtle"/>
+                        </HBox>
+                        <Separator/>
+                        <ListView fx:id="liveFeedList" VBox.vgrow="ALWAYS"
+                                  style="-fx-background-color:transparent; -fx-border-width:0;"/>
+                    </VBox>
+
+                </VBox>
+
+            </HBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>
