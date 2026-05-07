@@ -1,0 +1,4 @@
+--patch-module
+com.auction=_
+--add-reads
+com.auction=ALL-UNNAMED
