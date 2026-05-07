@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.SellerManagementController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Quản lý Sản phẩm" styleClass="page-title"/>
+                    <Label text="Tạo và quản lý các phiên đấu giá của bạn" styleClass="label-subtle"/>
+                </VBox>
+                <Button text="+ Tạo phiên đấu giá mới" onAction="#handleCreateAuction"
+                        styleClass="btn-primary"/>
+            </HBox>
+
+            <HBox spacing="16" fillHeight="true" VBox.vgrow="ALWAYS">
+
+                <!-- LEFT: Auction list -->
+                <VBox spacing="12" HBox.hgrow="ALWAYS">
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <TextField fx:id="searchField" promptText="🔍 Tìm kiếm..."
+                                   styleClass="text-field" prefWidth="220"/>
+                        <ComboBox fx:id="statusFilter" promptText="Trạng thái"
+                                  styleClass="combo-box" prefWidth="140"/>
+                        <Button text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
+                    </HBox>
+
+                    <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
+                        <TableView fx:id="auctionTable" VBox.vgrow="ALWAYS"
+                                   style="-fx-border-width:0; -fx-background-color:transparent;"
+                                   onMouseClicked="#handleRowSelect">
+                            <columns>
+                                <TableColumn fx:id="colName"    text="Sản phẩm"      prefWidth="200"/>
+                                <TableColumn fx:id="colStatus"  text="Trạng thái"    prefWidth="110"/>
+                                <TableColumn fx:id="colPrice"   text="Giá hiện tại"  prefWidth="120"/>
+                                <TableColumn fx:id="colBids"    text="Lượt đấu"      prefWidth="90"/>
+                                <TableColumn fx:id="colEndTime" text="Kết thúc lúc"  prefWidth="150"/>
+                            </columns>
+                            <placeholder>
+                                <Label text="Bạn chưa có phiên đấu giá nào." styleClass="label-subtle"/>
+                            </placeholder>
+                        </TableView>
+                    </VBox>
+
+                    <HBox spacing="8">
+                        <Button fx:id="btnStart"  text="▶ Bắt đầu"  onAction="#handleStart"  styleClass="btn-success"/>
+                        <Button fx:id="btnFinish" text="✔ Kết thúc" onAction="#handleFinish" styleClass="btn-warning"/>
+                        <Button fx:id="btnCancel" text="✖ Huỷ"      onAction="#handleCancel" styleClass="btn-danger"/>
+                        <Button fx:id="btnDelete" text="🗑 Xoá"     onAction="#handleDelete" styleClass="btn-secondary"/>
+                    </HBox>
+                </VBox>
+
+                <!-- RIGHT: Create/Edit form -->
+                <VBox styleClass="card" spacing="14" prefWidth="340" minWidth="320">
+                    <Label fx:id="formTitle" text="Tạo phiên đấu giá mới" styleClass="section-title"/>
+                    <Separator/>
+
+                    <VBox spacing="6">
+                        <Label text="Tên sản phẩm *" styleClass="form-label"/>
+                        <TextField fx:id="itemNameField" promptText="VD: iPhone 15 Pro Max"
+                                   styleClass="text-field" maxWidth="Infinity"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Danh mục *" styleClass="form-label"/>
+                        <ComboBox fx:id="categoryCombo" maxWidth="Infinity" styleClass="combo-box"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Mô tả sản phẩm" styleClass="form-label"/>
+                        <TextArea fx:id="descriptionArea" promptText="Nhập mô tả chi tiết..."
+                                  styleClass="text-area" maxWidth="Infinity" prefRowCount="3"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Ảnh sản phẩm (URL hoặc file path)" styleClass="form-label"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="itemImageField" promptText="VD: https://... hoặc C:/images/item.jpg"
+                                       styleClass="text-field" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Button text="Browse..." onAction="#handleBrowseImage" styleClass="btn-secondary"/>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Giá khởi điểm (₫) *" styleClass="form-label"/>
+                        <TextField fx:id="startPriceField" promptText="VD: 1000000"
+                                   styleClass="text-field" maxWidth="Infinity"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Thời gian kết thúc *" styleClass="form-label"/>
+                        <TextField fx:id="endTimeField" promptText="VD: 2026-06-01 18:00"
+                                   styleClass="text-field" maxWidth="Infinity"/>
+                        <Label text="Định dạng: yyyy-MM-dd HH:mm" styleClass="label-subtle"/>
+                    </VBox>
+
+                    <Label fx:id="formErrorLabel" text="" styleClass="label-error" wrapText="true"/>
+                    <Label fx:id="formSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
+
+                    <HBox spacing="8">
+                        <Button fx:id="submitButton" text="💾 Lưu" onAction="#handleSave"
+                                styleClass="btn-primary" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                        <Button text="Xoá trắng" onAction="#handleClearForm"
+                                styleClass="btn-secondary"/>
+                    </HBox>
+                </VBox>
+
+            </HBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

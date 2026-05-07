@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.AdminManagementController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Quản trị Hệ thống" styleClass="page-title"/>
+                    <Label text="Quản lý người dùng và phiên đấu giá toàn bộ hệ thống" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Tabs -->
+            <TabPane fx:id="adminTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+
+                <!-- Tab 1: Users -->
+                <Tab text="👥  Người dùng">
+                    <VBox spacing="12" style="-fx-padding: 16 0 0 0;">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <TextField fx:id="userSearchField" promptText="🔍 Tìm người dùng..."
+                                       styleClass="text-field" prefWidth="240"/>
+                            <ComboBox fx:id="roleFilter" promptText="Vai trò"
+                                      styleClass="combo-box" prefWidth="130"/>
+                            <Button text="Tìm" onAction="#handleUserSearch" styleClass="btn-secondary"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="userCountLabel" text="" styleClass="label-subtle"/>
+                        </HBox>
+
+                        <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
+                            <TableView fx:id="userTable" VBox.vgrow="ALWAYS"
+                                       style="-fx-border-width:0; -fx-background-color:transparent;">
+                                <columns>
+                                    <TableColumn fx:id="colUserId"       text="ID"           prefWidth="220"/>
+                                    <TableColumn fx:id="colUsername"     text="Tên đăng nhập" prefWidth="140"/>
+                                    <TableColumn fx:id="colRole"         text="Vai trò"      prefWidth="100"/>
+                                    <TableColumn fx:id="colUserCreated"  text="Ngày tạo"     prefWidth="160"/>
+                                </columns>
+                                <placeholder>
+                                    <Label text="Không có người dùng nào." styleClass="label-subtle"/>
+                                </placeholder>
+                            </TableView>
+                        </VBox>
+
+                        <HBox spacing="8">
+                            <Button text="🗑 Xoá người dùng" onAction="#handleDeleteUser" styleClass="btn-danger"/>
+                            <Button text="🔄 Làm mới"        onAction="#handleRefreshUsers" styleClass="btn-secondary"/>
+                        </HBox>
+                    </VBox>
+                </Tab>
+
+                <!-- Tab 2: All Auctions -->
+                <Tab text="🔖  Tất cả đấu giá">
+                    <VBox spacing="12" style="-fx-padding: 16 0 0 0;">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <TextField fx:id="auctionSearchField" promptText="🔍 Tìm phiên đấu giá..."
+                                       styleClass="text-field" prefWidth="240"/>
+                            <ComboBox fx:id="auctionStatusFilter" promptText="Trạng thái"
+                                      styleClass="combo-box" prefWidth="140"/>
+                            <Button text="Tìm" onAction="#handleAuctionSearch" styleClass="btn-secondary"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="auctionCountLabel" text="" styleClass="label-subtle"/>
+                        </HBox>
+
+                        <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
+                            <TableView fx:id="allAuctionTable" VBox.vgrow="ALWAYS"
+                                       style="-fx-border-width:0; -fx-background-color:transparent;">
+                                <columns>
+                                    <TableColumn fx:id="colAuctionName"   text="Sản phẩm"      prefWidth="200"/>
+                                    <TableColumn fx:id="colAuctionSeller" text="Người bán"     prefWidth="130"/>
+                                    <TableColumn fx:id="colAuctionStatus" text="Trạng thái"    prefWidth="110"/>
+                                    <TableColumn fx:id="colAuctionPrice"  text="Giá hiện tại"  prefWidth="130"/>
+                                    <TableColumn fx:id="colAuctionBids"   text="Lượt đấu"      prefWidth="90"/>
+                                    <TableColumn fx:id="colAuctionEnd"    text="Kết thúc lúc"  prefWidth="160"/>
+                                </columns>
+                                <placeholder>
+                                    <Label text="Không có phiên đấu giá nào." styleClass="label-subtle"/>
+                                </placeholder>
+                            </TableView>
+                        </VBox>
+
+                        <HBox spacing="8">
+                            <Button text="✔ Kết thúc phiên" onAction="#handleForceFinish" styleClass="btn-warning"/>
+                            <Button text="✖ Huỷ phiên"      onAction="#handleForceCancel" styleClass="btn-danger"/>
+                            <Button text="🔄 Làm mới"        onAction="#handleRefreshAuctions" styleClass="btn-secondary"/>
+                        </HBox>
+                    </VBox>
+                </Tab>
+
+                <!-- Tab 3: System Stats -->
+                <Tab text="📊  Thống kê">
+                    <ScrollPane fitToWidth="true" styleClass="scroll-pane">
+                        <VBox spacing="16" style="-fx-padding: 16 0 0 0;">
+                            <HBox spacing="16">
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Tổng người dùng" styleClass="stat-label"/>
+                                    <Label fx:id="statTotalUsers"    text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Tổng phiên đấu giá" styleClass="stat-label"/>
+                                    <Label fx:id="statTotalAuctions" text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Đang diễn ra" styleClass="stat-label"/>
+                                    <Label fx:id="statRunning"       text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Hoàn thành" styleClass="stat-label"/>
+                                    <Label fx:id="statFinished"      text="0" styleClass="stat-value"/>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="16">
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Số Bidder" styleClass="stat-label"/>
+                                    <Label fx:id="statBidders"  text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Số Seller" styleClass="stat-label"/>
+                                    <Label fx:id="statSellers"  text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Chờ bắt đầu" styleClass="stat-label"/>
+                                    <Label fx:id="statOpen"     text="0" styleClass="stat-value"/>
+                                </VBox>
+                                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                                    <Label text="Đã huỷ" styleClass="stat-label"/>
+                                    <Label fx:id="statCanceled" text="0" styleClass="stat-value"/>
+                                </VBox>
+                            </HBox>
+
+                            <Button text="🔄 Cập nhật thống kê" onAction="#handleRefreshStats"
+                                    styleClass="btn-secondary"/>
+                        </VBox>
+                    </ScrollPane>
+                </Tab>
+
+            </TabPane>
+
+        </VBox>
+    </center>
+
+</BorderPane>

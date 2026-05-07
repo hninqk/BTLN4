@@ -147,7 +147,7 @@ public class UserProfileController {
             double amount = Double.parseDouble(input.replace(",", ""));
             if (amount <= 0)
                 throw new NumberFormatException();
-            bidder.addBalance(amount);
+            bidder.AddBalance(amount);
             depositField.clear();
             balanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
             profileSuccessLabel.setText(String.format("Đã nạp %,.0f ₫ vào tài khoản.", amount));

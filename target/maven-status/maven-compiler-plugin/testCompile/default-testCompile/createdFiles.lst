@@ -2,3 +2,4 @@ com\auction\model\AuctionTest.class
 com\auction\model\BidderTest.class
 com\auction\model\BidTransactionTest.class
 com\auction\manager\AuctionManagerTest.class
+com\auction\repository\JdbcBidRepositoryTest.class

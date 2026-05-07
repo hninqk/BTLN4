@@ -9,13 +9,22 @@ public class Bidder extends User {
     }
 
     @Override
-    public String getRole() { return "Bidder"; }
+    public String getRole() {
+        return "Bidder";
+    }
 
-    public double getAccountBalance()                      { return accountBalance; }
-    public void setAccountBalance(double accountBalance)   { this.accountBalance = accountBalance; }
+    public double getAccountBalance() {
+        return accountBalance;
+    }
 
-    public void addBalance(double amount) {
-        if (amount > 0) accountBalance += amount;
+    public void setAccountBalance(double accountBalance) {
+        this.accountBalance = accountBalance;
+    }
+
+    public void AddBalance(double amount) {
+        if (amount > 0) {
+            accountBalance += amount;
+        }
     }
 
     public boolean deductBalance(double amount) {
