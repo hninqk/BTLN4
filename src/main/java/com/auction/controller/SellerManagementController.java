@@ -238,10 +238,11 @@ public class SellerManagementController {
         }
 
         Item item = switch (category) {
-            case "Nghệ thuật" -> new Art(name, description, startPrice, seller, imageUrl);
-            case "Xe cộ"      -> new Vehicle(name, description, startPrice, seller, imageUrl);
-            default           -> new Electronics(name, description, startPrice, seller, imageUrl);
+            case "Nghệ thuật" -> new Art(name, description, startPrice, seller);
+            case "Xe cộ"      -> new Vehicle(name, description, startPrice, seller);
+            default           -> new Electronics(name, description, startPrice, seller);
         };
+        item.setImageUrl(imageUrl);
 
         AuctionService.getInstance().createAuction(seller, item, endTime);
         loadSellerAuctions();

@@ -21,65 +21,77 @@ public class Auction extends Entity implements Subject {
         this.status = AuctionStatus.OPEN;
         this.seller = seller;
         this.item = item;
-        this.highestBid = 0.0;
+        this.highestBid = (item != null) ? item.getStartingPrice() : 0.0;
+        this.startTime = LocalDateTime.now();
         this.endTime = endTime;
     }
-    public void addObserver(Observer observer) {
-        observers.add(observer);
-    }
 
-    public void removeObserver(Observer observer) {
-        observers.remove(observer);
-    }
+    // ------- Observer pattern -------
 
+    @Override
+    public void addObserver(Observer observer) { observers.add(observer); }
+
+    @Override
+    public void removeObserver(Observer observer) { observers.remove(observer); }
+
+    @Override
     public void notifyObserver(BidTransaction newBid) {
-        for (Observer o : observers) {
-            o.notify(newBid);
-        }
+        for (Observer o : observers) o.notify(newBid);
     }
+
+    // ------- State transitions -------
 
     public void startAuction() throws InvalidStatusException {
-        if (this.status != AuctionStatus.OPEN) {
-            throw new InvalidStatusException("Auction cannot start");
-        }
+        if (this.status != AuctionStatus.OPEN)
+            throw new InvalidStatusException("Auction cannot start from status: " + status);
         status = AuctionStatus.RUNNING;
     }
 
     public synchronized void placeBid(BidTransaction newBid) throws InvalidBidException, InvalidStatusException {
-        if (this.status != AuctionStatus.RUNNING) {
+        if (this.status != AuctionStatus.RUNNING)
             throw new InvalidStatusException("Auction is not running");
-        }
-
-        double currentPrice = this.highestBid;
         double newBidAmount = newBid.getAmount();
-
-        if (newBidAmount <= currentPrice) {
-            throw new InvalidBidException("Bid must be higher than current bid");
-        }
-
+        if (newBidAmount <= this.highestBid)
+            throw new InvalidBidException("Bid must be higher than current bid of " + this.highestBid);
         this.highestBid = newBidAmount;
         this.bidHistory.add(newBid);
         this.notifyObserver(newBid);
     }
 
     public void finishAuction() throws InvalidStatusException {
-        if (status != AuctionStatus.RUNNING) {
-            throw new InvalidStatusException("Auction cannot finish");
-        }
-        status = AuctionStatus.PAID;
-    }
-
-    public void markPaid() throws InvalidStatusException {
-        if (status != AuctionStatus.PAID) {
-            throw new InvalidStatusException("Auction not finished");
-        }
+        if (status != AuctionStatus.RUNNING)
+            throw new InvalidStatusException("Auction cannot finish from status: " + status);
         status = AuctionStatus.PAID;
     }
 
     public void cancelAuction() throws InvalidStatusException {
-        if (status == AuctionStatus.PAID) {
-            throw new InvalidStatusException("Paid auction cannot cancel");
-        }
+        if (status == AuctionStatus.PAID)
+            throw new InvalidStatusException("Paid auction cannot be cancelled");
         status = AuctionStatus.CANCELED;
+    }
+
+    // ------- Getters -------
+
+    public Seller getSeller()           { return seller; }
+    public Item getItem()               { return item; }
+    public AuctionStatus getStatus()    { return status; }
+    public LocalDateTime getStartTime() { return startTime; }
+    public LocalDateTime getEndTime()   { return endTime; }
+    public double getHighestBid()       { return highestBid; }
+    public List<BidTransaction> getBidHistory() { return new java.util.ArrayList<>(bidHistory); }
+
+    public BidTransaction getWinner() {
+        if (bidHistory.isEmpty()) return null;
+        return bidHistory.get(bidHistory.size() - 1);
+    }
+
+    public String getStatusDisplay() {
+        return switch (status) {
+            case OPEN     -> "Chờ bắt đầu";
+            case RUNNING  -> "Đang diễn ra";
+            case CLOSE    -> "Đã đóng";
+            case PAID     -> "Hoàn thành";
+            case CANCELED -> "Đã huỷ";
+        };
     }
 }

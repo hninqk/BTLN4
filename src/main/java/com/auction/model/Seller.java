@@ -6,27 +6,23 @@ public class Seller extends User {
     private double rating;
     private int cntvoted;
 
-    public Seller (String username, String password, String shopName) {
+    public Seller(String username, String password, String shopName) {
         super(username, password);
         this.shopName = shopName;
         this.rating = 0.0;
         this.cntvoted = 0;
     }
 
-    public String getShopName() {
-        return shopName;
-    }
+    @Override
+    public String getRole() { return "Seller"; }
 
-    public void setShopName(String shopName) {
-        this.shopName = shopName;
-    }
-
-    public double getRating() {
-        return rating;
-    }
+    public String getShopName()            { return shopName; }
+    public void setShopName(String name)   { this.shopName = name; }
+    public double getRating()              { return rating; }
+    public int getCntvoted()               { return cntvoted; }
 
     public void updateRating(double newRating) {
         this.cntvoted++;
-        this.rating = (this.rating * (this.cntvoted - 1) + newRating) / cntvoted;
+        this.rating = (this.rating * (cntvoted - 1) + newRating) / cntvoted;
     }
 }
