@@ -1,0 +1,76 @@
+name: Java CI/CD Pipeline (Maven + Checkstyle)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  build-test-checkstyle:
+    name: Build + Test + Checkstyle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: maven
+
+      # Cài đặt thư viện đồ họa cần thiết cho JavaFX trên Linux (Rất quan trọng)
+      - name: Install JavaFX dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenjfx-java libgtk-3-0 x11-apps
+
+      # 1. Clean và Compile
+      - name: Maven Compile
+        run: mvn -B clean compile -DskipTests
+
+      # 2. Chạy Checkstyle (Không làm dừng pipeline nếu cấu hình pom.xml cho phép)
+      - name: Run Checkstyle
+        run: mvn -B checkstyle:check
+        continue-on-error: true
+
+      # 3. Chạy Tests (Sử dụng chế độ headless cho JavaFX)
+      - name: Run tests
+        run: mvn -B test -Dglass.platform=Monocle -Dmonocle.platform=Headless -Dprism.order=sw
+        continue-on-error: true
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+
+  package:
+    name: Package JAR
+    needs: build-test-checkstyle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: maven
+
+      # 4. Đóng gói JAR
+      - name: Build package
+        run: mvn -B package -DskipTests
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: target/*.jar
