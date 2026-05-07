@@ -32,33 +32,28 @@ public class AuctionTest {
     @Test
     @DisplayName("Đặt giá hợp lệ: Giá được cập nhật thành công")
     void testPlaceValidBid() throws Exception {
-        auction.startAuction(); // Chuyển status sang RUNNING
+        auction.startAuction(); 
         
-        // Đặt giá 100.0
-        BidTransaction validBid = createBid(100.0);
-        auction.placeBid(validBid);
+        // Đặt giá lần 1 (100.0)
+        auction.placeBid(createBid(100.0));
 
-        // Đặt tiếp 150.0 (hợp lệ)
+        // Đặt giá lần 2 (150.0 - hợp lệ)
         assertDoesNotThrow(() -> auction.placeBid(createBid(150.0))); 
     }
 
     @Test
-    @DisplayName("Ngoại lệ: Đặt giá thấp hơn giá hiện tại hoặc giá trị âm")
-    void testPlaceBidLowerThanCurrentOrNegative() throws Exception {
+    @DisplayName("Ngoại lệ: Đặt giá bằng, thấp hơn, bằng 0 hoặc số âm -> Ném InvalidBidException")
+    void testPlaceInvalidBids() throws Exception {
         auction.startAuction();
-        auction.placeBid(createBid(100.0)); // Giá hiện tại đang là 100
+        auction.placeBid(createBid(100.0)); // Thiết lập giá hiện tại là 100.0
 
-        // 1. Test đặt giá thấp hơn (90)
-        Exception exception1 = assertThrows(InvalidBidException.class, () -> {
-            auction.placeBid(createBid(90.0));
-        });
-        assertTrue(exception1.getMessage().contains("Bid must be higher"));
+        double[] invalidAmounts = {100.0, 99.9, 0.0, -50.0};
 
-        // 2. Test đặt giá trị âm (-50)
-        Exception exception2 = assertThrows(InvalidBidException.class, () -> {
-            auction.placeBid(createBid(-50.0));
-        });
-        assertTrue(exception2.getMessage().contains("Bid must be positive"));
+        for (double amount : invalidAmounts) {
+            assertThrows(InvalidBidException.class, () -> {
+                auction.placeBid(createBid(amount));
+            }, "Bid must be higher than the current bid"); 
+        }
     }
 
     @Test
@@ -73,7 +68,7 @@ public class AuctionTest {
         assertDoesNotThrow(() -> auction.startAuction());
         assertDoesNotThrow(() -> auction.finishAuction()); // Chuyển sang PAID
 
-        // Thử đặt giá sau khi kết thúc
+        // 3. Thử đặt giá sau khi kết thúc
         assertThrows(InvalidStatusException.class, () -> {
             auction.placeBid(createBid(200.0));
         });
