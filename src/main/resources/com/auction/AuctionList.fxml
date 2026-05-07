@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.geometry.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/17"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.auction.controller.AuctionListController"
+           fx:id="rootPane"
+           prefWidth="1200" prefHeight="750">
+
+    <BorderPane fx:id="mainPane">
+        <top>
+            <HBox fx:id="topBar" alignment="CENTER_LEFT" spacing="20">
+                <padding><Insets top="18" right="30" bottom="18" left="30"/></padding>
+                <Label fx:id="titleLabel" text="◆ LUXE AUCTION HOUSE" style="-fx-font-weight: bold; -fx-font-size: 18px;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="walletLabel" text="💰 Balance: $25,000" style="-fx-font-size: 14px;"/>
+            </HBox>
+        </top>
+
+        <left>
+            <VBox fx:id="leftPanel" spacing="12" prefWidth="300">
+                <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                <Label fx:id="listTitle" text="LIVE AUCTIONS" style="-fx-font-weight: bold; -fx-opacity: 0.7;"/>
+                <ScrollPane fx:id="itemScroll" fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+                    <VBox fx:id="itemListBox" spacing="10"/>
+                </ScrollPane>
+            </VBox>
+        </left>
+
+        <center>
+            <VBox fx:id="centerPane" spacing="15" alignment="TOP_CENTER">
+                <padding><Insets top="20" right="30" bottom="20" left="10"/></padding>
+
+                <VBox fx:id="detailCard" spacing="8" style="-fx-background-color: #f4f4f4; -fx-background-radius: 10;">
+                    <padding><Insets top="20" right="25" bottom="20" left="25"/></padding>
+                    <Label fx:id="itemName" text="Select an item" style="-fx-font-size: 24px; -fx-font-weight: bold;"/>
+                    <Label fx:id="itemDesc" text="Click on an auction item to view its price history." wrapText="true"/>
+
+                    <HBox spacing="30" alignment="CENTER_LEFT">
+                        <padding><Insets top="10"/></padding>
+                        <VBox>
+                            <Label fx:id="currentLbl" text="CURRENT BID" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+                            <Label fx:id="currentPrice" text="—" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                        </VBox>
+                        <VBox>
+                            <Label fx:id="timeLbl" text="TIME LEFT" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+                            <Label fx:id="timeLeft" text="—" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                        </VBox>
+                        <VBox>
+                            <Label fx:id="bidsLbl" text="BIDS" style="-fx-font-size: 10px; -fx-text-fill: gray;"/>
+                            <Label fx:id="bidCount" text="—" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <StackPane fx:id="chartContainer" VBox.vgrow="ALWAYS">
+                    <LineChart fx:id="priceChart" animated="true" legendVisible="false" createSymbols="true">
+                        <xAxis><NumberAxis fx:id="xAxis" label="Time" side="BOTTOM"/></xAxis>
+                        <yAxis><NumberAxis fx:id="yAxis" label="Price ($)" side="LEFT"/></yAxis>
+                    </LineChart>
+                </StackPane>
+
+                <HBox fx:id="bidRow" spacing="15" alignment="CENTER">
+                    <padding><Insets top="10" bottom="10"/></padding>
+                    <TextField fx:id="bidField" promptText="Enter your bid..." prefWidth="250" prefHeight="40"/>
+                    <Button fx:id="bidButton" text="PLACE BID  ⚡" onAction="#onBid" prefHeight="40"
+                            style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                </HBox>
+            </VBox>
+        </center>
+    </BorderPane>
+
+    <Label fx:id="toast" text="" mouseTransparent="true" visible="false"
+           StackPane.alignment="TOP_CENTER"
+           style="-fx-background-color: rgba(0,0,0,0.7); -fx-text-fill: white; -fx-padding: 10 20; -fx-background-radius: 20;">
+        <StackPane.margin>
+            <Insets top="50"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>

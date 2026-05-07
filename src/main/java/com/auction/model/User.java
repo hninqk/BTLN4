@@ -20,4 +20,8 @@ public abstract class User extends Entity {
         this.email = email;
         this.password = password;
     }
+
+    public String getUsername() {
+        return username;
+    }
 }
