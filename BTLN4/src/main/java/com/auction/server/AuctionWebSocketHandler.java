@@ -63,37 +63,34 @@ public class AuctionWebSocketHandler {
             BidRequest req = gson.fromJson(msg, BidRequest.class);
 
             if (req.auctionId == null || req.bidderId == null) {
-                // Fallback to old simple amount-only parsing if needed
-                double amount = parseAmount(msg);
-                if (amount > 0) {
-                   ctx.send("Error: Please provide auctionId and bidderId in JSON format.");
-                }
+                ctx.send("{\"error\":\"Missing auctionId or bidderId\"}");
                 return;
             }
 
-            // ===== Retrieve data from services =====
+            // Retrieve auction and bidder from server's DB
             Auction auction = AuctionService.getInstance().findById(req.auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + req.auctionId));
-            
+
             Bidder bidder = UserService.getInstance().findById(req.bidderId)
                     .filter(u -> u instanceof Bidder)
                     .map(u -> (Bidder) u)
                     .orElseThrow(() -> new Exception("Bidder not found: " + req.bidderId));
 
-            // ===== xử lý bid (thread-safe ở service) =====
+            // Process the bid
             service.placeBid(auction, bidder, req.amount);
 
-            // Fetch latest bid to broadcast
-            BidTransaction latest = auction.getWinner();
-
-            // ===== broadcast cho tất cả client =====
-            String json = toJson(latest);
-            broadcast(json);
+            // ── Broadcast the latest bid (NOT getWinner() — that's null until CLOSED) ──
+            java.util.List<BidTransaction> history = auction.getBidHistory();
+            if (!history.isEmpty()) {
+                BidTransaction latest = history.get(history.size() - 1);
+                broadcast(toJson(latest));
+            }
 
         } catch (InvalidBidException | InvalidStatusException e) {
-            ctx.send("Error: " + e.getMessage());
+            // Send error only to the bidder who triggered it
+            ctx.send("{\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}");
         } catch (Exception e) {
-            ctx.send("System Error: " + e.getMessage());
+            ctx.send("{\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}");
             e.printStackTrace();
         }
     }

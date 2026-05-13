@@ -136,6 +136,13 @@ public class LiveBiddingController implements DataReceiver {
     private void handleWsMessage(String msg) {
         try {
             JsonObject json = gson.fromJson(msg, JsonObject.class);
+
+            // Server-side error (e.g. InvalidBidException, Auction not found)
+            if (json.has("error")) {
+                bidErrorLabel.setText("⚠ " + json.get("error").getAsString());
+                return;
+            }
+
             if (json.has("amount") && json.has("bidder") && json.has("time")) {
                 double amount = json.get("amount").getAsDouble();
                 String bidder = json.get("bidder").getAsString();

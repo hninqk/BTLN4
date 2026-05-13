@@ -5,6 +5,8 @@ import com.auction.service.AuctionService;
 import com.auction.util.DatabaseConnection;
 import io.javalin.Javalin;
 
+import java.time.Duration;
+
 /**
  * ServerMain – Headless server entry point.
  *
@@ -37,7 +39,10 @@ public class ServerMain {
         AuctionService service = AuctionService.getInstance();
         AuctionWebSocketHandler handler = new AuctionWebSocketHandler(service);
 
-        Javalin server = Javalin.create().start(7000);
+        Javalin server = Javalin.create(config ->
+                config.jetty.modifyWebSocketServletFactory(factory ->
+                        factory.setIdleTimeout(Duration.ofMinutes(10)))
+        ).start(7000);
         server.ws("/auction", handler::register);
 
         System.out.println("[Server] WebSocket server running on port 7000.");

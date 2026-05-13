@@ -71,14 +71,39 @@ public class UserService {
 
     // ------- Seed -------
 
+    /**
+     * Seeds the DB with a fixed set of demo users.
+     * UUIDs are DETERMINISTIC (derived from the username) so both the server
+     * and any client that seeds its own local DB will always produce the same
+     * IDs. This is critical: bidderId sent in WS bid messages must exist in
+     * the server's DB.
+     */
     private void ensureSeeded() {
         if (!userRepo.findAll().isEmpty()) return; // already seeded
 
-        userRepo.save(new Admin("admin", "123"));
-        userRepo.save(new Bidder("alice", "123", 5000.0));
-        userRepo.save(new Bidder("bob", "123", 3000.0));
-        userRepo.save(new Seller("carol", "123", "Carol Shop"));
-        userRepo.save(new Seller("dave", "123", "Dave Auctions"));
+        userRepo.save(makeAdmin   ("admin", "123"));
+        userRepo.save(makeBidder  ("alice", "123", 5_000_000.0));
+        userRepo.save(makeBidder  ("bob",   "123", 3_000_000.0));
+        userRepo.save(makeSeller  ("carol", "123", "Carol Shop"));
+        userRepo.save(makeSeller  ("dave",  "123", "Dave Auctions"));
         System.out.println("[UserService] Seed data inserted.");
+    }
+
+    // Helpers that produce deterministic IDs based on username
+    private static final java.time.LocalDateTime SEED_TIME = java.time.LocalDateTime.of(2025, 1, 1, 0, 0);
+
+    private Admin makeAdmin(String username, String password) {
+        return new Admin(deterministicId("user-" + username), SEED_TIME, username, password, 1);
+    }
+    private Bidder makeBidder(String username, String password, double balance) {
+        return new Bidder(deterministicId("user-" + username), SEED_TIME, username, password, balance);
+    }
+    private Seller makeSeller(String username, String password, String shopName) {
+        return new Seller(deterministicId("user-" + username), SEED_TIME, username, password, shopName, 0.0, 0);
+    }
+
+    /** UUID derived from a fixed string — always the same across JVM restarts. */
+    public static String deterministicId(String key) {
+        return java.util.UUID.nameUUIDFromBytes(key.getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
     }
 }

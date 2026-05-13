@@ -186,22 +186,51 @@ public class AuctionService {
         Seller dave  = (Seller) userService.findByUsername("dave").orElse(null);
         if (carol == null || dave == null) return;
 
-        Electronics laptop   = new Electronics("Laptop Dell XPS 15", "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol);
-        Electronics phone    = new Electronics("iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt", 28_000_000, carol);
-        Art         painting = new Art("Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm", 5_000_000, dave);
-        Vehicle     car      = new Vehicle("Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng", 800_000_000, dave);
+        // Fixed seed time so timestamps are also identical across machines
+        LocalDateTime seed = LocalDateTime.of(2025, 1, 1, 0, 0);
+
+        // Items — deterministic IDs by item name
+        Electronics laptop   = new Electronics(did("item-laptop"),   seed, "Laptop Dell XPS 15",    "Laptop cao cấp, i9, 32GB RAM",  15_000_000,  carol, 0);
+        Electronics phone    = new Electronics(did("item-phone"),    seed, "iPhone 15 Pro Max",      "Mới 100%, chưa kích hoạt",      28_000_000,  carol, 0);
+        Art         painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",  5_000_000,   dave,  "", 0);
+        Vehicle     car      = new Vehicle(did("item-car"),  seed, "Toyota Camry 2022",         "Xe đẹp, ít đi, bảo hành hãng", 800_000_000, dave,  0.0, 0);
 
         Auction a1 = createAuction(carol, laptop,   LocalDateTime.now().plusDays(2));
         Auction a2 = createAuction(carol, phone,    LocalDateTime.now().plusHours(5));
         Auction a3 = createAuction(dave,  painting, LocalDateTime.now().plusDays(7));
         Auction a4 = createAuction(dave,  car,      LocalDateTime.now().plusDays(1));
 
+        // Override the random auction IDs with deterministic ones
+        // (createAuction already saved to DB; we re-save with fixed IDs via the repo)
+        // Simplest approach: delete + re-insert with fixed IDs
+        auctionRepo.deleteById(a1.getId()); auctionRepo.deleteById(a2.getId());
+        auctionRepo.deleteById(a3.getId()); auctionRepo.deleteById(a4.getId());
+
+        // Create fresh Auction objects with deterministic IDs
+        LocalDateTime end1 = LocalDateTime.now().plusDays(2);
+        LocalDateTime end2 = LocalDateTime.now().plusHours(5);
+        LocalDateTime end3 = LocalDateTime.now().plusDays(7);
+        LocalDateTime end4 = LocalDateTime.now().plusDays(1);
+
+        Auction b1 = new Auction(did("auction-laptop"),   seed, carol, laptop,   AuctionStatus.PENDING, 0, null, end1);
+        Auction b2 = new Auction(did("auction-phone"),    seed, carol, phone,    AuctionStatus.PENDING, 0, null, end2);
+        Auction b3 = new Auction(did("auction-painting"), seed, dave,  painting, AuctionStatus.PENDING, 0, null, end3);
+        Auction b4 = new Auction(did("auction-car"),      seed, dave,  car,      AuctionStatus.PENDING, 0, null, end4);
+
+        auctionRepo.save(b1); auctionRepo.save(b2);
+        auctionRepo.save(b3); auctionRepo.save(b4);
+
         try {
-            approveAuction(a1); approveAuction(a2);
-            approveAuction(a3); approveAuction(a4);
-            startAuction(a1);   startAuction(a2);
+            approveAuction(b1); approveAuction(b2);
+            approveAuction(b3); approveAuction(b4);
+            startAuction(b1);   startAuction(b2);
         } catch (InvalidStatusException ignored) {}
 
         System.out.println("[AuctionService] Seed data inserted.");
+    }
+
+    /** Shorthand for deterministic ID generation. */
+    private static String did(String key) {
+        return UserService.deterministicId(key);
     }
 }
