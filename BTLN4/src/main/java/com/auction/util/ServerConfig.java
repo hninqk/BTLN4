@@ -3,23 +3,24 @@ package com.auction.util;
 /**
  * ServerConfig – single source of truth for the WebSocket server URL.
  *
- * HOW TO USE NGROK:
- * 1. Start ngrok: ngrok tcp 7000
- * 2. Copy the forwarding URL, e.g. tcp://0.tcp.ngrok.io:12345
- * 3. Convert to ws:// → ws://0.tcp.ngrok.io:12345/auction
- * 4. Set the URL before launching:
- * ServerConfig.setServerUrl("ws://0.tcp.ngrok.io:12345/auction");
- * Or set system property:
- * -Dauction.server.url=ws://0.tcp.ngrok.io:12345/auction
+ * The DEFAULT_URL points to the public ngrok server.
+ * Clients (friends) just run the JAR – they automatically connect here.
  *
- * If no custom URL is set, defaults to localhost (same-machine mode).
+ * The server operator can override via system property:
+ *   -Dauction.server.url=ws://localhost:7000/auction  (to run locally)
+ *
+ * Priority: system property > runtime override > DEFAULT_URL (ngrok).
  */
 public final class ServerConfig {
 
-    /** Default local server URL */
-    private static final String DEFAULT_URL = "ws://localhost:7000/auction";
+    /**
+     * Public ngrok server URL – baked into every client build.
+     * Update this when the ngrok URL changes and rebuild the JAR.
+     */
+    private static final String DEFAULT_URL =
+            "wss://valeria-witless-stellularly.ngrok-free.dev/auction";
 
-    /** Runtime-overridable URL (e.g. from UI) */
+    /** Runtime-overridable URL */
     private static volatile String runtimeUrl = null;
 
     private ServerConfig() {
@@ -27,35 +28,28 @@ public final class ServerConfig {
 
     /**
      * Returns the active WebSocket server URL.
-     * Priority: 
-     * 1. System property (-Dauction.server.url=...)
+     * Priority:
+     * 1. System property  -Dauction.server.url=...  (used by run_server.sh)
      * 2. Runtime override (setServerUrl)
-     * 3. Default localhost
+     * 3. DEFAULT_URL – the public ngrok address
      */
     public static String getServerUrl() {
-        // 1. Check System Property first (highest priority, set by run_with_ngrok.sh)
         String prop = System.getProperty("auction.server.url");
         if (prop != null && !prop.isBlank()) {
             return prop;
         }
-
-        // 2. Check runtime override
         if (runtimeUrl != null) {
             return runtimeUrl;
         }
-
-        // 3. Fallback to default
         return DEFAULT_URL;
     }
 
-    /**
-     * Override the server URL at runtime.
-     */
+    /** Override the server URL at runtime. */
     public static void setServerUrl(String url) {
         runtimeUrl = url;
     }
 
-    /** True if running against a remote server (non-localhost) */
+    /** True if running against a remote server (non-localhost). */
     public static boolean isRemote() {
         String url = getServerUrl();
         return !url.contains("localhost") && !url.contains("127.0.0.1");

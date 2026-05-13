@@ -210,4 +210,30 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Run the headless server from source: mvn exec:java -Pserver -Dcheckstyle.skip=true -->
+        <profile>
+            <id>server</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <mainClass>com.auction.ServerMain</mainClass>
+                            <systemProperties>
+                                <systemProperty>
+                                    <key>auction.server.url</key>
+                                    <value>ws://localhost:7000/auction</value>
+                                </systemProperty>
+                            </systemProperties>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

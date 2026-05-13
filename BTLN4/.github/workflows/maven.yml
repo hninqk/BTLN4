@@ -1,31 +1,43 @@
-name: Java CI/CD (Installers)
+name: Java CI/CD
 
 on:
   push:
     branches: [ "main", "dev" ]
-
   pull_request:
     branches: [ "main", "dev" ]
 
 jobs:
-  build:
+
+  # ── 1. Build & upload the client JAR (what friends download and run) ────────
+  build-client-jar:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: BTLN4
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: maven
-      - name: Build Fat JAR (skip Checkstyle + Tests)
+
+      - name: Build client JAR (skip Checkstyle + Tests)
         run: mvn -B package -DskipTests -Dcheckstyle.skip=true
 
+      # Upload the fat JAR so friends can download it from the Actions tab
+      - name: Upload client JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuctionApp-client-jar
+          path: BTLN4/target/app-1.0-SNAPSHOT.jar
+          retention-days: 30
+
+  # ── 2. Build native installers (optional, runs after JAR build) ─────────────
   create-installers:
-    needs: build
+    needs: build-client-jar
     strategy:
       matrix:
         include:
@@ -40,6 +52,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -49,7 +62,7 @@ jobs:
       - name: Build JAR (skip Checkstyle + Tests)
         run: mvn -B package -DskipTests -Dcheckstyle.skip=true
 
-      # ── Linux installer ──────────────────────────────────────────────────────
+      # ── Linux .deb installer ─────────────────────────────────────────────────
       - name: Build Linux Installer
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -64,7 +77,7 @@ jobs:
             --description "Real-time Auction Client" \
             --vendor "MyAuctionTeam"
 
-      # ── Windows installer ────────────────────────────────────────────────────
+      # ── Windows .exe installer ───────────────────────────────────────────────
       - name: Build Windows Installer
         if: matrix.os == 'windows-latest'
         shell: cmd
