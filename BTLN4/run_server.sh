@@ -16,13 +16,6 @@
 # =============================================================================
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
-JAR="$PROJECT_DIR/target/app-1.0-SNAPSHOT.jar"
-
-# Build if JAR doesn't exist yet
-if [ ! -f "$JAR" ]; then
-    echo ">>> Building project (first time)..."
-    cd "$PROJECT_DIR" && mvn package -q -DskipTests -Dcheckstyle.skip=true
-fi
 
 echo "==================================================="
 echo "  Auction Server – port 7000"
@@ -30,9 +23,11 @@ echo "==================================================="
 echo ""
 
 cd "$PROJECT_DIR"
-# Run ServerMain directly from the fat JAR
-# The -Dauction.server.url override makes the server print localhost (correct)
-java \
+
+# Always compile + run via Maven so that new classes (ServerMain) are included.
+# The 'server' profile activates exec-maven-plugin pointing to ServerMain.
+mvn compile exec:java \
+    -Pserver \
+    -Dcheckstyle.skip=true \
     -Dauction.server.url=ws://localhost:7000/auction \
-    -cp "$JAR" \
-    com.auction.ServerMain
+    -q
