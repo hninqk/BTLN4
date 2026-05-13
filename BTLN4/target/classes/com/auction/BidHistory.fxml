@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.BidHistoryController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Lịch sử Đấu giá" styleClass="page-title"/>
+                    <Label text="Xem lại các lượt đặt giá của bạn" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Summary stats -->
+            <HBox spacing="16">
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Tổng lượt đặt giá" styleClass="stat-label"/>
+                    <Label fx:id="totalBidsLabel" text="0" styleClass="stat-value"/>
+                </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Phiên đã thắng" styleClass="stat-label"/>
+                    <Label fx:id="wonAuctionsLabel" text="0" styleClass="stat-value"
+                           style="-fx-text-fill:#16A34A;"/>
+                </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Phiên đang tham gia" styleClass="stat-label"/>
+                    <Label fx:id="activeParticipationsLabel" text="0" styleClass="stat-value"
+                           style="-fx-text-fill:#2563EB;"/>
+                </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Tổng chi tiêu (thắng)" styleClass="stat-label"/>
+                    <Label fx:id="totalSpentLabel" text="0 ₫" styleClass="stat-value"
+                           style="-fx-font-size:20px; -fx-text-fill:#D97706;"/>
+                </VBox>
+            </HBox>
+
+            <!-- Filter bar -->
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <TextField fx:id="searchField" promptText="🔍 Tìm kiếm sản phẩm..."
+                           styleClass="text-field" prefWidth="240"/>
+                <ComboBox fx:id="resultFilter" promptText="Kết quả"
+                          styleClass="combo-box" prefWidth="150"/>
+                <Button text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
+                <Button text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary"/>
+            </HBox>
+
+            <!-- History table -->
+            <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
+                <TableView fx:id="historyTable" VBox.vgrow="ALWAYS"
+                           style="-fx-border-width:0; -fx-background-color:transparent;"
+                           onMouseClicked="#handleRowClick">
+                    <columns>
+                        <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="210"/>
+                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="120"/>
+                        <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="130"/>
+                        <TableColumn fx:id="colFinalBid"  text="Giá chốt"      prefWidth="130"/>
+                        <TableColumn fx:id="colResult"    text="Kết quả"        prefWidth="100"/>
+                        <TableColumn fx:id="colStatus"    text="Trạng thái"    prefWidth="110"/>
+                        <TableColumn fx:id="colBidTime"   text="Thời gian đặt" prefWidth="160"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Bạn chưa tham gia phiên đấu giá nào." styleClass="label-subtle"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+            <HBox alignment="CENTER_LEFT">
+                <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Xem chi tiết phiên →" fx:id="viewDetailButton"
+                        onAction="#handleViewDetail" styleClass="btn-link" visible="false"/>
+            </HBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

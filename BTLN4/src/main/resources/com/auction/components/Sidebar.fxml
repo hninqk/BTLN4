@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- Reusable sidebar component -->
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/21"
+      fx:controller="com.auction.controller.SidebarController"
+      styleClass="sidebar"
+      fillWidth="true">
+
+    <!-- Brand header -->
+    <VBox styleClass="sidebar-header" spacing="2">
+        <Label text="🏷️ AuctionSys" styleClass="sidebar-title"/>
+        <Label text="Hệ thống Đấu giá" styleClass="sidebar-subtitle"/>
+    </VBox>
+
+    <!-- User info -->
+    <VBox style="-fx-padding: 12 16 12 16; -fx-background-color: #263148;" spacing="2">
+        <Label fx:id="userNameLabel" text="..." styleClass="sidebar-subtitle"
+               style="-fx-text-fill: #E2E8F0; -fx-font-weight: bold;"/>
+        <Label fx:id="userRoleLabel" text="..." styleClass="sidebar-subtitle"/>
+    </VBox>
+
+    <!-- Navigation -->
+    <Label text="CHÍNH" styleClass="sidebar-section-label"/>
+
+    <Button fx:id="btnDashboard"  text="📊  Tổng quan"
+            onAction="#handleDashboard"  styleClass="nav-button" maxWidth="Infinity"/>
+    <Button fx:id="btnAuctionList" text="🔖  Danh sách đấu giá"
+            onAction="#handleAuctionList" styleClass="nav-button" maxWidth="Infinity"/>
+    <Button fx:id="btnHistory"    text="📋  Lịch sử đấu giá"
+            onAction="#handleHistory"    styleClass="nav-button" maxWidth="Infinity"/>
+
+    <Label text="QUẢN LÝ" styleClass="sidebar-section-label"/>
+
+    <Button fx:id="btnSeller"  text="🏪  Quản lý sản phẩm"
+            onAction="#handleSeller"  styleClass="nav-button" maxWidth="Infinity"/>
+    <Button fx:id="btnAdmin"   text="🛡️  Quản trị hệ thống"
+            onAction="#handleAdmin"   styleClass="nav-button" maxWidth="Infinity"/>
+
+    <Label text="TÀI KHOẢN" styleClass="sidebar-section-label"/>
+
+    <Button fx:id="btnProfile" text="👤  Hồ sơ cá nhân"
+            onAction="#handleProfile" styleClass="nav-button" maxWidth="Infinity"/>
+
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <!-- Logout -->
+    <Button text="🚪  Đăng xuất" onAction="#handleLogout"
+            styleClass="nav-button"
+            style="-fx-text-fill: #F87171;"
+            maxWidth="Infinity"/>
+
+    <Region prefHeight="8"/>
+
+</VBox>
