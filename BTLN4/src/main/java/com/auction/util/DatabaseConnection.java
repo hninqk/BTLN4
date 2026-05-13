@@ -19,8 +19,42 @@ import java.sql.Statement;
  */
 public class DatabaseConnection {
 
-    private static final String URL = "jdbc:sqlite:db.auction";
+    /**
+     * Resolves the database file path relative to where this class was loaded from.
+     *
+     * Why: the CWD differs between server (BTLN4/) and client (BTLN4(2)/) so a
+     * plain relative path "db.auction" produces TWO separate files on the same
+     * machine.  By anchoring to the class-file / JAR location every process in
+     * the same project tree uses the same physical file:
+     *
+     *   Dev (target/classes/)  → go up 2 dirs → BTLN4/db.auction
+     *   JAR (target/*.jar)     → go up 1 dir  → BTLN4/db.auction   (same!)
+     *   Distributed JAR        → next to the JAR (user's download dir)
+     */
+    private static final String URL = computeUrl();
     private static volatile boolean tablesCreated = false;
+
+    private static String computeUrl() {
+        try {
+            java.net.URL loc = DatabaseConnection.class
+                    .getProtectionDomain().getCodeSource().getLocation();
+            java.io.File codeFile = new java.io.File(loc.toURI());
+            java.io.File dbDir;
+            if (codeFile.isDirectory()) {
+                // Running from target/classes/ — go up 2 levels to project root
+                dbDir = codeFile.getParentFile().getParentFile();
+            } else {
+                // Running from a JAR — db lives next to the JAR's parent dir
+                dbDir = codeFile.getParentFile();
+            }
+            String path = new java.io.File(dbDir, "db.auction").getAbsolutePath();
+            System.out.println("[DB] Storage: " + path);
+            return "jdbc:sqlite:" + path;
+        } catch (Exception e) {
+            System.err.println("[DB] Cannot resolve class location, falling back to CWD");
+            return "jdbc:sqlite:db.auction";
+        }
+    }
 
     private DatabaseConnection() {}
 
