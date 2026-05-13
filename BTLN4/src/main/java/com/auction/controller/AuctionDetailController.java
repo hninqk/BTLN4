@@ -162,6 +162,7 @@ public class AuctionDetailController implements DataReceiver {
                     })
             );
             wsConnected = wsClient.isConnected();
+            Platform.runLater(this::refreshLivePanel);
         }, "AuctionDetail-WS");
         t.setDaemon(true);
         t.start();

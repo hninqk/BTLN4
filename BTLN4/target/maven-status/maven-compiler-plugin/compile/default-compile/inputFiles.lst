@@ -1,4 +1,5 @@
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/Main.java
+/home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/ServerMain.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/client/AuctionClient.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/controller/AdminManagementController.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/controller/AuctionDetailController.java
@@ -37,7 +38,6 @@
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/repository/JdbcBidRepository.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/repository/JdbcItemRepository.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/repository/JdbcUserRepository.java
-/home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/server/AuctionServer.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/server/AuctionWebSocketHandler.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/service/AppFacade.java
 /home/minh/IdeaProjects/BTLN4(2)/BTLN4/src/main/java/com/auction/service/AuctionService.java

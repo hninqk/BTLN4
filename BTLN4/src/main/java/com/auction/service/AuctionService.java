@@ -16,23 +16,23 @@ import java.util.Optional;
  * AuctionService – manages the full auction lifecycle.
  *
  * Status flow:
- *   Seller creates → PENDING
- *   Admin approves → OPEN   (visible to bidders)
- *   Admin starts   → RUNNING (bids accepted)
- *   Admin finishes → CLOSED  (winner charged)
- *   Admin/Seller   → CANCELED
+ * Seller creates → PENDING
+ * Admin approves → OPEN (visible to bidders)
+ * Admin starts → RUNNING (bids accepted)
+ * Admin finishes → CLOSED (winner charged)
+ * Admin/Seller → CANCELED
  *
  * Balance rules:
- *   • placeBid()    – balance is CHECKED (must have enough to win) but NOT deducted.
- *   • finishAuction() – winner's balance is deducted and saved.
- *   • cancelAuction() – no money movement.
+ * • placeBid() – balance is CHECKED (must have enough to win) but NOT deducted.
+ * • finishAuction() – winner's balance is deducted and saved.
+ * • cancelAuction() – no money movement.
  */
 public class AuctionService {
 
     private static AuctionService instance;
     private final JdbcAuctionRepository auctionRepo = new JdbcAuctionRepository();
-    private final JdbcBidRepository     bidRepo     = new JdbcBidRepository();
-    private final JdbcUserRepository    userRepo    = new JdbcUserRepository();
+    private final JdbcBidRepository bidRepo = new JdbcBidRepository();
+    private final JdbcUserRepository userRepo = new JdbcUserRepository();
 
     private AuctionService() {
         ensureSeeded();
@@ -55,7 +55,7 @@ public class AuctionService {
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
                 .filter(a -> a.getStatus() == AuctionStatus.OPEN
-                          || a.getStatus() == AuctionStatus.RUNNING)
+                        || a.getStatus() == AuctionStatus.RUNNING)
                 .toList();
     }
 
@@ -96,7 +96,7 @@ public class AuctionService {
      * so re-fetches always show the correct start time instead of null.
      */
     public void startAuction(Auction auction) throws InvalidStatusException {
-        auction.startAuction();   // model sets startTime = LocalDateTime.now()
+        auction.startAuction(); // model sets startTime = LocalDateTime.now()
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
     }
@@ -145,10 +145,10 @@ public class AuctionService {
      * Bidder places a bid.
      *
      * Rules:
-     *   1. Auction must be RUNNING.
-     *   2. Amount must be > current highest bid.
-     *   3. Bidder must have enough balance to cover the bid IF they win.
-     *      (Balance is NOT deducted here — only charged at finishAuction.)
+     * 1. Auction must be RUNNING.
+     * 2. Amount must be > current highest bid.
+     * 3. Bidder must have enough balance to cover the bid IF they win.
+     * (Balance is NOT deducted here — only charged at finishAuction.)
      */
     public void placeBid(Auction auction, Bidder bidder, double amount)
             throws InvalidBidException, InvalidStatusException {
@@ -167,7 +167,8 @@ public class AuctionService {
                 auction,
                 amount);
 
-        // Throws InvalidBidException if amount ≤ highest, InvalidStatusException if not RUNNING
+        // Throws InvalidBidException if amount ≤ highest, InvalidStatusException if not
+        // RUNNING
         auction.placeBid(bid);
 
         // Persist bid + updated highest price. Balance is NOT touched.
@@ -179,32 +180,40 @@ public class AuctionService {
     // ── Seed ──────────────────────────────────────────────────────────────────
 
     private void ensureSeeded() {
-        if (!auctionRepo.findAll().isEmpty()) return;
+        if (!auctionRepo.findAll().isEmpty())
+            return;
 
         UserService userService = UserService.getInstance();
         Seller carol = (Seller) userService.findByUsername("carol").orElse(null);
-        Seller dave  = (Seller) userService.findByUsername("dave").orElse(null);
-        if (carol == null || dave == null) return;
+        Seller dave = (Seller) userService.findByUsername("dave").orElse(null);
+        if (carol == null || dave == null)
+            return;
 
         // Fixed seed time so timestamps are also identical across machines
         LocalDateTime seed = LocalDateTime.of(2025, 1, 1, 0, 0);
 
         // Items — deterministic IDs by item name
-        Electronics laptop   = new Electronics(did("item-laptop"),   seed, "Laptop Dell XPS 15",    "Laptop cao cấp, i9, 32GB RAM",  15_000_000,  carol, 0);
-        Electronics phone    = new Electronics(did("item-phone"),    seed, "iPhone 15 Pro Max",      "Mới 100%, chưa kích hoạt",      28_000_000,  carol, 0);
-        Art         painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",  5_000_000,   dave,  "", 0);
-        Vehicle     car      = new Vehicle(did("item-car"),  seed, "Toyota Camry 2022",         "Xe đẹp, ít đi, bảo hành hãng", 800_000_000, dave,  0.0, 0);
+        Electronics laptop = new Electronics(did("item-laptop"), seed, "Laptop Dell XPS 15",
+                "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol, 0);
+        Electronics phone = new Electronics(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
+                28_000_000, carol, 0);
+        Art painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
+                5_000_000, dave, "", 0);
+        Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
+                800_000_000, dave, 0.0, 0);
 
-        Auction a1 = createAuction(carol, laptop,   LocalDateTime.now().plusDays(2));
-        Auction a2 = createAuction(carol, phone,    LocalDateTime.now().plusHours(5));
-        Auction a3 = createAuction(dave,  painting, LocalDateTime.now().plusDays(7));
-        Auction a4 = createAuction(dave,  car,      LocalDateTime.now().plusDays(1));
+        Auction a1 = createAuction(carol, laptop, LocalDateTime.now().plusDays(2));
+        Auction a2 = createAuction(carol, phone, LocalDateTime.now().plusHours(5));
+        Auction a3 = createAuction(dave, painting, LocalDateTime.now().plusDays(7));
+        Auction a4 = createAuction(dave, car, LocalDateTime.now().plusDays(1));
 
         // Override the random auction IDs with deterministic ones
         // (createAuction already saved to DB; we re-save with fixed IDs via the repo)
         // Simplest approach: delete + re-insert with fixed IDs
-        auctionRepo.deleteById(a1.getId()); auctionRepo.deleteById(a2.getId());
-        auctionRepo.deleteById(a3.getId()); auctionRepo.deleteById(a4.getId());
+        auctionRepo.deleteById(a1.getId());
+        auctionRepo.deleteById(a2.getId());
+        auctionRepo.deleteById(a3.getId());
+        auctionRepo.deleteById(a4.getId());
 
         // Create fresh Auction objects with deterministic IDs
         LocalDateTime end1 = LocalDateTime.now().plusDays(2);
@@ -212,19 +221,29 @@ public class AuctionService {
         LocalDateTime end3 = LocalDateTime.now().plusDays(7);
         LocalDateTime end4 = LocalDateTime.now().plusDays(1);
 
-        Auction b1 = new Auction(did("auction-laptop"),   seed, carol, laptop,   AuctionStatus.PENDING, 0, null, end1);
-        Auction b2 = new Auction(did("auction-phone"),    seed, carol, phone,    AuctionStatus.PENDING, 0, null, end2);
-        Auction b3 = new Auction(did("auction-painting"), seed, dave,  painting, AuctionStatus.PENDING, 0, null, end3);
-        Auction b4 = new Auction(did("auction-car"),      seed, dave,  car,      AuctionStatus.PENDING, 0, null, end4);
+        Auction b1 = new Auction(did("auction-laptop"), seed, carol, laptop, AuctionStatus.PENDING,
+                laptop.getBasePrice(), null, end1);
+        Auction b2 = new Auction(did("auction-phone"), seed, carol, phone, AuctionStatus.PENDING, phone.getBasePrice(),
+                null, end2);
+        Auction b3 = new Auction(did("auction-painting"), seed, dave, painting, AuctionStatus.PENDING,
+                painting.getBasePrice(), null, end3);
+        Auction b4 = new Auction(did("auction-car"), seed, dave, car, AuctionStatus.PENDING, car.getBasePrice(), null,
+                end4);
 
-        auctionRepo.save(b1); auctionRepo.save(b2);
-        auctionRepo.save(b3); auctionRepo.save(b4);
+        auctionRepo.save(b1);
+        auctionRepo.save(b2);
+        auctionRepo.save(b3);
+        auctionRepo.save(b4);
 
         try {
-            approveAuction(b1); approveAuction(b2);
-            approveAuction(b3); approveAuction(b4);
-            startAuction(b1);   startAuction(b2);
-        } catch (InvalidStatusException ignored) {}
+            approveAuction(b1);
+            approveAuction(b2);
+            approveAuction(b3);
+            approveAuction(b4);
+            startAuction(b1);
+            startAuction(b2);
+        } catch (InvalidStatusException ignored) {
+        }
 
         System.out.println("[AuctionService] Seed data inserted.");
     }

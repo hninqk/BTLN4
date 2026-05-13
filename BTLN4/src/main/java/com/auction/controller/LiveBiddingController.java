@@ -124,6 +124,7 @@ public class LiveBiddingController implements DataReceiver {
                     })
             );
             wsConnected = wsClient.isConnected();
+            Platform.runLater(this::refreshDisplay);
         }, "WS-Connect-Thread");
         wsThread.setDaemon(true);
         wsThread.start();
