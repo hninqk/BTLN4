@@ -4,6 +4,7 @@ import com.auction.server.AuctionWebSocketHandler;
 import com.auction.service.AuctionService;
 import com.auction.util.DatabaseConnection;
 import com.auction.util.NavigationManager;
+import com.auction.util.ServerConfig; // Added import
 import io.javalin.Javalin;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -17,8 +18,10 @@ import java.io.IOException;
  * so all clients (local or remote via ngrok) connect to the same auction state.
  *
  * To use ngrok:
- *   ngrok tcp 7000
- *   then pass: -Dauction.server.url=ws://<ngrok-host>:<port>/auction
+ * 1. Run: ngrok http 7000
+ * 2. Copy the https URL provided by ngrok.
+ * 3. Update the ServerConfig.setServerUrl() below, ensuring you use "wss://"
+ * instead of "https://".
  */
 public class Main extends Application {
 
@@ -26,6 +29,13 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        // === NGROK CONFIGURATION ===
+        // Note: Since you are on the free tier of ngrok, this URL will change every
+        // time
+        // you restart the ngrok terminal. Update this string whenever you restart
+        // ngrok.
+        ServerConfig.setServerUrl("wss://valeria-witless-stellularly.ngrok-free.dev/auction");
+
         // 1. Init database
         DatabaseConnection.initialize();
 
@@ -61,10 +71,13 @@ public class Main extends Application {
             AuctionService service = AuctionService.getInstance();
             AuctionWebSocketHandler handler = new AuctionWebSocketHandler(service);
 
+            // The local server ALWAYS runs on 7000. Ngrok just tunnels TO this port.
             javalinServer = Javalin.create().start(7000);
             javalinServer.ws("/auction", handler::register);
 
-            System.out.println("[Main] WebSocket server started → ws://localhost:7000/auction");
+            // Dynamically print the active URL (Ngrok or Localhost)
+            System.out.println("[Main] WebSocket server started.");
+            System.out.println("[Main] Clients should connect to → " + ServerConfig.getServerUrl());
         } catch (Exception e) {
             System.err.println("[Main] WebSocket server failed to start: " + e.getMessage());
             // App continues running even without WS – falls back to local-only mode

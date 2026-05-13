@@ -29,18 +29,20 @@ public class AuctionClient {
      */
     public void connect(Consumer<String> onMessage, Consumer<String> onError) {
         String url = ServerConfig.getServerUrl();
-        System.out.println("[AuctionClient] Connecting to: " + url);
+        System.out.println("[AuctionClient] Attempting to connect to: " + url);
 
         try {
             HttpClient client = HttpClient.newHttpClient();
 
+            // Using buildAsync().join() to wait for the connection result
             ws = client.newWebSocketBuilder()
+                    .header("ngrok-skip-browser-warning", "true")
                     .buildAsync(URI.create(url), new WebSocket.Listener() {
 
                         @Override
                         public CompletionStage<?> onText(WebSocket webSocket,
-                                                         CharSequence data,
-                                                         boolean last) {
+                                CharSequence data,
+                                boolean last) {
                             onMessage.accept(data.toString());
                             webSocket.request(1);
                             return null;
@@ -49,31 +51,39 @@ public class AuctionClient {
                         @Override
                         public void onOpen(WebSocket webSocket) {
                             connected = true;
-                            System.out.println("[AuctionClient] Connected.");
+                            System.out.println("[AuctionClient] SUCCESS: Connected to server.");
                             webSocket.request(1);
                         }
 
                         @Override
                         public CompletionStage<?> onClose(WebSocket webSocket,
-                                                          int statusCode,
-                                                          String reason) {
+                                int statusCode,
+                                String reason) {
                             connected = false;
-                            System.out.println("[AuctionClient] Disconnected: " + reason);
+                            System.out.println("[AuctionClient] CLOSED: " + reason + " (Code: " + statusCode + ")");
                             return null;
                         }
 
                         @Override
                         public void onError(WebSocket webSocket, Throwable error) {
                             connected = false;
-                            System.err.println("[AuctionClient] Error: " + error.getMessage());
-                            if (onError != null) onError.accept(error.getMessage());
+                            System.err.println("[AuctionClient] ERROR: " + error.getMessage());
+                            if (error.getCause() != null) {
+                                System.err.println("[AuctionClient] CAUSE: " + error.getCause().getMessage());
+                            }
+                            if (onError != null)
+                                onError.accept(error.getMessage());
                         }
                     }).join();
 
         } catch (Exception e) {
             connected = false;
-            System.err.println("[AuctionClient] Failed to connect: " + e.getMessage());
-            if (onError != null) onError.accept(e.getMessage());
+            String errMsg = e.getMessage();
+            if (e.getCause() != null) errMsg += " | Cause: " + e.getCause().getMessage();
+            
+            System.err.println("[AuctionClient] CONNECTION FAILED: " + errMsg);
+            if (onError != null)
+                onError.accept(errMsg);
         }
     }
 
@@ -98,5 +108,7 @@ public class AuctionClient {
         }
     }
 
-    public boolean isConnected() { return connected; }
+    public boolean isConnected() {
+        return connected;
+    }
 }
