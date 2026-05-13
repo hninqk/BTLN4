@@ -116,8 +116,11 @@ public class LiveBiddingController implements DataReceiver {
                     err -> Platform.runLater(() -> {
                         wsConnected = false;
                         System.err.println("[LiveBidding] WS error: " + err);
-                        // Fall back to polling when WS unavailable
-                        startPollingFallback();
+                        // Disable bidding – server is unreachable
+                        placeBidButton.setDisable(true);
+                        bidAmountField.setDisable(true);
+                        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
+                        startPollingFallback(); // still show live data if DB is local
                     })
             );
             wsConnected = wsClient.isConnected();
@@ -160,7 +163,7 @@ public class LiveBiddingController implements DataReceiver {
      */
     private void startPollingFallback() {
         if (scheduler != null && !scheduler.isShutdown()) return; // already running
-        System.out.println("[LiveBidding] WS unavailable – falling back to 2s polling.");
+        System.out.println("[LiveBidding] WS unavailable – polling local DB (view-only, bids blocked).");
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "LiveBidding-Poll");
             t.setDaemon(true);
@@ -235,7 +238,7 @@ public class LiveBiddingController implements DataReceiver {
         minBidHint.setText("Giá tối thiểu: "
                 + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
         lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT)
-                + (wsConnected ? " 🟢 WS" : " 🟡 Polling"));
+                + (wsConnected ? " 🟢 Server" : " 🔴 Offline – chỉ xem, không đặt giá"));
 
         Duration remaining = Duration.between(LocalDateTime.now(), currentAuction.getEndTime());
         if (remaining.isNegative()) {
@@ -333,7 +336,7 @@ public class LiveBiddingController implements DataReceiver {
         }
 
         if (wsConnected && wsClient != null) {
-            // ── WS mode: send bid to server, server broadcasts to all clients ──
+            // ── WS mode: send bid to server, server broadcasts to ALL clients ──
             JsonObject req = new JsonObject();
             req.addProperty("auctionId", currentAuction.getId());
             req.addProperty("bidderId", bidder.getId());
@@ -341,20 +344,12 @@ public class LiveBiddingController implements DataReceiver {
             wsClient.send(req.toString());
             bidAmountField.clear();
         } else {
-            // ── Fallback: call service directly (same-JVM mode) ──
-            try {
-                AuctionService.getInstance().placeBid(currentAuction, bidder, amount);
-                List<BidTransaction> history = currentAuction.getBidHistory();
-                BidTransaction latest = history.get(history.size() - 1);
-                addBidToChart(latest);
-                addBidToFeed(latest);
-                bidAmountField.clear();
-                refreshDisplay();
-            } catch (InvalidBidException e) {
-                bidErrorLabel.setText("Lỗi: " + e.getMessage());
-            } catch (InvalidStatusException e) {
-                bidErrorLabel.setText("Phiên đấu giá không còn nhận đặt giá.");
-            }
+            // ── Server is offline – reject the bid clearly ──
+            // (The old fallback wrote directly to the local DB, which made it
+            //  look like sync was working on the same machine, but remote users
+            //  each have their own db.auction so nothing was actually shared.)
+            bidErrorLabel.setText(
+                    "❌ Không thể kết nối server. Vui lòng chờ server hoạt động trở lại.");
         }
     }
 
