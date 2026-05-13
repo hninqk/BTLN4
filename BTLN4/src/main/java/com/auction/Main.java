@@ -4,45 +4,60 @@ import com.auction.server.AuctionWebSocketHandler;
 import com.auction.service.AuctionService;
 import com.auction.util.DatabaseConnection;
 import com.auction.util.NavigationManager;
-import com.auction.util.ServerConfig; // Added import
+import com.auction.util.ServerConfig;
 import io.javalin.Javalin;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Main – JavaFX + Javalin entry point.
  *
- * Starts the embedded WebSocket server (port 7000) BEFORE showing the UI,
- * so all clients (local or remote via ngrok) connect to the same auction state.
+ * HOW TO RUN:
  *
- * To use ngrok:
- * 1. Run: ngrok http 7000
- * 2. Copy the https URL provided by ngrok.
- * 3. Update the ServerConfig.setServerUrl() below, ensuring you use "wss://"
- * instead of "https://".
+ * === SERVER (the ONE machine that hosts the auction) ===
+ *   ./run_with_ngrok.sh server
+ *   (or via IDE: add VM arg  --server  in Application arguments)
+ *   - Starts Javalin on port 7000 + opens the UI.
+ *   - Then start ngrok:  ngrok http 7000
+ *   - Share the ngrok wss:// URL with your friends.
+ *
+ * === CLIENT (everyone else) ===
+ *   ./run_with_ngrok.sh client wss://&lt;ngrok-host&gt;/auction
+ *   (or: java -Dauction.server.url=wss://... -jar app-1.0-SNAPSHOT.jar)
+ *   - Opens only the UI, connects to the remote server – never starts a local server.
+ *
+ * NEVER hardcode the ngrok URL in this file.  The URL is supplied at runtime
+ * via the system property  -Dauction.server.url=wss://...  set by the shell
+ * script or by whoever distributes the JAR.
  */
 public class Main extends Application {
+
+    /** Set to true when this JVM instance is the designated server host. */
+    private static boolean isServer = false;
 
     private static Javalin javalinServer;
 
     @Override
     public void start(Stage stage) throws IOException {
-        // === NGROK CONFIGURATION ===
-        // Note: Since you are on the free tier of ngrok, this URL will change every
-        // time
-        // you restart the ngrok terminal. Update this string whenever you restart
-        // ngrok.
-        ServerConfig.setServerUrl("wss://valeria-witless-stellularly.ngrok-free.dev/auction");
+        // Detect --server flag passed as application parameter
+        List<String> params = getParameters().getRaw();
+        isServer = params.contains("--server");
 
-        // 1. Init database
-        DatabaseConnection.initialize();
+        if (isServer) {
+            // SERVER MODE: init DB and start WebSocket server
+            System.out.println("[Main] Running in SERVER mode.");
+            DatabaseConnection.initialize();
+            startWebSocketServer();
+        } else {
+            // CLIENT MODE: just connect to whatever URL ServerConfig resolves
+            System.out.println("[Main] Running in CLIENT mode.");
+            System.out.println("[Main] Connecting to → " + ServerConfig.getServerUrl());
+        }
 
-        // 2. Start embedded WebSocket server on port 7000
-        startWebSocketServer();
-
-        // 3. Register the primary stage with the navigation manager
+        // Register the primary stage with the navigation manager
         NavigationManager nav = NavigationManager.getInstance();
         nav.setPrimaryStage(stage);
 
@@ -50,7 +65,6 @@ public class Main extends Application {
         stage.setMinWidth(900);
         stage.setMinHeight(600);
 
-        // 4. Navigate to Login as the initial screen
         nav.navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
 
         stage.centerOnScreen();
@@ -59,7 +73,6 @@ public class Main extends Application {
 
     @Override
     public void stop() {
-        // Gracefully stop Javalin when JavaFX window closes
         if (javalinServer != null) {
             javalinServer.stop();
             System.out.println("[Main] WebSocket server stopped.");
@@ -71,16 +84,13 @@ public class Main extends Application {
             AuctionService service = AuctionService.getInstance();
             AuctionWebSocketHandler handler = new AuctionWebSocketHandler(service);
 
-            // The local server ALWAYS runs on 7000. Ngrok just tunnels TO this port.
             javalinServer = Javalin.create().start(7000);
             javalinServer.ws("/auction", handler::register);
 
-            // Dynamically print the active URL (Ngrok or Localhost)
-            System.out.println("[Main] WebSocket server started.");
-            System.out.println("[Main] Clients should connect to → " + ServerConfig.getServerUrl());
+            System.out.println("[Main] WebSocket server started on port 7000.");
+            System.out.println("[Main] Clients connect to → " + ServerConfig.getServerUrl());
         } catch (Exception e) {
             System.err.println("[Main] WebSocket server failed to start: " + e.getMessage());
-            // App continues running even without WS – falls back to local-only mode
         }
     }
 

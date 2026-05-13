@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BTLN4
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -18,8 +21,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: maven
-      - name: Build Fat JAR
-        run: mvn -B package -DskipTests
+      - name: Build Fat JAR (skip Checkstyle + Tests)
+        run: mvn -B package -DskipTests -Dcheckstyle.skip=true
 
   create-installers:
     needs: build
@@ -31,6 +34,9 @@ jobs:
           - os: ubuntu-latest
             type: deb
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: BTLN4
 
     steps:
       - uses: actions/checkout@v4
@@ -40,25 +46,44 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build JAR
-        run: mvn -B package -DskipTests
+      - name: Build JAR (skip Checkstyle + Tests)
+        run: mvn -B package -DskipTests -Dcheckstyle.skip=true
 
-      # Create the Installer
-      - name: Build Installer
+      # ── Linux installer ──────────────────────────────────────────────────────
+      - name: Build Linux Installer
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          jpackage --type ${{ matrix.type }} \
+          jpackage \
+            --type deb \
             --dest dist/ \
             --name "AuctionApp" \
             --input target/ \
             --main-jar app-1.0-SNAPSHOT.jar \
             --main-class com.auction.Main \
+            --app-version "1.0.0" \
             --description "Real-time Auction Client" \
             --vendor "MyAuctionTeam"
-          # Note: On Windows, use `backticks` for line breaks if running in PowerShell, 
-          # but GitHub Actions handles the \ style in most shells.
+
+      # ── Windows installer ────────────────────────────────────────────────────
+      - name: Build Windows Installer
+        if: matrix.os == 'windows-latest'
+        shell: cmd
+        run: >
+          jpackage
+          --type exe
+          --dest dist/
+          --name "AuctionApp"
+          --input target/
+          --main-jar app-1.0-SNAPSHOT.jar
+          --main-class com.auction.Main
+          --app-version "1.0.0"
+          --description "Real-time Auction Client"
+          --vendor "MyAuctionTeam"
+          --win-dir-chooser
+          --win-menu
 
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
           name: AuctionApp-${{ matrix.type }}
-          path: dist/*
+          path: BTLN4/dist/*

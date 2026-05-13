@@ -28,32 +28,32 @@ fi
 case "$MODE" in
     server|local)
         echo "==================================================="
-        echo "  Khởi động SERVER + UI (localhost mode)"
+        echo "  Khởi động SERVER + UI"
         echo "==================================================="
         if command -v ngrok &>/dev/null; then
             echo ""
-            echo "  ngrok đã được cài. Để expose ra ngoài:"
-            echo "    ngrok tcp 7000"
-            echo "  Sau đó client khác chạy:"
-            echo "    ./run_with_ngrok.sh client ws://<ngrok-host>:<port>/auction"
+            echo "  ngrok đã được cài. Sau khi app khởi động, chạy:"
+            echo "    ngrok http 7000"
+            echo "  Rồi chia sẻ URL wss://<ngrok-host>/auction cho bạn bè."
             echo ""
         fi
         cd "$PROJECT_DIR"
-        mvn javafx:run
+        # Pass --server so Main.java starts Javalin + DB
+        mvn javafx:run -Djavafx.args="--server"
         ;;
 
     client)
         if [ -z "$NGROK_URL" ]; then
             echo "Lỗi: Cần cung cấp ngrok URL."
-            echo "Ví dụ: ./run_with_ngrok.sh client ws://0.tcp.ngrok.io:12345/auction"
+            echo "Ví dụ: ./run_with_ngrok.sh client wss://xxxx.ngrok-free.app/auction"
             exit 1
         fi
         echo "==================================================="
         echo "  Khởi động CLIENT kết nối: $NGROK_URL"
         echo "==================================================="
         cd "$PROJECT_DIR"
-        mvn javafx:run -Djavafx.application.args="" \
-            -Djvm.args="-Dauction.server.url=$NGROK_URL"
+        # -Dauction.server.url is read by ServerConfig; no --server flag = client only
+        mvn javafx:run -Dauction.server.url="$NGROK_URL"
         ;;
 
     *)
