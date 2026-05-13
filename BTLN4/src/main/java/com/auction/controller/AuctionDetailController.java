@@ -1,5 +1,6 @@
 package com.auction.controller;
 
+import com.auction.client.AuctionClient;
 import com.auction.exception.InvalidBidException;
 import com.auction.exception.InvalidStatusException;
 import com.auction.model.*;
@@ -8,6 +9,8 @@ import com.auction.util.DataReceiver;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import com.google.gson.JsonObject;
+import com.google.gson.Gson;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -95,6 +98,11 @@ public class AuctionDetailController implements DataReceiver {
     private int chartTick   = 0;
     private int knownBidCount = 0;
 
+    // WebSocket client for real-time bid submission
+    private AuctionClient wsClient;
+    private boolean wsConnected = false;
+    private final Gson gson = new Gson();
+
     private static final DateTimeFormatter FMT     = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_SEC = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -110,7 +118,8 @@ public class AuctionDetailController implements DataReceiver {
             populateStaticView();
             preloadBidsIntoChartAndFeed();
             refreshLivePanel();
-            startScheduler();
+            connectWebSocket();   // Real-time WS for bid submission
+            startScheduler();     // 1s DB polling for UI refresh
         }
     }
 
@@ -127,6 +136,35 @@ public class AuctionDetailController implements DataReceiver {
 
     public void shutdown() {
         if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
+        if (wsClient != null) wsClient.disconnect();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // WebSocket
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void connectWebSocket() {
+        wsClient = new AuctionClient();
+        Thread t = new Thread(() -> {
+            wsClient.connect(
+                    msg -> Platform.runLater(() -> {
+                        // WS message = a bid was broadcast; re-fetch from DB
+                        app.findAuctionById(auctionId).ifPresent(fresh -> {
+                            currentAuction = fresh;
+                            refreshLivePanel();
+                        });
+                    }),
+                    err -> Platform.runLater(() -> {
+                        wsConnected = false;
+                        placeBidButton.setDisable(true);
+                        bidAmountField.setDisable(true);
+                        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
+                    })
+            );
+            wsConnected = wsClient.isConnected();
+        }, "AuctionDetail-WS");
+        t.setDaemon(true);
+        t.start();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -207,7 +245,8 @@ public class AuctionDetailController implements DataReceiver {
         currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));
         bidCountLabel.setText(currentAuction.getBidHistory().size() + " lượt đấu giá");
         minBidHint.setText("Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT));
+        lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT)
+                + (wsConnected ? " 🟢 Server" : " 🔴 Offline"));
 
         // Status badge (this was the "not updating" bug — fixed by re-fetching above)
         updateStatusBadge();
@@ -320,16 +359,19 @@ public class AuctionDetailController implements DataReceiver {
         if (!(user instanceof Bidder bidder)) {
             bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return;
         }
-        try {
-            app.placeBid(currentAuction, bidder, amount);
+
+        if (wsConnected && wsClient != null) {
+            // ── WS mode: server handles validation + broadcasts to ALL clients ──
+            JsonObject req = new JsonObject();
+            req.addProperty("auctionId", currentAuction.getId());
+            req.addProperty("bidderId", bidder.getId());
+            req.addProperty("amount", amount);
+            wsClient.send(req.toString());
             bidAmountField.clear();
-            // Fetch fresh state immediately (don't wait for scheduler tick)
-            app.findAuctionById(auctionId).ifPresent(fresh -> currentAuction = fresh);
-            refreshLivePanel();
-        } catch (InvalidBidException e) {
-            bidErrorLabel.setText("Lỗi: " + e.getMessage());
-        } catch (InvalidStatusException e) {
-            bidErrorLabel.setText("Phiên đấu giá không còn nhận đặt giá.");
+        } else {
+            // ── Server offline – block the bid ──
+            bidErrorLabel.setText(
+                    "❌ Không thể kết nối server. Vui lòng chờ server hoạt động trở lại.");
         }
     }
 
