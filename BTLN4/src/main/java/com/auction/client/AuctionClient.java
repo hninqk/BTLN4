@@ -12,8 +12,8 @@ import java.util.function.Consumer;
  * AuctionClient – WebSocket client for real-time multi-machine communication.
  *
  * Supports the extended message protocol:
- *   send(json) – sends any JSON message to the server
- *   Incoming messages are forwarded to the onMessage callback.
+ * send(json) – sends any JSON message to the server
+ * Incoming messages are forwarded to the onMessage callback.
  *
  * Caller must wrap UI updates in Platform.runLater().
  */
@@ -44,7 +44,12 @@ public class AuctionClient {
      */
     public void connect(Consumer<String> onMessage, Consumer<String> onError, Runnable onOpen) {
         this.onOpen = onOpen;
-        String url = ServerConfig.getServerUrl();
+        String baseUrl = ServerConfig.getServerUrl();
+        String url = baseUrl.replaceFirst("^http", "ws");
+        if (!url.endsWith("/auction")) {
+            url += "/auction";
+        }
+
         System.out.println("[AuctionClient] Connecting to: " + url);
 
         try {
@@ -94,9 +99,11 @@ public class AuctionClient {
         } catch (Exception e) {
             connected = false;
             String errMsg = e.getMessage();
-            if (e.getCause() != null) errMsg += " | Cause: " + e.getCause().getMessage();
+            if (e.getCause() != null)
+                errMsg += " | Cause: " + e.getCause().getMessage();
             System.err.println("[AuctionClient] CONNECTION FAILED: " + errMsg);
-            if (onError != null) onError.accept(errMsg);
+            if (onError != null)
+                onError.accept(errMsg);
         }
     }
 
@@ -118,10 +125,13 @@ public class AuctionClient {
         if (ws != null && connected) {
             try {
                 ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").join();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             connected = false;
         }
     }
 
-    public boolean isConnected() { return connected; }
+    public boolean isConnected() {
+        return connected;
+    }
 }

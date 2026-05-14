@@ -17,7 +17,7 @@ public final class ServerConfig {
      * Public ngrok server URL – baked into every client build.
      * Update this when the ngrok URL changes and rebuild the JAR.
      */
-    private static final String DEFAULT_URL = "ws://localhost:7000/auction";
+    private static final String DEFAULT_URL = "https://embody-perceive-commend.ngrok-free.dev";
 
     /** Runtime-overridable URL */
     private static volatile String runtimeUrl = null;
