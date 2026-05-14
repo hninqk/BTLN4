@@ -26,7 +26,6 @@ EXPOSE 7000
 RUN mkdir -p /app/data
 
 # Run the server
-# We set the working directory to /app/data so the SQLite file 'db.auction' 
-# is saved on the persistent disk instead of being lost on restart.
+# We explicitly point to com.auction.ServerMain so it doesn't try to start the JavaFX UI
 WORKDIR /app/data
-CMD ["java", "-Dauction.server.url=ws://0.0.0.0:7000/auction", "-jar", "/app/app.jar"]
+CMD ["java", "-Dauction.server.url=ws://0.0.0.0:7000/auction", "-cp", "/app/app.jar", "com.auction.ServerMain"]
