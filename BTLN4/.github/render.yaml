@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: auction-server
+    env: docker
+    plan: free # or starter
+    region: singapore # or your preferred region
+    dockerCommand: java -Dauction.server.url=ws://0.0.0.0:7000/auction -jar app.jar
+    envVars:
+      - key: PORT
+        value: 7000
+      - key: JAVA_OPTS
+        value: "-Xmx512m"
+    disk:
+      name: auction-db
+      mountPath: /app/data
+      sizeGB: 1

@@ -14,10 +14,10 @@ package com.auction.util;
 public final class ServerConfig {
 
     /**
-     * Public ngrok server URL – baked into every client build.
-     * Update this when the ngrok URL changes and rebuild the JAR.
+     * Public server URL – baked into every client build.
+     * Connects to the live Render instance.
      */
-    private static final String DEFAULT_URL = "https://embody-perceive-commend.ngrok-free.dev";
+    private static final String DEFAULT_URL = "https://btln4.onrender.com";
 
     /** Runtime-overridable URL */
     private static volatile String runtimeUrl = null;
