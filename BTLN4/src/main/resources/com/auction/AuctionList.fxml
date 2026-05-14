@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+            xmlns="http://javafx.com/javafx/21"
+            fx:controller="com.auction.controller.AuctionListController"
+            stylesheets="@styles/main.css"
+            styleClass="main-container">
+
+    <left>
+        <fx:include source="components/Sidebar.fxml" fx:id="sidebar"/>
+    </left>
+
+    <center>
+        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+
+            <!-- Header row -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Danh sách Đấu giá" styleClass="page-title"/>
+                    <Label text="Tìm kiếm và tham gia các phiên đấu giá" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Filters toolbar -->
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="searchField" promptText="🔍  Tìm kiếm sản phẩm..."
+                           styleClass="text-field" prefWidth="260"/>
+                <ComboBox fx:id="statusFilter" promptText="Trạng thái"
+                          styleClass="combo-box" prefWidth="150"/>
+                <ComboBox fx:id="categoryFilter" promptText="Danh mục"
+                          styleClass="combo-box" prefWidth="150"/>
+                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary"/>
+                <Button text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary"/>
+            </HBox>
+
+            <!-- Table -->
+            <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
+                <TableView fx:id="auctionTable" VBox.vgrow="ALWAYS"
+                           style="-fx-border-width:0; -fx-background-color:transparent;"
+                           onMouseClicked="#handleRowClick">
+                    <columns>
+                        <TableColumn fx:id="colImage"     text="Ảnh"           prefWidth="90"/>
+                        <TableColumn fx:id="colName"      text="Tên sản phẩm"   prefWidth="240"/>
+                        <TableColumn fx:id="colCategory"  text="Danh mục"       prefWidth="110"/>
+                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="120"/>
+                        <TableColumn fx:id="colStatus"    text="Trạng thái"     prefWidth="120"/>
+                        <TableColumn fx:id="colStartPrice" text="Giá khởi điểm" prefWidth="130"/>
+                        <TableColumn fx:id="colCurrentBid" text="Giá hiện tại"  prefWidth="130"/>
+                        <TableColumn fx:id="colEndTime"   text="Kết thúc lúc"   prefWidth="155"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Không có phiên đấu giá nào." styleClass="label-subtle"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Bottom status bar -->
+            <HBox alignment="CENTER_LEFT">
+                <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
+            </HBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>

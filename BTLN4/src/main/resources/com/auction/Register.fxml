@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml/1"
+           xmlns="http://javafx.com/javafx/21"
+           fx:controller="com.auction.controller.RegisterController"
+           styleClass="auth-container"
+           stylesheets="@styles/main.css">
+
+    <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color:transparent;">
+        <VBox alignment="CENTER" fillWidth="true" style="-fx-padding:40 0 40 0;">
+            <VBox styleClass="auth-card" alignment="TOP_CENTER" spacing="0"
+                  maxWidth="440" fillWidth="true">
+
+                <!-- Header -->
+                <VBox alignment="CENTER" spacing="6">
+                    <Label text="Tạo tài khoản mới" styleClass="auth-title"/>
+                    <Label text="Điền thông tin để đăng ký" styleClass="auth-subtitle"/>
+                </VBox>
+
+                <Region prefHeight="24"/>
+
+                <!-- Username -->
+                <VBox spacing="6">
+                    <Label text="Tên đăng nhập *" styleClass="form-label"/>
+                    <TextField fx:id="usernameField" promptText="Tối thiểu 4 ký tự"
+                               styleClass="text-field" maxWidth="Infinity"/>
+                </VBox>
+
+                <Region prefHeight="12"/>
+
+                <Region prefHeight="12"/>
+
+                <!-- Password -->
+                <VBox spacing="6">
+                    <Label text="Mật khẩu *" styleClass="form-label"/>
+                    <PasswordField fx:id="passwordField" promptText="Tối thiểu 6 ký tự"
+                                   styleClass="password-field" maxWidth="Infinity"/>
+                </VBox>
+
+                <Region prefHeight="12"/>
+
+                <!-- Confirm Password -->
+                <VBox spacing="6">
+                    <Label text="Xác nhận mật khẩu *" styleClass="form-label"/>
+                    <PasswordField fx:id="confirmPasswordField" promptText="Nhập lại mật khẩu"
+                                   styleClass="password-field" maxWidth="Infinity"/>
+                </VBox>
+
+                <Region prefHeight="12"/>
+
+                <!-- Role -->
+                <VBox spacing="6">
+                    <Label text="Vai trò" styleClass="form-label"/>
+                    <ComboBox fx:id="roleCombo" maxWidth="Infinity" styleClass="combo-box"/>
+                </VBox>
+
+                <Region prefHeight="8"/>
+                <Label fx:id="errorLabel" text="" styleClass="label-error" wrapText="true"/>
+                <Label fx:id="successLabel" text="" styleClass="label-success" wrapText="true"/>
+
+                <Region prefHeight="16"/>
+
+                <Button text="Đăng ký" onAction="#handleRegister"
+                        styleClass="btn-primary" maxWidth="Infinity" defaultButton="true"/>
+
+                <Region prefHeight="14"/>
+
+                <HBox alignment="CENTER" spacing="4">
+                    <Label text="Đã có tài khoản?" styleClass="label-subtle"/>
+                    <Button text="Đăng nhập" onAction="#handleGoToLogin" styleClass="btn-link"/>
+                </HBox>
+
+            </VBox>
+        </VBox>
+    </ScrollPane>
+</StackPane>

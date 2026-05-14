@@ -2,9 +2,7 @@
 ## CLASS DIAGRAM: AUCTION SYSTEM
 ```mermaid
 classDiagram
-direction TB
 
-%% ===== CORE =====
 class Entity {
   -String id
   -LocalDateTime createdAt
@@ -12,15 +10,10 @@ class Entity {
   +getCreatedAt()
 }
 
-%% ===== USER SIDE =====
 class User {
   -String username
   -String email
   -String password
-}
-
-class Admin {
-  -int accessLevel
 }
 
 class Bidder {
@@ -32,12 +25,15 @@ class Seller {
   -double rating
 }
 
+class Admin {
+  -int accessLevel
+}
+
 Entity <|-- User
-User <|-- Admin
 User <|-- Bidder
 User <|-- Seller
+User <|-- Admin
 
-%% ===== ITEM SIDE =====
 class Item {
   -String name
   -String description
@@ -59,12 +55,10 @@ class Vehicle {
   -int year
 }
 
-Entity <|-- Item
 Item <|-- Electronics
 Item <|-- Art
 Item <|-- Vehicle
 
-%% ===== AUCTION CORE =====
 class Auction {
   -String auctionId
   -Seller seller
@@ -82,6 +76,11 @@ class BidTransaction {
   -LocalDateTime timestamp
 }
 
+Auction --> Seller
+Auction --> Item
+Auction --> BidTransaction
+BidTransaction --> Bidder
+
 class AuctionStatus {
   <<enumeration>>
   OPEN
@@ -90,10 +89,3 @@ class AuctionStatus {
   PAID
   CANCELED
 }
-
-%% ===== RELATIONSHIPS =====
-Auction --> Seller
-Auction --> Item
-Auction --> BidTransaction
-BidTransaction --> Bidder
-Auction --> AuctionStatus
