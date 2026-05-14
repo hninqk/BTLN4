@@ -81,7 +81,7 @@ jobs:
             --linux-package-name auctionapp \
             --input target/ \
             --main-jar app-1.0-SNAPSHOT.jar \
-            --main-class com.auction.Main \
+            --main-class com.auction.Launcher \
             --app-version "1.0.0" \
             --description "Real-time Auction Client" \
             --vendor "MyAuctionTeam"
@@ -96,7 +96,7 @@ jobs:
             --name "AuctionApp" \
             --input target/ \
             --main-jar app-1.0-SNAPSHOT.jar \
-            --main-class com.auction.Main \
+            --main-class com.auction.Launcher \
             --app-version "1.0.0" \
             --description "Real-time Auction Client" \
             --vendor "MyAuctionTeam" \
