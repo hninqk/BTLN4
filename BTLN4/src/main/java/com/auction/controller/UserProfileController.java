@@ -1,18 +1,27 @@
 package com.auction.controller;
 
-import com.auction.model.*;
+import com.auction.model.Auction;
+import com.auction.model.Bidder;
+import com.auction.model.Seller;
+import com.auction.model.User;
 import com.auction.service.AppFacade;
 import com.auction.util.SessionManager;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 
 import java.util.function.UnaryOperator;
 
 /**
  * UserProfileController – view and edit personal profile.
- * Uses AppFacade — no direct service imports.
+ *
+ * All write operations (saveUser, topup) are sent to the server via REST.
+ * No direct database access.
  */
 public class UserProfileController {
 
@@ -55,13 +64,13 @@ public class UserProfileController {
         pwErrorLabel.setText("");
         pwSuccessLabel.setText("");
 
-        if (currentUser != null) populateProfile();
-
-        UnaryOperator<TextFormatter.Change> numericFilter = change -> {
+        UnaryOperator<javafx.scene.control.TextFormatter.Change> numericFilter = change -> {
             String newText = change.getControlNewText();
             return newText.matches("[0-9,.]*") ? change : null;
         };
-        depositField.setTextFormatter(new TextFormatter<>(numericFilter));
+        depositField.setTextFormatter(new javafx.scene.control.TextFormatter<>(numericFilter));
+
+        if (currentUser != null) populateProfile();
     }
 
     private void populateProfile() {
@@ -70,7 +79,6 @@ public class UserProfileController {
         memberSinceLabel.setText("Thành viên từ: " + currentUser.getCreatedAt().toLocalDate());
         usernameField.setText(currentUser.getUsername());
 
-        // Hide role-specific boxes by default
         if (bidderStatsBox != null) { bidderStatsBox.setVisible(false); bidderStatsBox.setManaged(false); }
         if (sellerStatsBox != null) { sellerStatsBox.setVisible(false); sellerStatsBox.setManaged(false); }
         if (balanceBox != null)     { balanceBox.setVisible(false);     balanceBox.setManaged(false); }
@@ -80,11 +88,8 @@ public class UserProfileController {
             if (bidderStatsBox != null) { bidderStatsBox.setVisible(true); bidderStatsBox.setManaged(true); }
             if (balanceBox != null)     { balanceBox.setVisible(true);     balanceBox.setManaged(true); }
             balanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
-            long bidCount = app.getAllAuctions().stream()
-                    .flatMap(a -> a.getBidHistory().stream())
-                    .filter(b -> b.getBidder().getId().equals(bidder.getId()))
-                    .count();
-            totalBidsLabel.setText(String.valueOf(bidCount));
+            // Bid count — pull from all auctions (async, best-effort)
+            loadBidCount(bidder);
 
         } else if (currentUser instanceof Seller seller) {
             if (sellerStatsBox != null) { sellerStatsBox.setVisible(true); sellerStatsBox.setManaged(true); }
@@ -92,38 +97,100 @@ public class UserProfileController {
             shopNameLabel.setText(seller.getShopName());
             ratingLabel.setText(seller.getCntvoted() == 0 ? "Chưa có đánh giá"
                     : String.format("%.1f / 5.0 (%d đánh giá)", seller.getRating(), seller.getCntvoted()));
-            long myAuctions = app.getAuctionsBySeller(seller).size();
-            auctionCountLabel.setText(String.valueOf(myAuctions));
             shopNameField.setText(seller.getShopName());
+            loadSellerAuctionCount(seller);
         }
+    }
+
+    /** Async: count bids made by this bidder across all auctions. */
+    private void loadBidCount(Bidder bidder) {
+        if (totalBidsLabel == null) return;
+        totalBidsLabel.setText("...");
+        Task<Long> task = new Task<>() {
+            @Override protected Long call() {
+                return app.getAllAuctions().stream()
+                        .flatMap(a -> a.getBidHistory().stream())
+                        .filter(b -> b.getBidder().getId().equals(bidder.getId()))
+                        .count();
+            }
+        };
+        task.setOnSucceeded(e -> totalBidsLabel.setText(String.valueOf(task.getValue())));
+        task.setOnFailed(e -> totalBidsLabel.setText("?"));
+        new Thread(task, "profile-bid-count").start();
+    }
+
+    /** Async: count auctions belonging to this seller. */
+    private void loadSellerAuctionCount(Seller seller) {
+        if (auctionCountLabel == null) return;
+        auctionCountLabel.setText("...");
+        Task<Integer> task = new Task<>() {
+            @Override protected Integer call() {
+                return app.getAuctionsBySeller(seller).size();
+            }
+        };
+        task.setOnSucceeded(e -> auctionCountLabel.setText(String.valueOf(task.getValue())));
+        task.setOnFailed(e -> auctionCountLabel.setText("?"));
+        new Thread(task, "profile-auction-count").start();
     }
 
     @FXML
     private void handleSaveProfile(ActionEvent event) {
         profileErrorLabel.setText("");
-        profileSuccessLabel.setText("");
-        if (currentUser instanceof Seller seller && !shopNameField.getText().trim().isEmpty()) {
-            seller.setShopName(shopNameField.getText().trim());
-            app.saveUser(currentUser);
-        }
-        profileSuccessLabel.setText("Thông tin đã được cập nhật.");
-        populateProfile();
+        profileSuccessLabel.setText("Đang lưu...");
+
+        Task<Void> task = new Task<>() {
+            @Override protected Void call() {
+                if (currentUser instanceof Seller seller
+                        && !shopNameField.getText().trim().isEmpty()) {
+                    seller.setShopName(shopNameField.getText().trim());
+                }
+                app.saveUser(currentUser);
+                return null;
+            }
+        };
+        task.setOnSucceeded(e -> {
+            profileSuccessLabel.setText("Thông tin đã được cập nhật.");
+            populateProfile();
+        });
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            profileErrorLabel.setText("Lỗi lưu dữ liệu: " + task.getException().getMessage());
+            profileSuccessLabel.setText("");
+        }));
+        new Thread(task, "save-profile").start();
     }
 
     @FXML
     private void handleDeposit(ActionEvent event) {
-        profileErrorLabel.setText(""); profileSuccessLabel.setText("");
+        profileErrorLabel.setText("");
+        profileSuccessLabel.setText("");
         if (!(currentUser instanceof Bidder bidder)) return;
         String input = depositField.getText().trim();
         if (input.isEmpty()) return;
         try {
             double amount = Double.parseDouble(input.replace(",", ""));
             if (amount <= 0) throw new NumberFormatException();
-            bidder.AddBalance(amount);
-            app.saveUser(currentUser);
-            depositField.clear();
-            balanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
-            profileSuccessLabel.setText(String.format("Đã nạp %,.0f ₫ vào tài khoản.", amount));
+
+            profileSuccessLabel.setText("Đang nạp tiền...");
+            Task<Bidder> task = new Task<>() {
+                @Override protected Bidder call() {
+                    return app.topupBalance(bidder, amount);
+                }
+            };
+            task.setOnSucceeded(e -> {
+                Bidder updated = task.getValue();
+                // Update session with refreshed balance from server
+                SessionManager.getInstance().setCurrentUser(updated);
+                currentUser = updated;
+                depositField.clear();
+                balanceLabel.setText(String.format("%,.0f ₫", updated.getAccountBalance()));
+                profileSuccessLabel.setText(String.format("Đã nạp %,.0f ₫ vào tài khoản.", amount));
+            });
+            task.setOnFailed(e -> Platform.runLater(() -> {
+                profileErrorLabel.setText("Lỗi nạp tiền: " + task.getException().getMessage());
+                profileSuccessLabel.setText("");
+            }));
+            new Thread(task, "topup").start();
+
         } catch (NumberFormatException e) {
             profileErrorLabel.setText("Số tiền không hợp lệ.");
         }
@@ -131,16 +198,35 @@ public class UserProfileController {
 
     @FXML
     private void handleChangePassword(ActionEvent event) {
-        pwErrorLabel.setText(""); pwSuccessLabel.setText("");
+        pwErrorLabel.setText("");
+        pwSuccessLabel.setText("");
         String current = currentPasswordField.getText();
         String newPw   = newPasswordField.getText();
         String confirm = confirmNewPasswordField.getText();
-        if (!current.equals(currentUser.getPassword())) { pwErrorLabel.setText("Mật khẩu hiện tại không chính xác."); return; }
-        if (newPw.length() < 6) { pwErrorLabel.setText("Mật khẩu mới phải có ít nhất 6 ký tự."); return; }
-        if (!newPw.equals(confirm)) { pwErrorLabel.setText("Mật khẩu xác nhận không khớp."); return; }
+
+        if (!current.equals(currentUser.getPassword())) {
+            pwErrorLabel.setText("Mật khẩu hiện tại không chính xác."); return;
+        }
+        if (newPw.length() < 6) {
+            pwErrorLabel.setText("Mật khẩu mới phải có ít nhất 6 ký tự."); return;
+        }
+        if (!newPw.equals(confirm)) {
+            pwErrorLabel.setText("Mật khẩu xác nhận không khớp."); return;
+        }
+
         currentUser.setPassword(newPw);
-        app.saveUser(currentUser);
-        currentPasswordField.clear(); newPasswordField.clear(); confirmNewPasswordField.clear();
-        pwSuccessLabel.setText("Mật khẩu đã được thay đổi thành công.");
+        Task<Void> task = new Task<>() {
+            @Override protected Void call() { app.saveUser(currentUser); return null; }
+        };
+        task.setOnSucceeded(e -> {
+            SessionManager.getInstance().setCurrentUser(currentUser);
+            currentPasswordField.clear();
+            newPasswordField.clear();
+            confirmNewPasswordField.clear();
+            pwSuccessLabel.setText("Mật khẩu đã được thay đổi thành công.");
+        });
+        task.setOnFailed(e -> Platform.runLater(() ->
+                pwErrorLabel.setText("Lỗi: " + task.getException().getMessage())));
+        new Thread(task, "change-password").start();
     }
 }

@@ -11,6 +11,7 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -81,24 +82,24 @@ public class AdminManagementController {
     private volatile boolean wsConnected = false;
     private final Gson gson = new Gson();
 
-    // In-memory auction list driven by WS broadcasts
+    // In-memory auction list driven by WS broadcasts (and REST on load)
     private final ObservableList<Auction> auctionList = FXCollections.observableArrayList();
+    // Cached user list (loaded once; refreshed via handleRefreshUsers)
+    private final ObservableList<User> userList = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
         setupFilters();
         setupUserTableColumns();
         setupAuctionTableColumns();
-        loadUsers();
-        // Auctions loaded via FULL_SYNC from WS; fall back to local DB if WS fails
-        loadAuctionsFromLocalDb();
-        loadStats();
+        loadUsers();               // async REST load
+        loadAuctionsFromServer();  // async REST load; overridden by FULL_SYNC once WS connects
         disableAuctionButtons();
 
         allAuctionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nw) -> updateAuctionButtons(nw));
 
-        // Connect WebSocket – broadcasts drive all auction table updates
+        // Connect WebSocket – broadcasts drive all real-time auction table updates
         connectWebSocket();
     }
 
@@ -112,11 +113,10 @@ public class AdminManagementController {
                     err -> Platform.runLater(() -> {
                         wsConnected = false;
                         System.err.println("[AdminMgmt] WS error: " + err);
-                        // Fall back to local DB
-                        loadAuctionsFromLocalDb();
+                        // REST already loaded data; WS failure just means no real-time push
                     }),
                     () -> {
-                        // Connected: request full state from server
+                        // Connected: request full state from server (overrides REST-loaded data)
                         wsConnected = true;
                         sendRequestSync();
                         System.out.println("[AdminMgmt] WS connected, sent REQUEST_SYNC.");
@@ -165,7 +165,7 @@ public class AdminManagementController {
         auctionList.setAll(synced);
         allAuctionTable.setItems(auctionList);
         auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
-        loadStats();
+        refreshStats();
         System.out.println("[AdminMgmt] FULL_SYNC received: " + synced.size() + " auctions.");
     }
 
@@ -174,7 +174,7 @@ public class AdminManagementController {
         buildAuctionFromJson(json).ifPresent(a -> {
             auctionList.add(0, a);
             auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
-            loadStats();
+            refreshStats();
             System.out.println("[AdminMgmt] New auction: " + a.getItem().getName());
         });
     }
@@ -204,7 +204,7 @@ public class AdminManagementController {
             }
         }
         allAuctionTable.refresh();
-        loadStats();
+        refreshStats();
     }
 
     /** A new bid was placed — update bid count & highest price in the table row. */
@@ -284,33 +284,44 @@ public class AdminManagementController {
 
     // ── Data loading ─────────────────────────────────────────────────────────
 
+    /** Async: load all users from server REST API. */
     private void loadUsers() {
-        List<User> users = app.getAllUsers();
-        userTable.setItems(FXCollections.observableArrayList(users));
-        userCountLabel.setText("Tổng: " + users.size() + " người dùng");
+        if (userCountLabel != null) userCountLabel.setText("Đang tải...");
+        Task<List<User>> task = new Task<>() {
+            @Override protected List<User> call() { return app.getAllUsers(); }
+        };
+        task.setOnSucceeded(e -> {
+            List<User> users = task.getValue();
+            userList.setAll(users);
+            userTable.setItems(userList);
+            if (userCountLabel != null)
+                userCountLabel.setText("Tổng: " + users.size() + " người dùng");
+            refreshStats();
+        });
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            if (userCountLabel != null) userCountLabel.setText("Lỗi tải người dùng");
+        }));
+        new Thread(task, "admin-users").start();
     }
 
-    /** Used as initial load and WS fallback. */
-    private void loadAuctionsFromLocalDb() {
-        List<Auction> auctions = app.getAllAuctions();
-        auctionList.setAll(auctions);
-        allAuctionTable.setItems(auctionList);
-        auctionCountLabel.setText("Tổng: " + auctions.size() + " phiên");
-        disableAuctionButtons();
-    }
-
-    private void loadStats() {
-        List<User>    users    = app.getAllUsers();
-        List<Auction> auctions = new ArrayList<>(auctionList);
-        statTotalUsers.setText(String.valueOf(users.size()));
-        statTotalAuctions.setText(String.valueOf(auctions.size()));
-        statPending.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count()));
-        statOpen.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count()));
-        statRunning.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count()));
-        statFinished.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CLOSED).count()));
-        statBidders.setText(String.valueOf(users.stream().filter(u -> u instanceof Bidder).count()));
-        statSellers.setText(String.valueOf(users.stream().filter(u -> u instanceof Seller).count()));
-        statCanceled.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CANCELED).count()));
+    /** Async: initial load of all auctions from server REST API. */
+    private void loadAuctionsFromServer() {
+        if (auctionCountLabel != null) auctionCountLabel.setText("Đang tải...");
+        Task<List<Auction>> task = new Task<>() {
+            @Override protected List<Auction> call() { return app.getAllAuctions(); }
+        };
+        task.setOnSucceeded(e -> {
+            auctionList.setAll(task.getValue());
+            allAuctionTable.setItems(auctionList);
+            if (auctionCountLabel != null)
+                auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
+            disableAuctionButtons();
+            refreshStats();
+        });
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            if (auctionCountLabel != null) auctionCountLabel.setText("Lỗi tải phiên đấu giá");
+        }));
+        new Thread(task, "admin-auctions").start();
     }
 
     // ── User tab actions ──────────────────────────────────────────────────────
@@ -318,14 +329,16 @@ public class AdminManagementController {
     @FXML private void handleUserSearch(ActionEvent event) {
         String keyword = userSearchField.getText().trim().toLowerCase();
         String role    = roleFilter.getValue();
-        List<User> filtered = app.getAllUsers().stream()
+        // Filter the cached in-memory list (no server call needed)
+        List<User> filtered = userList.stream()
                 .filter(u -> {
                     boolean matchName = keyword.isEmpty() || u.getUsername().toLowerCase().contains(keyword);
                     boolean matchRole = role == null || role.equals("Tất cả") || u.getRole().equals(role);
                     return matchName && matchRole;
                 }).collect(Collectors.toList());
         userTable.setItems(FXCollections.observableArrayList(filtered));
-        userCountLabel.setText("Kết quả: " + filtered.size() + " người dùng");
+        if (userCountLabel != null)
+            userCountLabel.setText("Kết quả: " + filtered.size() + " người dùng");
     }
 
     @FXML private void handleDeleteUser(ActionEvent event) {
@@ -336,7 +349,15 @@ public class AdminManagementController {
                 "Xoá người dùng \"" + sel.getUsername() + "\"?", ButtonType.YES, ButtonType.NO);
         c.setTitle("Xác nhận xoá");
         c.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.YES) { app.deleteUser(sel.getId()); loadUsers(); loadStats(); }
+            if (btn == ButtonType.YES) {
+                Task<Boolean> task = new Task<>() {
+                    @Override protected Boolean call() { return app.deleteUser(sel.getId()); }
+                };
+                task.setOnSucceeded(e -> { loadUsers(); });
+                task.setOnFailed(e -> Platform.runLater(() ->
+                        showAlert(Alert.AlertType.ERROR, "Lỗi", task.getException().getMessage())));
+                new Thread(task, "delete-user").start();
+            }
         });
     }
 
@@ -380,9 +401,8 @@ public class AdminManagementController {
         if (wsConnected) {
             sendRequestSync();
         } else {
-            loadAuctionsFromLocalDb();
+            loadAuctionsFromServer();
         }
-        loadStats();
     }
 
     /** Send ADMIN_ACTION via WebSocket so server persists + broadcasts to all clients. */
@@ -420,7 +440,25 @@ public class AdminManagementController {
 
     // ── Stats ─────────────────────────────────────────────────────────────────
 
-    @FXML private void handleRefreshStats(ActionEvent event) { loadStats(); }
+    /**
+     * Refreshes statistics from the in-memory cached lists.
+     * Does NOT make any network calls – call after loadUsers() or loadAuctionsFromServer() complete.
+     */
+    private void refreshStats() {
+        List<User>    users    = new ArrayList<>(userList);
+        List<Auction> auctions = new ArrayList<>(auctionList);
+        if (statTotalUsers    != null) statTotalUsers.setText(String.valueOf(users.size()));
+        if (statTotalAuctions != null) statTotalAuctions.setText(String.valueOf(auctions.size()));
+        if (statPending  != null) statPending.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count()));
+        if (statOpen     != null) statOpen.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count()));
+        if (statRunning  != null) statRunning.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count()));
+        if (statFinished != null) statFinished.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CLOSED).count()));
+        if (statBidders  != null) statBidders.setText(String.valueOf(users.stream().filter(u -> u instanceof Bidder).count()));
+        if (statSellers  != null) statSellers.setText(String.valueOf(users.stream().filter(u -> u instanceof Seller).count()));
+        if (statCanceled != null) statCanceled.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CANCELED).count()));
+    }
+
+    @FXML private void handleRefreshStats(ActionEvent event) { loadUsers(); }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

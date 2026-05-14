@@ -2,7 +2,6 @@ package com.auction.controller;
 
 import com.auction.client.AuctionClient;
 import com.auction.model.*;
-import com.auction.service.AppFacade;
 import com.auction.util.DataReceiver;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
@@ -90,7 +89,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private TableColumn<BidTransaction, String> colBidTime;
 
     // ── Internal state ────────────────────────────────────────────────────────
-    private final AppFacade app = AppFacade.getInstance();
     private String  auctionId;
     private Auction currentAuction;
     private ScheduledExecutorService scheduler;
