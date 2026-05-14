@@ -9,58 +9,74 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
 /**
- * AuctionClient – WebSocket client for real-time bid updates.
+ * AuctionClient – WebSocket client for real-time multi-machine communication.
  *
- * Connects to the Javalin WS server (local or remote via ngrok).
- * All incoming messages are forwarded to the provided onMessage callback.
- * The caller is responsible for running UI updates on the JavaFX thread
- * (Platform.runLater) inside their callback.
+ * Supports the extended message protocol:
+ *   send(json) – sends any JSON message to the server
+ *   Incoming messages are forwarded to the onMessage callback.
+ *
+ * Caller must wrap UI updates in Platform.runLater().
  */
 public class AuctionClient {
 
     private WebSocket ws;
-    private boolean connected = false;
+    private volatile boolean connected = false;
+
+    // Called when the WS connection is successfully opened
+    private Runnable onOpen;
 
     /**
      * Opens the WebSocket connection.
      *
-     * @param onMessage callback invoked for every text frame received
-     * @param onError   callback invoked on connection failure (nullable)
+     * @param onMessage callback for every incoming text frame
+     * @param onError   callback on connection failure (nullable)
      */
     public void connect(Consumer<String> onMessage, Consumer<String> onError) {
+        connect(onMessage, onError, null);
+    }
+
+    /**
+     * Opens the WebSocket connection with an optional onOpen callback.
+     *
+     * @param onMessage callback for every incoming text frame
+     * @param onError   callback on connection failure (nullable)
+     * @param onOpen    called once when the WS handshake is complete (nullable)
+     */
+    public void connect(Consumer<String> onMessage, Consumer<String> onError, Runnable onOpen) {
+        this.onOpen = onOpen;
         String url = ServerConfig.getServerUrl();
-        System.out.println("[AuctionClient] Attempting to connect to: " + url);
+        System.out.println("[AuctionClient] Connecting to: " + url);
 
         try {
             HttpClient client = HttpClient.newHttpClient();
-
-            // Using buildAsync().join() to wait for the connection result
             ws = client.newWebSocketBuilder()
                     .header("ngrok-skip-browser-warning", "true")
                     .buildAsync(URI.create(url), new WebSocket.Listener() {
 
                         @Override
+                        public void onOpen(WebSocket webSocket) {
+                            connected = true;
+                            System.out.println("[AuctionClient] Connected to server.");
+                            webSocket.request(1);
+                            if (AuctionClient.this.onOpen != null) {
+                                AuctionClient.this.onOpen.run();
+                            }
+                        }
+
+                        @Override
                         public CompletionStage<?> onText(WebSocket webSocket,
-                                CharSequence data,
-                                boolean last) {
+                                CharSequence data, boolean last) {
                             onMessage.accept(data.toString());
                             webSocket.request(1);
                             return null;
                         }
 
                         @Override
-                        public void onOpen(WebSocket webSocket) {
-                            connected = true;
-                            System.out.println("[AuctionClient] SUCCESS: Connected to server.");
-                            webSocket.request(1);
-                        }
-
-                        @Override
                         public CompletionStage<?> onClose(WebSocket webSocket,
-                                int statusCode,
-                                String reason) {
+                                int statusCode, String reason) {
                             connected = false;
-                            System.out.println("[AuctionClient] CLOSED: " + reason + " (Code: " + statusCode + ")");
+                            System.out.println("[AuctionClient] CLOSED: " + reason
+                                    + " (Code: " + statusCode + ")");
                             return null;
                         }
 
@@ -68,9 +84,8 @@ public class AuctionClient {
                         public void onError(WebSocket webSocket, Throwable error) {
                             connected = false;
                             System.err.println("[AuctionClient] ERROR: " + error.getMessage());
-                            if (error.getCause() != null) {
+                            if (error.getCause() != null)
                                 System.err.println("[AuctionClient] CAUSE: " + error.getCause().getMessage());
-                            }
                             if (onError != null)
                                 onError.accept(error.getMessage());
                         }
@@ -80,15 +95,13 @@ public class AuctionClient {
             connected = false;
             String errMsg = e.getMessage();
             if (e.getCause() != null) errMsg += " | Cause: " + e.getCause().getMessage();
-            
             System.err.println("[AuctionClient] CONNECTION FAILED: " + errMsg);
-            if (onError != null)
-                onError.accept(errMsg);
+            if (onError != null) onError.accept(errMsg);
         }
     }
 
     /**
-     * Sends a JSON message to the server (place bid request).
+     * Sends a JSON message to the server.
      */
     public void send(String json) {
         if (ws != null && connected) {
@@ -99,16 +112,16 @@ public class AuctionClient {
     }
 
     /**
-     * Closes the WebSocket connection gracefully.
+     * Closes the WebSocket gracefully.
      */
     public void disconnect() {
         if (ws != null && connected) {
-            ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").join();
+            try {
+                ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").join();
+            } catch (Exception ignored) {}
             connected = false;
         }
     }
 
-    public boolean isConnected() {
-        return connected;
-    }
+    public boolean isConnected() { return connected; }
 }
