@@ -122,17 +122,12 @@ public class AuctionWebSocketHandler {
                                 ? bidderUsername
                                 : "Guest_" + bidderId.substring(0, Math.min(6, bidderId.length()));
                         System.out.println("[Server] Auto-registering remote bidder: " + uname);
+                        // Use client-reported balance only for new bidder registration
                         Bidder nb = new Bidder(bidderId, LocalDateTime.now(), uname, "remote_pass", bidderBalance);
                         userService.saveUser(nb);
                         return nb;
                     });
-
-            // Keep server's balance in sync with what client reported
-            // (client is authoritative for its own balance until finish)
-            if (bidder.getAccountBalance() < bidderBalance) {
-                bidder.setAccountBalance(bidderBalance);
-                userService.saveUser(bidder);
-            }
+            // Server balance is authoritative — never overwrite with client-reported value
 
             // ── Process bid (validates, saves, updates highest_bid in DB) ──
             auctionService.placeBid(auction, bidder, amount);

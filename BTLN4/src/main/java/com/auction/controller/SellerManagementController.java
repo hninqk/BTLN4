@@ -142,35 +142,34 @@ public class SellerManagementController {
         String sellerId = json.has("sellerId") ? json.get("sellerId").getAsString() : "";
         if (!sellerId.equals(mySeller.getId())) return; // not my auction
 
-        // Reload my auction list from local DB (server saved to its DB; local DB may differ)
-        // Use the WS snapshot to add it manually
-        String auctionId = json.get("auctionId").getAsString();
-        // Try local DB first
-        app.findAuctionById(auctionId).ifPresentOrElse(
-                a -> sellerAuctions.add(0, a),
-                () -> {
-                    // Build from JSON if not in local DB yet
-                    buildMinimalAuction(json, mySeller).ifPresent(a -> sellerAuctions.add(0, a));
-                }
-        );
-        auctionTable.refresh();
-        showFormSuccess("Phiên đấu giá đã được gửi lên server và đang chờ Admin duyệt!");
-        System.out.println("[SellerMgmt] Auction created confirmed: " + auctionId);
+        // Build from WS JSON snapshot — do NOT try local DB, it won't have server data
+        buildMinimalAuction(json, mySeller).ifPresent(a -> {
+            sellerAuctions.add(0, a);
+            auctionTable.refresh();
+            showFormSuccess("Đã gửi lên server thành công! Đang chờ Admin duyệt.");
+            System.out.println("[SellerMgmt] Auction created confirmed: " + a.getId());
+        });
     }
 
-    /** An auction status changed on server. */
+    /** An auction status changed on server. Patch in-memory directly. */
     private void onStatusChanged(JsonObject json) {
         String auctionId    = json.get("auctionId").getAsString();
         String newStatusStr = json.get("newStatus").getAsString();
+        double highestBid   = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
+        String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
+
         AuctionStatus newStatus;
         try { newStatus = AuctionStatus.valueOf(newStatusStr); }
         catch (IllegalArgumentException e) { return; }
 
-        for (int i = 0; i < sellerAuctions.size(); i++) {
-            Auction a = sellerAuctions.get(i);
+        // DO NOT reload from local DB — local DB is stale on remote machines.
+        for (Auction a : sellerAuctions) {
             if (a.getId().equals(auctionId)) {
-                // Reload from DB for full object
-                app.findAuctionById(auctionId).ifPresent(fresh -> sellerAuctions.set(i, fresh));
+                a.setStatus(newStatus);
+                if (highestBid >= 0) a.setHighestBid(highestBid);
+                if (!startTimeStr.isEmpty()) {
+                    try { a.setStartTime(LocalDateTime.parse(startTimeStr)); } catch (Exception ignored) {}
+                }
                 break;
             }
         }
@@ -415,5 +414,10 @@ public class SellerManagementController {
         } catch (Exception e) {
             return java.util.Optional.empty();
         }
+    }
+
+    /** Clean up WS connection when navigating away from this screen. */
+    public void cleanup() {
+        if (wsClient != null) wsClient.disconnect();
     }
 }

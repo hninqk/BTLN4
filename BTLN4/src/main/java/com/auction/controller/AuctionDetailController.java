@@ -143,6 +143,9 @@ public class AuctionDetailController implements DataReceiver {
         if (wsClient  != null) wsClient.disconnect();
     }
 
+    /** Called by NavigationManager when leaving this screen. */
+    public void cleanup() { shutdown(); }
+
     // ──────────────────────────────────────────────────────────────────────────
     // WebSocket
     // ──────────────────────────────────────────────────────────────────────────
@@ -251,19 +254,19 @@ public class AuctionDetailController implements DataReceiver {
         String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
 
         if (currentAuction != null) {
-            // Reload from local DB to get the full updated object
-            app.findAuctionById(currentAuction.getId()).ifPresent(fresh -> {
-                // Merge any WS-injected bids that are not yet in DB
-                for (BidTransaction bt : currentAuction.getBidHistory()) {
-                    if (fresh.getBidHistory().stream().noneMatch(b -> b.getId().equals(bt.getId()))) {
-                        fresh.injectBid(bt);
-                    }
-                }
-                currentAuction = fresh;
-            });
+            // Patch in-memory object directly from WS data.
+            // DO NOT reload from local DB — local DB is stale on remote machines.
+            try {
+                AuctionStatus newStatus = AuctionStatus.valueOf(newStatusStr);
+                currentAuction.setStatus(newStatus);
+            } catch (IllegalArgumentException ignored) {}
 
-            // Patch with server values if reload was incomplete
             if (highestBid >= 0) currentAuction.setHighestBid(highestBid);
+
+            if (!startTimeStr.isEmpty()) {
+                try { currentAuction.setStartTime(LocalDateTime.parse(startTimeStr)); }
+                catch (Exception ignored) {}
+            }
         }
 
         refreshLivePanel();

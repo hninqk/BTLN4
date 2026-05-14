@@ -105,6 +105,16 @@ public class Auction extends Entity implements Subject {
     public double getHighestBid()       { return highestBid; }
     public void setHighestBid(double highestBid) { this.highestBid = highestBid; }
 
+    /**
+     * Direct status setter for WebSocket sync only.
+     * Bypasses state-machine guards — use ONLY to apply a server-broadcast status.
+     * Business logic MUST still go through approveAuction/startAuction/etc.
+     */
+    public void setStatus(AuctionStatus status) { this.status = status; }
+
+    /** Direct startTime setter for WS sync (applied when server broadcasts RUNNING state). */
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+
     public List<BidTransaction> getBidHistory() { return new java.util.ArrayList<>(bidHistory); }
 
     /**

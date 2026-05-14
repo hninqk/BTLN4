@@ -15,6 +15,7 @@ public class NavigationManager {
 
     private static NavigationManager instance;
     private Stage primaryStage;
+    private Object currentController; // tracks the active controller for cleanup
 
     private NavigationManager() {
     }
@@ -45,15 +46,28 @@ public class NavigationManager {
 
     /**
      * Navigate and pass an optional data object to the next controller.
+     * Calls cleanup() on the previous controller (if it supports it) before switching.
      */
     public void navigateTo(String fxmlName, String title, Object data) throws IOException {
+        // Cleanup the current controller before switching screens
+        if (currentController != null) {
+            try {
+                // Reflectively call cleanup() if the controller has it
+                currentController.getClass().getMethod("cleanup").invoke(currentController);
+            } catch (NoSuchMethodException ignored) {
+                // Controller doesn't have cleanup() — that's fine
+            } catch (Exception e) {
+                System.err.println("[NavigationManager] cleanup() error: " + e.getMessage());
+            }
+        }
+
         FXMLLoader loader = createLoader(fxmlName);
         Parent root = loader.load();
+        currentController = loader.getController();
 
         // If the controller supports data injection, pass it
-        Object controller = loader.getController();
-        if (data != null && controller instanceof DataReceiver) {
-            ((DataReceiver) controller).receiveData(data);
+        if (data != null && currentController instanceof DataReceiver) {
+            ((DataReceiver) currentController).receiveData(data);
         }
 
         Scene scene = primaryStage.getScene();

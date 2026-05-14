@@ -190,13 +190,16 @@ public class AdminManagementController {
         try { newStatus = AuctionStatus.valueOf(newStatusStr); }
         catch (IllegalArgumentException e) { return; }
 
+        // Patch the in-memory auction directly from WS data.
+        // DO NOT reload from local DB – local DB is stale on remote machines.
         for (int i = 0; i < auctionList.size(); i++) {
             Auction a = auctionList.get(i);
             if (a.getId().equals(auctionId)) {
-                // Reload from local DB for full object (seller, item, bids)
-                app.findAuctionById(auctionId).ifPresent(fresh -> {
-                    auctionList.set(auctionList.indexOf(a), fresh);
-                });
+                a.setStatus(newStatus);
+                if (highestBid >= 0) a.setHighestBid(highestBid);
+                if (!startTimeStr.isEmpty()) {
+                    try { a.setStartTime(LocalDateTime.parse(startTimeStr)); } catch (Exception ignored) {}
+                }
                 break;
             }
         }
@@ -431,55 +434,52 @@ public class AdminManagementController {
 
     /**
      * Build an Auction object from a WS JSON snapshot.
-     * Falls back to local DB lookup for the full Seller/Item graph.
+     * Does NOT fall back to local DB — local DB is stale on remote machines.
+     * All data comes exclusively from the server WS snapshot.
      */
     private java.util.Optional<Auction> buildAuctionFromJson(JsonObject json) {
         try {
-            String auctionId = json.get("auctionId").getAsString();
-            // Try local DB first (has full object graph)
-            java.util.Optional<Auction> fromDb = app.findAuctionById(auctionId);
-            if (fromDb.isPresent()) return fromDb;
-
-            // If not in local DB yet (new auction from another machine), build minimal object
-            String itemName     = json.get("itemName").getAsString();
+            String auctionId      = json.get("auctionId").getAsString();
+            String itemName       = json.get("itemName").getAsString();
             String sellerUsername = json.get("sellerUsername").getAsString();
-            String sellerId     = json.get("sellerId").getAsString();
-            String statusStr    = json.get("status").getAsString();
-            double highestBid   = json.get("highestBid").getAsDouble();
-            String endTimeStr   = json.get("endTime").getAsString();
-            String createdAtStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString() : LocalDateTime.now().toString();
+            String sellerId       = json.get("sellerId").getAsString();
+            String statusStr      = json.get("status").getAsString();
+            double highestBid     = json.get("highestBid").getAsDouble();
+            String endTimeStr     = json.get("endTime").getAsString();
+            String createdAtStr   = json.has("auctionCreatedAt")
+                    ? json.get("auctionCreatedAt").getAsString() : LocalDateTime.now().toString();
 
-            AuctionStatus status = AuctionStatus.valueOf(statusStr);
+            AuctionStatus status  = AuctionStatus.valueOf(statusStr);
             LocalDateTime endTime   = LocalDateTime.parse(endTimeStr);
             LocalDateTime createdAt = LocalDateTime.parse(createdAtStr);
-            String startTimeStr = json.has("startTime") ? json.get("startTime").getAsString() : "";
-            LocalDateTime startTime = (startTimeStr.isEmpty()) ? null : LocalDateTime.parse(startTimeStr);
+            String startTimeStr   = json.has("startTime") ? json.get("startTime").getAsString() : "";
+            LocalDateTime startTime = startTimeStr.isEmpty() ? null : LocalDateTime.parse(startTimeStr);
 
-            double startPrice = json.has("startPrice") ? json.get("startPrice").getAsDouble() : highestBid;
-            String itemId     = json.has("itemId")     ? json.get("itemId").getAsString()     : auctionId + "-item";
-            String desc       = json.has("itemDesc")   ? json.get("itemDesc").getAsString()   : "";
-            String imageUrl   = json.has("itemImageUrl") ? json.get("itemImageUrl").getAsString() : "";
-            String category   = json.has("itemCategory") ? json.get("itemCategory").getAsString() : "Điện tử";
+            double startPrice = json.has("startPrice")   ? json.get("startPrice").getAsDouble()   : highestBid;
+            String desc       = json.has("itemDesc")      ? json.get("itemDesc").getAsString()      : "";
+            String imageUrl   = json.has("itemImageUrl")  ? json.get("itemImageUrl").getAsString()  : "";
+            String category   = json.has("itemCategory")  ? json.get("itemCategory").getAsString()  : "Điện tử";
 
-            Seller seller = new Seller(sellerId, LocalDateTime.now(), sellerUsername, "", sellerUsername + "_Shop", 0, 0);
+            Seller seller = new Seller(sellerId, createdAt, sellerUsername, "", sellerUsername + "_Shop", 0, 0);
+            // Use 4-arg normal constructors (no extra fields needed for display)
             Item item = switch (category) {
-                case "Nghệ thuật" -> new Art(itemId, createdAt, itemName, desc, startPrice, seller);
-                case "Xe cộ"      -> new Vehicle(itemId, createdAt, itemName, desc, startPrice, seller);
-                default           -> new Electronics(itemId, createdAt, itemName, desc, startPrice, seller);
+                case "Nghệ thuật" -> new Art(itemName, desc, startPrice, seller);
+                case "Xe cộ"      -> new Vehicle(itemName, desc, startPrice, seller);
+                default           -> new Electronics(itemName, desc, startPrice, seller);
             };
             item.setImageUrl(imageUrl);
 
             Auction a = new Auction(auctionId, createdAt, seller, item, status, highestBid, startTime, endTime);
 
-            // Inject bid history from snapshot
+            // Inject bid history from server snapshot
             if (json.has("bidHistory")) {
                 JsonArray bids = json.get("bidHistory").getAsJsonArray();
                 for (int i = 0; i < bids.size(); i++) {
-                    JsonObject b  = bids.get(i).getAsJsonObject();
-                    String bidId  = b.get("bidId").getAsString();
-                    double amt    = b.get("amount").getAsDouble();
-                    String bName  = b.get("bidderUsername").getAsString();
-                    String bId    = b.get("bidderId").getAsString();
+                    JsonObject b = bids.get(i).getAsJsonObject();
+                    String bidId = b.get("bidId").getAsString();
+                    double amt   = b.get("amount").getAsDouble();
+                    String bName = b.get("bidderUsername").getAsString();
+                    String bId   = b.get("bidderId").getAsString();
                     LocalDateTime ts = LocalDateTime.parse(b.get("time").getAsString());
                     Bidder dummy = new Bidder(bId, ts, bName, "", 0);
                     a.injectBid(new BidTransaction(bidId, ts, dummy, a, amt));
@@ -490,5 +490,10 @@ public class AdminManagementController {
             System.err.println("[AdminMgmt] buildAuctionFromJson error: " + e.getMessage());
             return java.util.Optional.empty();
         }
+    }
+
+    /** Clean up WS connection when navigating away from this screen. */
+    public void cleanup() {
+        if (wsClient != null) wsClient.disconnect();
     }
 }
