@@ -25,7 +25,10 @@ jobs:
           cache: maven
 
       - name: Build client JAR (skip Checkstyle + Tests)
-        run: mvn -B package -DskipTests -Dcheckstyle.skip=true
+        run: |
+          mvn -B package \
+            -DskipTests \
+            -Dcheckstyle.skip=true
 
       # Upload the fat JAR so friends can download it from the Actions tab
       - name: Upload client JAR
@@ -60,7 +63,10 @@ jobs:
           java-version: '17'
 
       - name: Build JAR (skip Checkstyle + Tests)
-        run: mvn -B package -DskipTests -Dcheckstyle.skip=true
+        run: |
+          mvn -B package \
+            -DskipTests \
+            -Dcheckstyle.skip=true
 
       # ── Linux .deb installer ─────────────────────────────────────────────────
       - name: Build Linux Installer
