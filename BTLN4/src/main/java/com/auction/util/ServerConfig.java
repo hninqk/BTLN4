@@ -7,7 +7,7 @@ package com.auction.util;
  * Clients (friends) just run the JAR – they automatically connect here.
  *
  * The server operator can override via system property:
- *   -Dauction.server.url=ws://localhost:7000/auction  (to run locally)
+ * -Dauction.server.url=ws://localhost:7000/auction (to run locally)
  *
  * Priority: system property > runtime override > DEFAULT_URL (ngrok).
  */
@@ -17,8 +17,7 @@ public final class ServerConfig {
      * Public ngrok server URL – baked into every client build.
      * Update this when the ngrok URL changes and rebuild the JAR.
      */
-    private static final String DEFAULT_URL =
-            "wss://valeria-witless-stellularly.ngrok-free.dev/auction";
+    private static final String DEFAULT_URL = "wss://valeria-witless-stellularly.ngrok-free.dev/auction";
 
     /** Runtime-overridable URL */
     private static volatile String runtimeUrl = null;
@@ -29,7 +28,7 @@ public final class ServerConfig {
     /**
      * Returns the active WebSocket server URL.
      * Priority:
-     * 1. System property  -Dauction.server.url=...  (used by run_server.sh)
+     * 1. System property -Dauction.server.url=... (used by run_server.sh)
      * 2. Runtime override (setServerUrl)
      * 3. DEFAULT_URL – the public ngrok address
      */

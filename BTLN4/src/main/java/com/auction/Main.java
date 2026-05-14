@@ -4,7 +4,6 @@ import com.auction.util.NavigationManager;
 import com.auction.util.ServerConfig;
 import javafx.application.Application;
 import javafx.stage.Stage;
-
 import java.io.IOException;
 
 /**
