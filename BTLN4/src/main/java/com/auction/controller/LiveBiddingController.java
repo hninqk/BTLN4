@@ -146,20 +146,36 @@ public class LiveBiddingController implements DataReceiver {
 
             if (json.has("amount") && json.has("bidder") && json.has("time")) {
                 double amount = json.get("amount").getAsDouble();
-                String bidder = json.get("bidder").getAsString();
+                String bidderName = json.get("bidder").getAsString();
                 String time   = json.get("time").getAsString();
+                String auctionId = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
 
-                // Refresh auction from DB to get the latest state
-                AuctionService.getInstance().findById(currentAuction.getId())
-                        .ifPresent(fresh -> {
-                            currentAuction = fresh;
-                            refreshDisplay();
-                        });
+                // 1. Validation: only update if the broadcast is for THIS auction
+                if (auctionId != null && currentAuction != null && !auctionId.equals(currentAuction.getId())) {
+                    return;
+                }
 
-                // Add broadcast entry to feed & chart
-                addBroadcastToFeed(amount, bidder, time);
+                // 2. Update model manually (don't reload from DB as remote DB is stale)
+                if (currentAuction != null) {
+                    currentAuction.setHighestBid(amount);
+                    
+                    // Create a dummy bid for history/count/feed consistency
+                    Bidder dummyBidder = new Bidder("remote", LocalDateTime.now(), bidderName, "", 0);
+                    BidTransaction dummyBid = new BidTransaction(
+                            java.util.UUID.randomUUID().toString(), 
+                            LocalDateTime.now(), 
+                            dummyBidder, 
+                            currentAuction, 
+                            amount);
+                    currentAuction.injectBid(dummyBid);
+                }
+
+                // 3. Update UI
+                refreshDisplay();
+                addBroadcastToFeed(amount, bidderName, time);
                 addBroadcastToChart(amount);
             }
+
         } catch (Exception e) {
             System.err.println("[LiveBidding] Failed to parse WS message: " + e.getMessage());
         }

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6a63780c-c72e-41f6-bf4c-3239c015924c" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/BTLN4/run_with_ngrok.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/checkstyle-cachefile" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/checkstyle-cachefile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/checkstyle-result.xml" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/checkstyle-result.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/Main.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/Main.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/client/AuctionClient$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/client/AuctionClient$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/client/AuctionClient.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/client/AuctionClient.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AdminManagementController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AdminManagementController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionDetailController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionDetailController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionListController$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionListController$1.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionListController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/AuctionListController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/BidHistoryController$BidRow.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/BidHistoryController$BidRow.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/BidHistoryController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/BidHistoryController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/DashboardController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/DashboardController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/LiveBiddingController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/LiveBiddingController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/LoginController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/LoginController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/RegisterController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/RegisterController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/SellerManagementController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/SellerManagementController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/SidebarController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/SidebarController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/UserProfileController.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/controller/UserProfileController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/exception/InvalidBidException.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/exception/InvalidBidException.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/exception/InvalidStatusException.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/exception/InvalidStatusException.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ArtFactory.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ArtFactory.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ElectronicsFactory.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ElectronicsFactory.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ItemFactory.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/ItemFactory.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/VehicleFactory.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/factory/VehicleFactory.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/manager/AuctionManager.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/manager/AuctionManager.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Admin.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Admin.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Art.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Art.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Auction.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Auction.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/AuctionStatus.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/AuctionStatus.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/BidTransaction.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/BidTransaction.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Bidder.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Bidder.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Electronics.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Electronics.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Entity.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Entity.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Item.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Item.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Seller.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Seller.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/User.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/User.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Vehicle.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/model/Vehicle.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcAuctionRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcAuctionRepository.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcBidRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcBidRepository.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcItemRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcItemRepository.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcUserRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/repository/JdbcUserRepository.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionServer.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionServer.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler$BidRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler$BidRequest.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler$BidResponse.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler$BidResponse.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/server/AuctionWebSocketHandler.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/AppFacade.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/AppFacade.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/AuctionService.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/AuctionService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/UserService.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/service/UserService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/DatabaseConnection.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/DatabaseConnection.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/ImageLoaderUtil.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/ImageLoaderUtil.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/NavigationManager.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/NavigationManager.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/ServerConfig.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/ServerConfig.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/SessionManager.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/com/auction/util/SessionManager.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/classes/module-info.class" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/classes/module-info.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BTLN4/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" beforeDir="false" afterPath="$PROJECT_DIR$/BTLN4/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.auction" beforeDir="false" afterPath="$PROJECT_DIR$/db.auction" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="86" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;hninqk&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/hninqk/BTLN4.git&quot;,
+    &quot;accountId&quot;: &quot;daa0b05a-9a13-448d-b0a8-9a284af123ab&quot;
+  }
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="3DegqK7eMlCRjKCmFgSPum6XNkl" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Application.Main.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/minh/IdeaProjects/BTLN4(2)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.AcpAgentsConfigurable&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="Main" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.auction.Main" />
+      <module name="app" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.auction.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Main" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.31033.145" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6a63780c-c72e-41f6-bf4c-3239c015924c" name="Changes" comment="" />
+      <created>1778648139038</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1778648139038</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

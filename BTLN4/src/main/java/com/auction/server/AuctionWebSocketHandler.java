@@ -140,6 +140,7 @@ public class AuctionWebSocketHandler {
     private String toJson(BidTransaction bid) {
         if (bid == null) return "{}";
         return gson.toJson(new BidResponse(
+                bid.getAuction().getId(),
                 bid.getAmount(),
                 bid.getBidder().getUsername(),
                 bid.getTimestamp().toString()
@@ -157,11 +158,13 @@ public class AuctionWebSocketHandler {
     }
 
     private static class BidResponse {
+        String auctionId;
         double amount;
         String bidder;
         String time;
 
-        BidResponse(double amount, String bidder, String time) {
+        BidResponse(String auctionId, double amount, String bidder, String time) {
+            this.auctionId = auctionId;
             this.amount = amount;
             this.bidder = bidder;
             this.time = time;

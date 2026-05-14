@@ -148,11 +148,33 @@ public class AuctionDetailController implements DataReceiver {
         Thread t = new Thread(() -> {
             wsClient.connect(
                     msg -> Platform.runLater(() -> {
-                        // WS message = a bid was broadcast; re-fetch from DB
-                        app.findAuctionById(auctionId).ifPresent(fresh -> {
-                            currentAuction = fresh;
-                            refreshLivePanel();
-                        });
+                        // Parse broadcast and update model manually
+                        try {
+                            JsonObject json = gson.fromJson(msg, JsonObject.class);
+                            if (json.has("amount") && json.has("bidder") && json.has("time")) {
+                                double amount = json.get("amount").getAsDouble();
+                                String bidderName = json.get("bidder").getAsString();
+                                String timeStr = json.get("time").getAsString();
+                                String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+
+                                // Only update if it's the current auction
+                                if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+
+                                if (currentAuction != null) {
+                                    currentAuction.setHighestBid(amount);
+                                    
+                                    // Inject dummy bid for UI consistency
+                                    Bidder dummy = new Bidder("remote", LocalDateTime.now(), bidderName, "", 0);
+                                    BidTransaction dummyBid = new BidTransaction(
+                                            java.util.UUID.randomUUID().toString(), 
+                                            LocalDateTime.now(), dummy, currentAuction, amount);
+                                    currentAuction.injectBid(dummyBid);
+                                }
+                                refreshLivePanel();
+                            }
+                        } catch (Exception e) {
+                            System.err.println("[AuctionDetail] WS parse error: " + e.getMessage());
+                        }
                     }),
                     err -> Platform.runLater(() -> {
                         wsConnected = false;
@@ -230,10 +252,27 @@ public class AuctionDetailController implements DataReceiver {
 
     private void tickRefresh() {
         if (auctionId == null) return;
-        // Re-fetch from DB so status / price / bids are always current
-        app.findAuctionById(auctionId).ifPresent(fresh -> currentAuction = fresh);
+        // Re-fetch from DB for status updates (PENDING -> RUNNING -> CLOSED)
+        app.findAuctionById(auctionId).ifPresent(fresh -> {
+            if (currentAuction != null) {
+                // Preserve highest bid and history if local is ahead (WS updates)
+                if (currentAuction.getHighestBid() > fresh.getHighestBid()) {
+                    fresh.setHighestBid(currentAuction.getHighestBid());
+                }
+                if (currentAuction.getBidHistory().size() > fresh.getBidHistory().size()) {
+                    // This is a bit simplified but keeps the UI consistent for remote users
+                    // who don't have the full bid history in their local DB.
+                    List<BidTransaction> localHistory = currentAuction.getBidHistory();
+                    for (int i = fresh.getBidHistory().size(); i < localHistory.size(); i++) {
+                        fresh.injectBid(localHistory.get(i));
+                    }
+                }
+            }
+            currentAuction = fresh;
+        });
         refreshLivePanel();
     }
+
 
     // ──────────────────────────────────────────────────────────────────────────
     // Live panel (called every second)
@@ -364,11 +403,15 @@ public class AuctionDetailController implements DataReceiver {
         if (wsConnected && wsClient != null) {
             // ── WS mode: server handles validation + broadcasts to ALL clients ──
             JsonObject req = new JsonObject();
+            req.addProperty("type", "PLACE_BID");
             req.addProperty("auctionId", currentAuction.getId());
             req.addProperty("bidderId", bidder.getId());
+            req.addProperty("bidderUsername", bidder.getUsername());
+            req.addProperty("bidderBalance", bidder.getAccountBalance());
             req.addProperty("amount", amount);
             wsClient.send(req.toString());
             bidAmountField.clear();
+
         } else {
             // ── Server offline – block the bid ──
             bidErrorLabel.setText(
