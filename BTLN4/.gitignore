@@ -1,3 +1,4 @@
 target/
 *.class
-*.db
+*.dbtarget/
+db.auction
