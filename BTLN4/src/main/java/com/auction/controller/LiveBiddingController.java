@@ -346,8 +346,11 @@ public class LiveBiddingController implements DataReceiver {
         if (wsConnected && wsClient != null) {
             // ── WS mode: send bid to server, server broadcasts to ALL clients ──
             JsonObject req = new JsonObject();
+            req.addProperty("type", "PLACE_BID");
             req.addProperty("auctionId", currentAuction.getId());
             req.addProperty("bidderId", bidder.getId());
+            req.addProperty("bidderUsername", bidder.getUsername());
+            req.addProperty("bidderBalance", bidder.getAccountBalance());
             req.addProperty("amount", amount);
             wsClient.send(req.toString());
             bidAmountField.clear();

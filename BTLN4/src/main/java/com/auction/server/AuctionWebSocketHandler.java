@@ -74,7 +74,22 @@ public class AuctionWebSocketHandler {
             Bidder bidder = UserService.getInstance().findById(req.bidderId)
                     .filter(u -> u instanceof Bidder)
                     .map(u -> (Bidder) u)
-                    .orElseThrow(() -> new Exception("Bidder not found: " + req.bidderId));
+                    .orElseGet(() -> {
+                        String uname = req.bidderUsername;
+                        if (uname == null) {
+                            uname = "Guest_" + req.bidderId.substring(0, Math.min(6, req.bidderId.length()));
+                        }
+                        System.out.println("[Server] Auto-registering remote bidder: " + uname);
+                        Bidder newBidder = new Bidder(
+                                req.bidderId, 
+                                java.time.LocalDateTime.now(), 
+                                uname, 
+                                "remote_user_pass", 
+                                req.bidderBalance != null ? req.bidderBalance : 5000000.0
+                        );
+                        UserService.getInstance().saveUser(newBidder);
+                        return newBidder;
+                    });
 
             // Process the bid
             service.placeBid(auction, bidder, req.amount);
@@ -133,8 +148,11 @@ public class AuctionWebSocketHandler {
 
     // DTO for incoming requests
     private static class BidRequest {
+        String type;
         String auctionId;
         String bidderId;
+        String bidderUsername;
+        Double bidderBalance;
         double amount;
     }
 
