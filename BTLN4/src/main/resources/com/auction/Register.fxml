@@ -64,7 +64,7 @@
 
                 <Region prefHeight="16"/>
 
-                <Button text="Đăng ký" onAction="#handleRegister"
+                <Button fx:id="registerButton" text="Đăng ký" onAction="#handleRegister"
                         styleClass="btn-primary" maxWidth="Infinity" defaultButton="true"/>
 
                 <Region prefHeight="14"/>

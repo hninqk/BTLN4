@@ -1,31 +1,36 @@
 package com.auction.controller;
 
+import com.auction.model.User;
 import com.auction.service.AppFacade;
 import com.auction.util.NavigationManager;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 
 import java.io.IOException;
+import java.util.Optional;
 
 /**
- * RegisterController – handles new user registration.
+ * RegisterController – handles new user registration via REST API.
+ *
+ * The register call runs on a background thread (Task) to keep the UI responsive.
  */
 public class RegisterController {
 
-    @FXML
-    private TextField usernameField;
-    @FXML
-    private PasswordField passwordField;
-    @FXML
-    private PasswordField confirmPasswordField;
-    @FXML
-    private ComboBox<String> roleCombo;
-    @FXML
-    private Label errorLabel;
-    @FXML
-    private Label successLabel;
+    @FXML private TextField     usernameField;
+    @FXML private PasswordField passwordField;
+    @FXML private PasswordField confirmPasswordField;
+    @FXML private ComboBox<String> roleCombo;
+    @FXML private Label         errorLabel;
+    @FXML private Label         successLabel;
+    @FXML private Button        registerButton;
 
     @FXML
     public void initialize() {
@@ -42,10 +47,10 @@ public class RegisterController {
 
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
-        String confirm = confirmPasswordField.getText();
-        String role = roleCombo.getValue();
+        String confirm  = confirmPasswordField.getText();
+        String role     = roleCombo.getValue();
 
-        // Validation
+        // Client-side validation (no server round-trip needed for these)
         if (username.isEmpty() || password.isEmpty()) {
             errorLabel.setText("Vui lòng điền đầy đủ thông tin bắt buộc (*).");
             return;
@@ -63,13 +68,35 @@ public class RegisterController {
             return;
         }
 
-        boolean ok = AppFacade.getInstance().register(username, password, role);
-        if (ok) {
-            successLabel.setText("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
-            clearForm();
-        } else {
-            errorLabel.setText("Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.");
-        }
+        registerButton.setDisable(true);
+        successLabel.setText("Đang đăng ký...");
+
+        Task<Optional<User>> task = new Task<>() {
+            @Override
+            protected Optional<User> call() {
+                return AppFacade.getInstance().register(username, password, role);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            Optional<User> result = task.getValue();
+            registerButton.setDisable(false);
+            if (result.isPresent()) {
+                successLabel.setText("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
+                clearForm();
+            } else {
+                errorLabel.setText("Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.");
+                successLabel.setText("");
+            }
+        });
+
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            registerButton.setDisable(false);
+            errorLabel.setText(task.getException().getMessage());
+            successLabel.setText("");
+        }));
+
+        new Thread(task, "register-task").start();
     }
 
     @FXML

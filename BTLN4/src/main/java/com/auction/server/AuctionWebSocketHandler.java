@@ -185,7 +185,7 @@ public class AuctionWebSocketHandler {
             Auction auction = auctionService.createAuction(seller, item, endTime);
 
             // ── Broadcast AUCTION_CREATED to ALL clients ──
-            JsonObject broadcast = buildAuctionJson("AUCTION_CREATED", auction);
+            JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction);
             broadcastAll(broadcast.toString());
 
             System.out.printf("[Server] AUCTION_CREATED  id=%s  item=%s  seller=%s%n",
@@ -271,7 +271,7 @@ public class AuctionWebSocketHandler {
             List<Auction> all = auctionService.getAllAuctions();
             JsonArray arr = new JsonArray();
             for (Auction a : all) {
-                arr.add(buildAuctionJson("", a));  // type field set below
+                arr.add(AuctionSerializer.auctionToJson(a));
             }
             JsonObject resp = new JsonObject();
             resp.addProperty("type", "FULL_SYNC");
@@ -287,40 +287,6 @@ public class AuctionWebSocketHandler {
     // =========================================================================
     // HELPERS
     // =========================================================================
-
-    /** Build a JSON representation of an Auction for broadcast. */
-    private JsonObject buildAuctionJson(String type, Auction a) {
-        JsonObject o = new JsonObject();
-        if (!type.isEmpty()) o.addProperty("type", type);
-        o.addProperty("auctionId",      a.getId());
-        o.addProperty("auctionCreatedAt", a.getCreatedAt().toString());
-        o.addProperty("itemName",       a.getItem().getName());
-        o.addProperty("itemId",         a.getItem().getId());
-        o.addProperty("itemDesc",       a.getItem().getDescription());
-        o.addProperty("itemCategory",   a.getItem().getCategory());
-        o.addProperty("itemImageUrl",   a.getItem().getImageUrl());
-        o.addProperty("startPrice",     a.getItem().getStartingPrice());
-        o.addProperty("sellerId",       a.getSeller().getId());
-        o.addProperty("sellerUsername", a.getSeller().getUsername());
-        o.addProperty("status",         a.getStatus().name());
-        o.addProperty("highestBid",     a.getHighestBid());
-        o.addProperty("startTime",      a.getStartTime() != null ? a.getStartTime().toString() : "");
-        o.addProperty("endTime",        a.getEndTime().toString());
-
-        // Include bid history
-        JsonArray bids = new JsonArray();
-        for (BidTransaction bt : a.getBidHistory()) {
-            JsonObject bid = new JsonObject();
-            bid.addProperty("bidId",         bt.getId());
-            bid.addProperty("bidderId",      bt.getBidder().getId());
-            bid.addProperty("bidderUsername",bt.getBidder().getUsername());
-            bid.addProperty("amount",        bt.getAmount());
-            bid.addProperty("time",          bt.getTimestamp().toString());
-            bids.add(bid);
-        }
-        o.add("bidHistory", bids);
-        return o;
-    }
 
     private void broadcastAll(String msg) {
         for (WsContext s : sessions) {

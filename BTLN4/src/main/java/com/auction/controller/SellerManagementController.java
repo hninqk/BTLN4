@@ -10,6 +10,7 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -28,6 +29,10 @@ import java.util.stream.Collectors;
 
 /**
  * SellerManagementController – Seller creates and views their auctions.
+ *
+ * Data is fetched from the server REST API (AppFacade → ApiClient).
+ * Auction creation and cancel still go via WebSocket so all clients
+ * receive real-time broadcasts.
  *
  * Auction creation is sent via WebSocket (CREATE_AUCTION) so the server
  * persists it and broadcasts AUCTION_CREATED to ALL clients (especially Admin).
@@ -78,7 +83,7 @@ public class SellerManagementController {
     public void initialize() {
         setupFilterCombo();
         setupTableColumns();
-        loadSellerAuctionsFromLocalDb(); // initial load from local DB
+        loadSellerAuctionsFromServer(); // async load from server REST API
         disableActionButtons();
 
         for (int i = 0; i < 24; i++)
@@ -176,11 +181,9 @@ public class SellerManagementController {
         auctionTable.refresh();
     }
 
-    /** Full sync: load all MY auctions from server snapshot. */
+    /** Full sync: reload seller's auctions from REST API. */
     private void onFullSync(JsonObject json) {
-        // FULL_SYNC is handled by AdminManagementController primarily;
-        // Seller just reloads from local DB which should now be in sync.
-        loadSellerAuctionsFromLocalDb();
+        loadSellerAuctionsFromServer();
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────
@@ -204,12 +207,24 @@ public class SellerManagementController {
                 c.getValue().getEndTime().format(FMT)));
     }
 
-    private void loadSellerAuctionsFromLocalDb() {
+    /** Async: fetch this seller's auctions from the server REST API. */
+    private void loadSellerAuctionsFromServer() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Seller seller)) return;
-        List<Auction> auctions = app.getAuctionsBySeller(seller);
-        sellerAuctions.setAll(auctions);
-        auctionTable.setItems(sellerAuctions);
+        formSuccessLabel.setText("Đang tải dữ liệu...");
+        Task<List<Auction>> task = new Task<>() {
+            @Override protected List<Auction> call() {
+                return app.getAuctionsBySeller(seller);
+            }
+        };
+        task.setOnSucceeded(e -> {
+            sellerAuctions.setAll(task.getValue());
+            auctionTable.setItems(sellerAuctions);
+            formSuccessLabel.setText("");
+        });
+        task.setOnFailed(e -> Platform.runLater(() ->
+                showFormError("Lỗi tải dữ liệu: " + task.getException().getMessage())));
+        new Thread(task, "seller-auctions").start();
     }
 
     private void disableActionButtons() {
@@ -254,18 +269,15 @@ public class SellerManagementController {
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.YES) {
                 if (wsConnected && wsClient != null) {
-                    // Send cancel via WS so server propagates to all clients
+                    // Send cancel via WS so server persists and broadcasts to all clients
                     JsonObject req = new JsonObject();
                     req.addProperty("type",      "ADMIN_ACTION");
                     req.addProperty("action",    "cancel");
                     req.addProperty("auctionId", sel.getId());
                     wsClient.send(req.toString());
                 } else {
-                    try {
-                        app.cancelAuction(sel);
-                        loadSellerAuctionsFromLocalDb();
-                        showFormSuccess("Phiên đấu giá đã bị huỷ.");
-                    } catch (Exception e) { showFormError(e.getMessage()); }
+                    // WS unavailable — fall back to REST (no real-time broadcast)
+                    showFormError("Server chưa kết nối. Vui lòng thử lại sau.");
                 }
             }
         });
@@ -275,10 +287,21 @@ public class SellerManagementController {
     private void handleDelete(ActionEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null) return;
-        app.removeAuction(sel.getId());
-        sellerAuctions.remove(sel);
-        disableActionButtons();
-        showFormSuccess("Đã xoá phiên đấu giá.");
+        Task<Boolean> task = new Task<>() {
+            @Override protected Boolean call() { return app.removeAuction(sel.getId()); }
+        };
+        task.setOnSucceeded(e -> {
+            if (Boolean.TRUE.equals(task.getValue())) {
+                sellerAuctions.remove(sel);
+                disableActionButtons();
+                showFormSuccess("Đã xoá phiên đấu giá.");
+            } else {
+                showFormError("Không thể xoá phiên đấu giá.");
+            }
+        });
+        task.setOnFailed(e -> Platform.runLater(() ->
+                showFormError("Lỗi xoá: " + task.getException().getMessage())));
+        new Thread(task, "delete-auction").start();
     }
 
     @FXML
@@ -352,19 +375,8 @@ public class SellerManagementController {
             handleClearForm(event);
             showFormSuccess("Đang gửi lên server...");
         } else {
-            // ── Fallback: save locally (other clients won't see this) ──
-            try {
-                Item item = switch (category) {
-                    case "Nghệ thuật" -> new Art(name, description, startPrice, seller);
-                    case "Xe cộ"      -> new Vehicle(name, description, startPrice, seller);
-                    default           -> new Electronics(name, description, startPrice, seller);
-                };
-                item.setImageUrl(imageUrl);
-                app.createAuction(seller, item, endTime);
-                loadSellerAuctionsFromLocalDb();
-                handleClearForm(event);
-                showFormSuccess("⚠ Lưu offline – Admin sẽ thấy khi kết nối lại server.");
-            } catch (Exception e) { showFormError("Lỗi khi tạo phiên đấu giá: " + e.getMessage()); }
+            // WebSocket not available – show an error instead of local DB fallback
+            showFormError("Không thể kết nối server. Vui lòng đợi kết nối WebSocket.");
         }
     }
 
