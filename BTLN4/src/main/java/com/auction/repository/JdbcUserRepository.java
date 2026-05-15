@@ -18,11 +18,21 @@ public class JdbcUserRepository {
     // ─────────────────────────── CREATE ───────────────────────────
 
     public void save(User user) {
-        String sql = """
-            INSERT OR IGNORE INTO users
-                (id, username, password, role, balance, shop_name, rating, cntvoted, access_level, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
-            """;
+        String sql;
+        if (DatabaseConnection.isPostgres()) {
+            sql = """
+                INSERT INTO users
+                    (id, username, password, role, balance, shop_name, rating, cntvoted, access_level, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT (id) DO NOTHING
+                """;
+        } else {
+            sql = """
+                INSERT OR IGNORE INTO users
+                    (id, username, password, role, balance, shop_name, rating, cntvoted, access_level, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                """;
+        }
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 

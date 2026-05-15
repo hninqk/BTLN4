@@ -21,10 +21,19 @@ public class JdbcBidRepository implements BidRepository {
 
     @Override
     public void save(BidTransaction tx) {
-        String sql = """
-            INSERT OR IGNORE INTO bid_transactions (id, bidder_id, auction_id, amount, created_at)
-            VALUES (?,?,?,?,?)
-            """;
+        String sql;
+        if (DatabaseConnection.isPostgres()) {
+            sql = """
+                INSERT INTO bid_transactions (id, bidder_id, auction_id, amount, created_at)
+                VALUES (?,?,?,?,?)
+                ON CONFLICT (id) DO NOTHING
+                """;
+        } else {
+            sql = """
+                INSERT OR IGNORE INTO bid_transactions (id, bidder_id, auction_id, amount, created_at)
+                VALUES (?,?,?,?,?)
+                """;
+        }
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 

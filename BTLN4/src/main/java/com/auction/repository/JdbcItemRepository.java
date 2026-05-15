@@ -18,12 +18,23 @@ public class JdbcItemRepository {
     // ─────────────────────────── CREATE ───────────────────────────
 
     public void save(Item item, User owner) {
-        String sql = """
-            INSERT OR IGNORE INTO items
-                (id, name, description, starting_price, image_url, category,
-                 owner_id, warranty_months, artist_name, year_created, mileage, year, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """;
+        String sql;
+        if (DatabaseConnection.isPostgres()) {
+            sql = """
+                INSERT INTO items
+                    (id, name, description, starting_price, image_url, category,
+                     owner_id, warranty_months, artist_name, year_created, mileage, year, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT (id) DO NOTHING
+                """;
+        } else {
+            sql = """
+                INSERT OR IGNORE INTO items
+                    (id, name, description, starting_price, image_url, category,
+                     owner_id, warranty_months, artist_name, year_created, mileage, year, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """;
+        }
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 

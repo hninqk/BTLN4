@@ -77,6 +77,10 @@ public class DatabaseConnection {
         }
     }
 
+    public static boolean isPostgres() {
+        return URL.startsWith("jdbc:postgresql:");
+    }
+
     private DatabaseConnection() {}
 
     public static Connection getConnection() throws SQLException {

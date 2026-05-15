@@ -29,11 +29,21 @@ public class JdbcAuctionRepository {
         itemRepo.save(auction.getItem(), auction.getSeller());
 
         // 2. Persist auction
-        String sql = """
-            INSERT OR IGNORE INTO auctions
-                (id, seller_id, item_id, status, highest_bid, start_time, end_time, created_at)
-            VALUES (?,?,?,?,?,?,?,?)
-            """;
+        String sql;
+        if (DatabaseConnection.isPostgres()) {
+            sql = """
+                INSERT INTO auctions
+                    (id, seller_id, item_id, status, highest_bid, start_time, end_time, created_at)
+                VALUES (?,?,?,?,?,?,?,?)
+                ON CONFLICT (id) DO NOTHING
+                """;
+        } else {
+            sql = """
+                INSERT OR IGNORE INTO auctions
+                    (id, seller_id, item_id, status, highest_bid, start_time, end_time, created_at)
+                VALUES (?,?,?,?,?,?,?,?)
+                """;
+        }
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
