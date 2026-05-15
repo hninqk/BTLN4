@@ -35,6 +35,14 @@ public class DatabaseConnection {
     private static volatile boolean tablesCreated = false;
 
     private static String computeUrl() {
+        // Ensure drivers are loaded
+        try {
+            Class.forName("org.sqlite.JDBC");
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            System.err.println("[DB] Warning: Driver not found: " + e.getMessage());
+        }
+
         // Priority 1: Environment variable (Render PostgreSQL)
         // Format: jdbc:postgresql://hostname:port/dbname?user=username&password=password
         String envUrl = System.getenv("JDBC_DATABASE_URL");
