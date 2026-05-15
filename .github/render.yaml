@@ -2,15 +2,20 @@ services:
   - type: web
     name: auction-server
     env: docker
-    plan: free # or starter
-    region: singapore # or your preferred region
-    dockerCommand: java -Dauction.server.url=ws://0.0.0.0:7000/auction -jar app.jar
+    plan: free
+    region: singapore
+    dockerCommand: java -Dauction.server.url=ws://0.0.0.0:7000/auction -cp /app/app.jar com.auction.ServerMain
     envVars:
       - key: PORT
         value: 7000
       - key: JAVA_OPTS
         value: "-Xmx512m"
-    disk:
-      name: auction-db
-      mountPath: /app/data
-      sizeGB: 1
+      - key: JDBC_DATABASE_URL
+        fromDatabase:
+          name: auction-db-postgres
+          property: jdbcInternalUrl
+
+databases:
+  - name: auction-db-postgres
+    plan: free
+    region: singapore

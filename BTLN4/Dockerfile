@@ -21,11 +21,6 @@ COPY --from=build /app/target/app-1.0-SNAPSHOT.jar ./app.jar
 # Expose the port Javalin runs on
 EXPOSE 7000
 
-# Create a directory for the persistent database disk
-# This matches the 'mountPath' in your render.yaml
-RUN mkdir -p /app/data
-
 # Run the server
 # We explicitly point to com.auction.ServerMain so it doesn't try to start the JavaFX UI
-WORKDIR /app/data
 CMD ["java", "-Dauction.server.url=ws://0.0.0.0:7000/auction", "-cp", "/app/app.jar", "com.auction.ServerMain"]
