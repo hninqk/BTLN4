@@ -17,12 +17,6 @@ import javafx.scene.layout.VBox;
 
 import java.util.function.UnaryOperator;
 
-/**
- * UserProfileController – view and edit personal profile.
- *
- * All write operations (saveUser, topup) are sent to the server via REST.
- * No direct database access.
- */
 public class UserProfileController {
 
     @FXML private Label avatarLabel;
@@ -45,12 +39,6 @@ public class UserProfileController {
     @FXML private Label      profileErrorLabel;
     @FXML private Label      profileSuccessLabel;
 
-    @FXML private PasswordField currentPasswordField;
-    @FXML private PasswordField newPasswordField;
-    @FXML private PasswordField confirmNewPasswordField;
-    @FXML private Label         pwErrorLabel;
-    @FXML private Label         pwSuccessLabel;
-
     private User currentUser;
     private final AppFacade app = AppFacade.getInstance();
 
@@ -59,8 +47,6 @@ public class UserProfileController {
         currentUser = SessionManager.getInstance().getCurrentUser();
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
-        pwErrorLabel.setText("");
-        pwSuccessLabel.setText("");
 
         UnaryOperator<javafx.scene.control.TextFormatter.Change> numericFilter = change -> {
             String newText = change.getControlNewText();
