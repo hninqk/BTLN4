@@ -20,7 +20,7 @@
         <artifactId>javafx-maven-plugin</artifactId>
         <version>0.0.8</version>
         <configuration>
-          <mainClass>com.auction/com.auction.Main</mainClass>
+          <mainClass>com.auction/com.auction.Launcher</mainClass>
         </configuration>
       </plugin>
       <plugin>
@@ -60,6 +60,7 @@
                 <transformer>
                   <mainClass>com.auction.Launcher</mainClass>
                 </transformer>
+                <transformer />
               </transformers>
             </configuration>
           </execution>
