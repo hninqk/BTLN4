@@ -5,30 +5,71 @@ import com.auction.util.DatabaseConnection;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
- * JdbcAuctionRepository – CRUD for auctions table.
- * Depends on JdbcUserRepository and JdbcItemRepository to reconstruct object graph.
+ * JdbcAuctionRepository – CRUD cho bảng auctions.
+ *
+ * Tối ưu hiệu năng:
+ * - Dùng SQL JOIN để lấy Auction + Seller + Item trong 1 query duy nhất
+ *   (thay vì gọi userRepo.findById + itemRepo.findById = N+1 queries).
+ * - Bid history được load trong 1 query riêng với JOIN users.
+ * - Kết hợp với HikariCP pool → mỗi query chỉ tốn vài ms.
  */
 public class JdbcAuctionRepository {
 
-    private final JdbcUserRepository userRepo = new JdbcUserRepository();
-    private final JdbcItemRepository itemRepo = new JdbcItemRepository();
+    // ─────────────────────────── SQL cơ bản ───────────────────────────
+
+    /**
+     * Query JOIN lấy auction + seller + item trong 1 lần.
+     * Tránh gọi userRepo.findById() và itemRepo.findById() riêng lẻ.
+     */
+    private static final String SELECT_FULL = """
+            SELECT
+                a.id            AS a_id,
+                a.status        AS a_status,
+                a.highest_bid   AS a_highest_bid,
+                a.start_time    AS a_start_time,
+                a.end_time      AS a_end_time,
+                a.created_at    AS a_created_at,
+
+                s.id            AS s_id,
+                s.username      AS s_username,
+                s.password      AS s_password,
+                s.shop_name     AS s_shop_name,
+                s.rating        AS s_rating,
+                s.cntvoted      AS s_cntvoted,
+                s.created_at    AS s_created_at,
+
+                i.id            AS i_id,
+                i.name          AS i_name,
+                i.description   AS i_description,
+                i.starting_price AS i_starting_price,
+                i.image_url     AS i_image_url,
+                i.category      AS i_category,
+                i.warranty_months AS i_warranty_months,
+                i.artist_name   AS i_artist_name,
+                i.year_created  AS i_year_created,
+                i.mileage       AS i_mileage,
+                i.year          AS i_year,
+                i.created_at    AS i_created_at
+
+            FROM auctions a
+            JOIN users s  ON a.seller_id = s.id
+            JOIN items i  ON a.item_id   = i.id
+            """;
 
     // ─────────────────────────── CREATE ───────────────────────────
 
     /**
-     * Persists an Auction (and its Item) to the database.
-     * The Seller must already exist in users table.
+     * Lưu Auction (và Item của nó) vào DB.
+     * Seller phải đã tồn tại trong bảng users.
      */
     public void save(Auction auction) {
-        // 1. Persist item first
-        itemRepo.save(auction.getItem(), auction.getSeller());
+        // 1. Lưu item trước
+        new JdbcItemRepository().save(auction.getItem(), auction.getSeller());
 
-        // 2. Persist auction
+        // 2. Lưu auction
         String sql;
         if (DatabaseConnection.isPostgres()) {
             sql = """
@@ -55,7 +96,6 @@ public class JdbcAuctionRepository {
             ps.setString(6, auction.getStartTime() != null ? auction.getStartTime().toString() : null);
             ps.setString(7, auction.getEndTime().toString());
             ps.setString(8, auction.getCreatedAt().toString());
-
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -65,9 +105,14 @@ public class JdbcAuctionRepository {
 
     // ─────────────────────────── READ ───────────────────────────
 
+    /**
+     * Lấy tất cả auctions — chỉ 2 queries:
+     * 1. JOIN query cho auctions + sellers + items
+     * 2. Batch load toàn bộ bid history
+     */
     public List<Auction> findAll() {
         List<Auction> list = new ArrayList<>();
-        String sql = "SELECT * FROM auctions ORDER BY created_at DESC";
+        String sql = SELECT_FULL + " ORDER BY a.created_at DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -77,16 +122,28 @@ public class JdbcAuctionRepository {
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] findAll error: " + e.getMessage());
         }
+
+        // Batch load bid history cho tất cả auctions trong 1 query
+        if (!list.isEmpty()) {
+            loadBidHistoryBatch(list);
+        }
         return list;
     }
 
+    /**
+     * Lấy 1 auction theo ID — 2 queries (JOIN + bid history).
+     */
     public Optional<Auction> findById(String id) {
-        String sql = "SELECT * FROM auctions WHERE id = ?";
+        String sql = SELECT_FULL + " WHERE a.id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return buildAuction(rs);
+                if (rs.next()) {
+                    Optional<Auction> auctionOpt = buildAuction(rs);
+                    auctionOpt.ifPresent(a -> loadBidHistory(a, id));
+                    return auctionOpt;
+                }
             }
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] findById error: " + e.getMessage());
@@ -94,17 +151,25 @@ public class JdbcAuctionRepository {
         return Optional.empty();
     }
 
+    /**
+     * Lấy auctions theo seller — 2 queries.
+     */
     public List<Auction> findBySellerId(String sellerId) {
         List<Auction> list = new ArrayList<>();
-        String sql = "SELECT * FROM auctions WHERE seller_id = ? ORDER BY created_at DESC";
+        String sql = SELECT_FULL + " WHERE a.seller_id = ? ORDER BY a.created_at DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, sellerId);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) buildAuction(rs).ifPresent(list::add);
+                while (rs.next()) {
+                    buildAuction(rs).ifPresent(list::add);
+                }
             }
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] findBySellerId error: " + e.getMessage());
+        }
+        if (!list.isEmpty()) {
+            loadBidHistoryBatch(list);
         }
         return list;
     }
@@ -112,7 +177,7 @@ public class JdbcAuctionRepository {
     // ─────────────────────────── UPDATE ───────────────────────────
 
     public void updateStatus(String auctionId, AuctionStatus newStatus, double highestBid,
-                              java.time.LocalDateTime startTime) {
+                              LocalDateTime startTime) {
         String sql = "UPDATE auctions SET status=?, highest_bid=?, start_time=? WHERE id=?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -125,8 +190,6 @@ public class JdbcAuctionRepository {
             System.err.println("[AuctionRepo] updateStatus error: " + e.getMessage());
         }
     }
-
-    // (No 3-arg overload — all callers pass startTime explicitly to avoid wiping it with null)
 
     // ─────────────────────────── DELETE ───────────────────────────
 
@@ -144,26 +207,48 @@ public class JdbcAuctionRepository {
 
     // ─────────────────────────── MAPPING ───────────────────────────
 
+    /**
+     * Xây dựng Auction từ ResultSet của JOIN query (không gọi thêm query nào).
+     * Bid history CHƯA được load ở đây — caller phải gọi loadBidHistory/loadBidHistoryBatch.
+     */
     private Optional<Auction> buildAuction(ResultSet rs) throws SQLException {
-        String id        = rs.getString("id");
-        String sellerId  = rs.getString("seller_id");
-        String itemId    = rs.getString("item_id");
-        String statusStr = rs.getString("status");
-        double highBid   = rs.getDouble("highest_bid");
-        String startStr  = rs.getString("start_time");
-        String endStr    = rs.getString("end_time");
-        String createdStr= rs.getString("created_at");
+        String id = rs.getString("a_id");
 
-        Optional<User> sellerOpt = userRepo.findById(sellerId);
-        if (sellerOpt.isEmpty() || !(sellerOpt.get() instanceof Seller seller)) return Optional.empty();
+        // ── Seller (từ JOIN, không cần query riêng) ──
+        Seller seller = new Seller(
+                rs.getString("s_id"),
+                LocalDateTime.parse(rs.getString("s_created_at")),
+                rs.getString("s_username"),
+                rs.getString("s_password"),
+                rs.getString("s_shop_name"),
+                rs.getDouble("s_rating"),
+                rs.getInt("s_cntvoted")
+        );
 
-        Optional<Item> itemOpt = itemRepo.findById(itemId, seller);
-        if (itemOpt.isEmpty()) return Optional.empty();
+        // ── Item (từ JOIN, không cần query riêng) ──
+        String category = rs.getString("i_category");
+        LocalDateTime itemCreatedAt = LocalDateTime.parse(rs.getString("i_created_at"));
+        String itemId = rs.getString("i_id");
+        String itemName = rs.getString("i_name");
+        String itemDesc = rs.getString("i_description");
+        double itemPrice = rs.getDouble("i_starting_price");
 
-        LocalDateTime startTime = startStr != null ? LocalDateTime.parse(startStr) : null;
-        LocalDateTime endTime   = LocalDateTime.parse(endStr);
-        LocalDateTime createdAt = LocalDateTime.parse(createdStr);
+        Item item = switch (category) {
+            case "Điện tử", "Electronics" -> new Electronics(
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
+                    rs.getInt("i_warranty_months"));
+            case "Nghệ thuật", "Art" -> new Art(
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
+                    rs.getString("i_artist_name"), rs.getInt("i_year_created"));
+            case "Xe cộ", "Vehicle" -> new Vehicle(
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
+                    rs.getDouble("i_mileage"), rs.getInt("i_year"));
+            default -> new Electronics(itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller, 0);
+        };
+        item.setImageUrl(rs.getString("i_image_url"));
 
+        // ── Auction status ──
+        String statusStr = rs.getString("a_status");
         AuctionStatus status;
         try {
             status = AuctionStatus.valueOf(statusStr);
@@ -175,18 +260,19 @@ public class JdbcAuctionRepository {
             };
         }
 
-        Auction auction = new Auction(id, createdAt, seller, itemOpt.get(), status, highBid, startTime, endTime);
+        String startStr = rs.getString("a_start_time");
+        LocalDateTime startTime   = startStr != null ? LocalDateTime.parse(startStr) : null;
+        LocalDateTime endTime     = LocalDateTime.parse(rs.getString("a_end_time"));
+        LocalDateTime createdAt   = LocalDateTime.parse(rs.getString("a_created_at"));
+        double highestBid         = rs.getDouble("a_highest_bid");
 
-        // ── BUG FIX: Load bid history from DB into the auction object ──────────
-        // Without this, getBidHistory() always returns empty (chart / count never updates).
-        loadBidHistory(auction, id);
-
-        return Optional.of(auction);
+        return Optional.of(new Auction(id, createdAt, seller, item, status, highestBid, startTime, endTime));
     }
 
+    // ─────────────────────────── Bid History ───────────────────────────
+
     /**
-     * Loads bid_transactions for the given auctionId and injects them into the auction.
-     * Uses a lightweight query that avoids re-fetching the full auction (no recursion).
+     * Load bid history cho 1 auction (2 queries total khi gọi findById).
      */
     private void loadBidHistory(Auction auction, String auctionId) {
         String sql = """
@@ -202,23 +288,81 @@ public class JdbcAuctionRepository {
             ps.setString(1, auctionId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String bidId   = rs.getString("id");
-                    double amount  = rs.getDouble("amount");
-                    LocalDateTime ts = LocalDateTime.parse(rs.getString("created_at"));
-                    // Reconstruct bidder inline (avoids recursive findById → buildAuction loop)
-                    Bidder bidder = new Bidder(
-                            rs.getString("bidder_id"),
-                            LocalDateTime.parse(rs.getString("user_created")),
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getDouble("balance")
-                    );
-                    // Inject directly into the auction's bid history
-                    auction.injectBid(new BidTransaction(bidId, ts, bidder, auction, amount));
+                    auction.injectBid(mapBid(rs, auction));
                 }
             }
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] loadBidHistory error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Batch load bid history cho nhiều auctions trong 1 query duy nhất.
+     * Thay vì N queries (1 cho mỗi auction), chỉ cần 1 query với IN clause.
+     * Đây là giải pháp chính cho vấn đề N+1 khi gọi findAll().
+     */
+    private void loadBidHistoryBatch(List<Auction> auctions) {
+        if (auctions.isEmpty()) return;
+
+        // Tạo map để lookup auction nhanh
+        Map<String, Auction> auctionMap = new HashMap<>();
+        for (Auction a : auctions) {
+            auctionMap.put(a.getId(), a);
+        }
+
+        // Tạo IN clause: (?, ?, ?, ...)
+        String placeholders = "?,".repeat(auctions.size());
+        placeholders = placeholders.substring(0, placeholders.length() - 1); // bỏ dấu , cuối
+
+        String sql = """
+            SELECT bt.id, bt.bidder_id, bt.auction_id, bt.amount, bt.created_at,
+                   u.username, u.password, u.balance, u.created_at AS user_created
+            FROM bid_transactions bt
+            JOIN users u ON bt.bidder_id = u.id
+            WHERE bt.auction_id IN (""" + placeholders + """
+            )
+            ORDER BY bt.auction_id, bt.created_at ASC
+            """;
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            // Bind tất cả auction ID
+            for (int i = 0; i < auctions.size(); i++) {
+                ps.setString(i + 1, auctions.get(i).getId());
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String auctionId = rs.getString("auction_id");
+                    Auction auction = auctionMap.get(auctionId);
+                    if (auction != null) {
+                        auction.injectBid(mapBid(rs, auction));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[AuctionRepo] loadBidHistoryBatch error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Map 1 row từ bid_transactions JOIN users thành BidTransaction.
+     */
+    private BidTransaction mapBid(ResultSet rs, Auction auction) throws SQLException {
+        Bidder bidder = new Bidder(
+                rs.getString("bidder_id"),
+                LocalDateTime.parse(rs.getString("user_created")),
+                rs.getString("username"),
+                rs.getString("password"),
+                rs.getDouble("balance")
+        );
+        return new BidTransaction(
+                rs.getString("id"),
+                LocalDateTime.parse(rs.getString("created_at")),
+                bidder,
+                auction,
+                rs.getDouble("amount")
+        );
     }
 }
