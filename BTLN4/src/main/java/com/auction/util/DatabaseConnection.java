@@ -1,60 +1,58 @@
 package com.auction.util;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- * DatabaseConnection – provides fresh SQLite connections per call.
- *
- * DESIGN NOTE: SQLite JDBC does not support multiple concurrent ResultSets
- * on a single shared Connection (causes "stmt pointer is closed" errors when
- * nested repository calls create new Statements while an outer ResultSet is
- * still open).  The solution is to open a new connection for every call to
- * getConnection() and let callers close it in their try-with-resources block.
- *
- * The one-time table-creation step is still guarded by a static flag so it
- * only runs once per JVM process, not on every query.
+ * DatabaseConnection – provides pooled database connections using HikariCP.
  */
 public class DatabaseConnection {
 
-    /**
-     * Resolves the database file path relative to where this class was loaded from.
-     *
-     * Why: the CWD differs between server (BTLN4/) and client (BTLN4(2)/) so a
-     * plain relative path "db.auction" produces TWO separate files on the same
-     * machine.  By anchoring to the class-file / JAR location every process in
-     * the same project tree uses the same physical file:
-     *
-     *   Dev (target/classes/)  → go up 2 dirs → BTLN4/db.auction
-     *   JAR (target/*.jar)     → go up 1 dir  → BTLN4/db.auction   (same!)
-     *   Distributed JAR        → next to the JAR (user's download dir)
-     */
     private static final String URL = computeUrl();
+    private static final HikariDataSource dataSource;
     private static volatile boolean tablesCreated = false;
 
-    private static String computeUrl() {
-        // Ensure drivers are loaded
-        try {
-            Class.forName("org.sqlite.JDBC");
-            Class.forName("org.postgresql.Driver");
-        } catch (ClassNotFoundException e) {
-            System.err.println("[DB] Warning: Driver not found: " + e.getMessage());
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(URL);
+        
+        // Performance & Pool settings
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setIdleTimeout(30000);
+        config.setConnectionTimeout(20000);
+        config.setMaxLifetime(1800000); // 30 minutes
+
+        if (URL.startsWith("jdbc:sqlite:")) {
+            // SQLite specific performance tweaks
+            config.addDataSourceProperty("foreign_keys", "true");
+            config.addDataSourceProperty("journal_mode", "WAL");
+            config.setConnectionInitSql("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;");
+            // SQLite is usually single-threaded access to the file anyway, so keep pool small
+            config.setMaximumPoolSize(5); 
+        } else if (URL.startsWith("jdbc:postgresql:")) {
+            config.addDataSourceProperty("cachePrepStmts", "true");
+            config.addDataSourceProperty("prepStmtCacheSize", "250");
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
         }
 
+        dataSource = new HikariDataSource(config);
+    }
+
+    private static String computeUrl() {
         // Priority 1: Environment variable (Render PostgreSQL)
-        // Format: jdbc:postgresql://hostname:port/dbname?user=username&password=password
         String envUrl = System.getenv("JDBC_DATABASE_URL");
         if (envUrl != null && !envUrl.isBlank()) {
-            System.out.println("[DB] Using PostgreSQL via environment variable.");
             return envUrl;
         }
 
         // Priority 2: System property (Custom SQLite path)
         String customPath = System.getProperty("database.path");
         if (customPath != null && !customPath.isBlank()) {
-            System.out.println("[DB] Using custom SQLite path: " + customPath);
             return "jdbc:sqlite:" + customPath;
         }
 
@@ -69,10 +67,8 @@ public class DatabaseConnection {
                 dbDir = codeFile.getParentFile();
             }
             String path = new java.io.File(dbDir, "db.auction").getAbsolutePath();
-            System.out.println("[DB] Falling back to local SQLite: " + path);
             return "jdbc:sqlite:" + path;
         } catch (Exception e) {
-            System.err.println("[DB] Cannot resolve location, using CWD SQLite");
             return "jdbc:sqlite:db.auction";
         }
     }
@@ -84,15 +80,7 @@ public class DatabaseConnection {
     private DatabaseConnection() {}
 
     public static Connection getConnection() throws SQLException {
-        Connection connection = DriverManager.getConnection(URL);
-
-        // Apply settings based on database type
-        if (URL.startsWith("jdbc:sqlite:")) {
-            try (Statement st = connection.createStatement()) {
-                st.execute("PRAGMA foreign_keys = ON");
-                st.execute("PRAGMA journal_mode = WAL");
-            }
-        }
+        Connection connection = dataSource.getConnection();
 
         // Create tables only once per JVM run
         if (!tablesCreated) {
