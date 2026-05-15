@@ -64,8 +64,6 @@
                             <GridPane hgap="12" vgap="8">
                                 <Label text="Tên cửa hàng:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
                                 <Label fx:id="shopNameLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                                <Label text="Đánh giá:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                                <Label fx:id="ratingLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
                                 <Label text="Phiên đã tạo:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                                 <Label fx:id="auctionCountLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
                             </GridPane>
@@ -79,13 +77,6 @@
                         <VBox styleClass="card" spacing="14">
                             <Label text="Chỉnh sửa thông tin" styleClass="section-title"/>
                             <Separator/>
-
-                            <VBox spacing="6">
-                                <Label text="Tên đăng nhập" styleClass="form-label"/>
-                                <TextField fx:id="usernameField" styleClass="text-field"
-                                           maxWidth="Infinity" editable="false"
-                                           style="-fx-background-color:#F8FAFC;"/>
-                            </VBox>
 
                             <!-- Seller only -->
                             <VBox fx:id="shopNameBox" spacing="6" visible="false" managed="false">
@@ -108,36 +99,6 @@
 
                             <Button text="💾 Lưu thay đổi" onAction="#handleSaveProfile"
                                     styleClass="btn-primary" maxWidth="Infinity"/>
-                        </VBox>
-
-                        <!-- Change password -->
-                        <VBox styleClass="card" spacing="14">
-                            <Label text="Đổi mật khẩu" styleClass="section-title"/>
-                            <Separator/>
-
-                            <VBox spacing="6">
-                                <Label text="Mật khẩu hiện tại" styleClass="form-label"/>
-                                <PasswordField fx:id="currentPasswordField" styleClass="password-field"
-                                               maxWidth="Infinity" promptText="Nhập mật khẩu hiện tại"/>
-                            </VBox>
-
-                            <VBox spacing="6">
-                                <Label text="Mật khẩu mới" styleClass="form-label"/>
-                                <PasswordField fx:id="newPasswordField" styleClass="password-field"
-                                               maxWidth="Infinity" promptText="Tối thiểu 6 ký tự"/>
-                            </VBox>
-
-                            <VBox spacing="6">
-                                <Label text="Xác nhận mật khẩu mới" styleClass="form-label"/>
-                                <PasswordField fx:id="confirmNewPasswordField" styleClass="password-field"
-                                               maxWidth="Infinity" promptText="Nhập lại mật khẩu mới"/>
-                            </VBox>
-
-                            <Label fx:id="pwErrorLabel"   text="" styleClass="label-error"   wrapText="true"/>
-                            <Label fx:id="pwSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
-
-                            <Button text="🔒 Đổi mật khẩu" onAction="#handleChangePassword"
-                                    styleClass="btn-secondary" maxWidth="Infinity"/>
                         </VBox>
 
                     </VBox>

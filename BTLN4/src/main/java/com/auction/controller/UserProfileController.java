@@ -36,10 +36,8 @@ public class UserProfileController {
 
     @FXML private VBox  sellerStatsBox;
     @FXML private Label shopNameLabel;
-    @FXML private Label ratingLabel;
     @FXML private Label auctionCountLabel;
 
-    @FXML private TextField  usernameField;
     @FXML private VBox       shopNameBox;
     @FXML private TextField  shopNameField;
     @FXML private VBox       balanceBox;
@@ -88,7 +86,6 @@ public class UserProfileController {
             if (bidderStatsBox != null) { bidderStatsBox.setVisible(true); bidderStatsBox.setManaged(true); }
             if (balanceBox != null)     { balanceBox.setVisible(true);     balanceBox.setManaged(true); }
             balanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
-            // Bid count — pull from all auctions (async, best-effort)
             loadBidCount(bidder);
 
         } else if (currentUser instanceof Seller seller) {
@@ -102,7 +99,6 @@ public class UserProfileController {
         }
     }
 
-    /** Async: count bids made by this bidder across all auctions. */
     private void loadBidCount(Bidder bidder) {
         if (totalBidsLabel == null) return;
         totalBidsLabel.setText("...");
@@ -119,7 +115,6 @@ public class UserProfileController {
         new Thread(task, "profile-bid-count").start();
     }
 
-    /** Async: count auctions belonging to this seller. */
     private void loadSellerAuctionCount(Seller seller) {
         if (auctionCountLabel == null) return;
         auctionCountLabel.setText("...");
@@ -194,39 +189,5 @@ public class UserProfileController {
         } catch (NumberFormatException e) {
             profileErrorLabel.setText("Số tiền không hợp lệ.");
         }
-    }
-
-    @FXML
-    private void handleChangePassword(ActionEvent event) {
-        pwErrorLabel.setText("");
-        pwSuccessLabel.setText("");
-        String current = currentPasswordField.getText();
-        String newPw   = newPasswordField.getText();
-        String confirm = confirmNewPasswordField.getText();
-
-        if (!current.equals(currentUser.getPassword())) {
-            pwErrorLabel.setText("Mật khẩu hiện tại không chính xác."); return;
-        }
-        if (newPw.length() < 6) {
-            pwErrorLabel.setText("Mật khẩu mới phải có ít nhất 6 ký tự."); return;
-        }
-        if (!newPw.equals(confirm)) {
-            pwErrorLabel.setText("Mật khẩu xác nhận không khớp."); return;
-        }
-
-        currentUser.setPassword(newPw);
-        Task<Void> task = new Task<>() {
-            @Override protected Void call() { app.saveUser(currentUser); return null; }
-        };
-        task.setOnSucceeded(e -> {
-            SessionManager.getInstance().setCurrentUser(currentUser);
-            currentPasswordField.clear();
-            newPasswordField.clear();
-            confirmNewPasswordField.clear();
-            pwSuccessLabel.setText("Mật khẩu đã được thay đổi thành công.");
-        });
-        task.setOnFailed(e -> Platform.runLater(() ->
-                pwErrorLabel.setText("Lỗi: " + task.getException().getMessage())));
-        new Thread(task, "change-password").start();
     }
 }
