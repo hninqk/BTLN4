@@ -70,8 +70,26 @@ public class UserProfileController {
         };
         depositField.setTextFormatter(new javafx.scene.control.TextFormatter<>(numericFilter));
 
-        if (currentUser != null)
+        if (currentUser != null) {
             populateProfile();
+            // Fetch fresh data from server to ensure balance is up-to-date
+            Task<java.util.Optional<User>> task = new Task<>() {
+                @Override
+                protected java.util.Optional<User> call() {
+                    return app.findUserById(currentUser.getId());
+                }
+            };
+            task.setOnSucceeded(e -> {
+                task.getValue().ifPresent(u -> {
+                    SessionManager.getInstance().setCurrentUser(u);
+                    currentUser = u;
+                    populateProfile();
+                });
+            });
+            Thread t = new Thread(task, "profile-refresh");
+            t.setDaemon(true);
+            t.start();
+        }
     }
 
     private void populateProfile() {

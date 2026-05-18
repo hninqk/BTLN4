@@ -46,6 +46,11 @@
                     <Label fx:id="totalSpentLabel" text="0 ₫" styleClass="stat-value"
                            style="-fx-font-size:20px; -fx-text-fill:#D97706;"/>
                 </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Số dư hiện tại" styleClass="stat-label"/>
+                    <Label fx:id="currentBalanceLabel" text="0 ₫" styleClass="stat-value"
+                           style="-fx-font-size:20px; -fx-text-fill:#10B981;"/>
+                </VBox>
             </HBox>
 
             <!-- Filter bar -->
