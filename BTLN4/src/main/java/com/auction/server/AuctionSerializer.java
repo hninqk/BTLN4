@@ -199,6 +199,9 @@ public final class AuctionSerializer {
                     String bName = b.get("bidderUsername").getAsString();
                     String bId   = b.get("bidderId").getAsString();
                     LocalDateTime ts = LocalDateTime.parse(b.get("time").getAsString());
+                    if (com.auction.util.ServerConfig.isRemote()) {
+                        ts = ts.plusHours(7);
+                    }
                     Bidder dummy = new Bidder(bId, ts, bName, "", 0);
                     a.injectBid(new BidTransaction(bidId, ts, dummy, a, amt));
                 }

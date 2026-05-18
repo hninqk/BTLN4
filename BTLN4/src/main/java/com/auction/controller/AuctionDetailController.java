@@ -237,19 +237,24 @@ public class AuctionDetailController implements DataReceiver {
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
+        LocalDateTime ts = LocalDateTime.parse(timeStr);
+        if (com.auction.util.ServerConfig.isRemote()) {
+            ts = ts.plusHours(7); // Convert UTC (Render) to Vietnam time (GMT+7)
+        }
+
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
             // Build a real bid entry for the UI
             Bidder dummy = new Bidder(bidderId, LocalDateTime.now(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.parse(timeStr),
+                    ts,
                     dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
 
         // Add to feed & chart immediately (don't wait for scheduler)
-        String timeDisplay = LocalDateTime.parse(timeStr).format(TIME_FMT);
+        String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
         addRawToChart(amount);
 
