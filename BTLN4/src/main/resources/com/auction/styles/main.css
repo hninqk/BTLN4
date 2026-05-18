@@ -98,18 +98,22 @@
     -fx-alignment: CENTER_LEFT;
 }
 
-.sidebar-title {
+.sidebar .label {
+    -fx-text-fill: #CBD5E1;
+}
+
+.sidebar .sidebar-title {
     -fx-text-fill: #FFFFFF;
     -fx-font-size: 16px;
     -fx-font-weight: bold;
 }
 
-.sidebar-subtitle {
+.sidebar .sidebar-subtitle {
     -fx-text-fill: #94A3B8;
     -fx-font-size: 11px;
 }
 
-.sidebar-section-label {
+.sidebar .sidebar-section-label {
     -fx-text-fill: #64748B;
     -fx-font-size: 10px;
     -fx-font-weight: bold;

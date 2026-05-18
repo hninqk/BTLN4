@@ -333,6 +333,13 @@ public class SellerManagementController {
         String category   = categoryCombo.getValue();
         String description= descriptionArea.getText().trim();
         String imageUrl   = itemImageField.getText().trim();
+        if (!imageUrl.isEmpty() && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://") && !imageUrl.startsWith("data:image/")) {
+            File file = new File(imageUrl);
+            if (file.exists()) {
+                imageUrl = com.auction.util.ImageLoaderUtil.convertFileToBase64AndResize(file);
+            }
+        }
+
         String priceStr   = startPriceField.getText().trim();
         LocalDate selDate = endDatePicker.getValue();
         String hour       = hourCombo.getValue();

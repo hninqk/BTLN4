@@ -6,6 +6,7 @@ module com.auction {
 
     requires java.net.http;
     requires java.sql;
+    requires java.desktop;
     requires io.javalin;
     requires com.google.gson;
     requires org.slf4j;
