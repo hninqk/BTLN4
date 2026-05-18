@@ -38,15 +38,49 @@ public class DashboardController {
     @FXML private Label totalUsersLabel;
     @FXML private Label openAuctionsLabel;
     @FXML private Label pendingAuctionsLabel;
+    @FXML private Label newsLabel;
 
     @FXML private HBox hotItemsBox;
 
     private final AppFacade app = AppFacade.getInstance();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+    private final String[] newsHeadlines = {
+        "Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!",
+        "Bảo mật tài khoản: Hãy cập nhật mật khẩu mạnh và kích hoạt xác thực hai yếu tố ngay.",
+        "Sự kiện đặc biệt: Đấu giá từ thiện ủng hộ quỹ bảo trợ trẻ em vào tối thứ 7 tuần này.",
+        "Phiên đấu giá tác phẩm điêu khắc cổ điển vừa thiết lập kỷ lục giá trị mới!",
+        "Hãy liên hệ bộ phận hỗ trợ trực tuyến nếu bạn gặp bất kỳ sự cố giao dịch nào."
+    };
+    private int currentNewsIndex = 0;
+    private javafx.animation.Timeline newsTimeline;
+
     @FXML
     public void initialize() {
         loadData();
+        startNewsTicker();
+    }
+
+    private void startNewsTicker() {
+        if (newsLabel == null) return;
+        newsTimeline = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(Duration.seconds(5), event -> {
+                javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(Duration.millis(300), newsLabel);
+                fadeOut.setFromValue(1.0);
+                fadeOut.setToValue(0.0);
+                fadeOut.setOnFinished(e -> {
+                    currentNewsIndex = (currentNewsIndex + 1) % newsHeadlines.length;
+                    newsLabel.setText(newsHeadlines[currentNewsIndex]);
+                    javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(Duration.millis(300), newsLabel);
+                    fadeIn.setFromValue(0.0);
+                    fadeIn.setToValue(1.0);
+                    fadeIn.play();
+                });
+                fadeOut.play();
+            })
+        );
+        newsTimeline.setCycleCount(javafx.animation.Timeline.INDEFINITE);
+        newsTimeline.play();
     }
 
     /**
@@ -171,5 +205,11 @@ public class DashboardController {
         });
 
         return card;
+    }
+
+    public void cleanup() {
+        if (newsTimeline != null) {
+            newsTimeline.stop();
+        }
     }
 }

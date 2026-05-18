@@ -38,9 +38,9 @@
             </HBox>
 
             <!-- News Banner -->
-            <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: #EFF6FF; -fx-padding: 14 20; -fx-background-radius: 8; -fx-border-color: #BFDBFE; -fx-border-radius: 8;">
-                <Label text="📢 TIN NÓNG:" style="-fx-text-fill: #1D4ED8; -fx-font-weight: bold;"/>
-                <Label text="Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!" style="-fx-text-fill: #1E3A8A;"/>
+            <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: -theme-bid-panel; -fx-padding: 14 20; -fx-background-radius: 8; -fx-border-color: -theme-bid-border; -fx-border-radius: 8;">
+                <Label text="📢 TIN NÓNG:" style="-fx-text-fill: -theme-primary; -fx-font-weight: bold;"/>
+                <Label fx:id="newsLabel" text="Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!" style="-fx-text-fill: -theme-text;"/>
             </HBox>
 
             <!-- Stat cards row -->

@@ -14,6 +14,22 @@
     -theme-text-muted: #64748B;
     -theme-border: #E2E8F0;
     -theme-primary: #2563EB;
+    
+    /* Table Glassmorphism (Light Mode) */
+    -theme-table-row: rgba(255, 255, 255, 0.5);
+    -theme-table-row-odd: rgba(248, 250, 252, 0.55);
+    -theme-table-text: #1E293B;
+    -theme-table-row-selected: rgba(219, 234, 254, 0.85);
+    -theme-table-row-hover: rgba(239, 246, 255, 0.7);
+    
+    /* Bid Panel Glassmorphism */
+    -theme-bid-panel: #EFF6FF;
+    -theme-bid-border: #BFDBFE;
+    
+    /* Success Card / Winner Banner Theme (Light Mode) */
+    -theme-success-bg: #F0FDF4;
+    -theme-success-border: #86EFAC;
+    -theme-success-text: #15803D;
 }
 
 .dark-mode {
@@ -23,6 +39,22 @@
     -theme-text-muted: #94A3B8;
     -theme-border: #334155;
     -theme-primary: #3B82F6;
+    
+    /* Table Glassmorphism (Dark Mode) */
+    -theme-table-row: rgba(30, 41, 59, 0.5);
+    -theme-table-row-odd: rgba(15, 23, 42, 0.55);
+    -theme-table-text: #F8FAFC;
+    -theme-table-row-selected: rgba(59, 130, 246, 0.5);
+    -theme-table-row-hover: rgba(30, 41, 59, 0.75);
+    
+    /* Bid Panel Glassmorphism */
+    -theme-bid-panel: rgba(59, 130, 246, 0.15);
+    -theme-bid-border: rgba(59, 130, 246, 0.3);
+    
+    /* Success Card / Winner Banner Theme (Dark Mode) */
+    -theme-success-bg: rgba(22, 163, 74, 0.15);
+    -theme-success-border: rgba(22, 163, 74, 0.3);
+    -theme-success-text: #4ADE80;
 }
 
 /* ---------- Colors (via style classes) ---------- */
@@ -128,15 +160,19 @@
 .topbar-title {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .topbar-user {
-    -fx-text-fill: #64748B;
+    -fx-text-fill: -theme-text-muted;
     -fx-font-size: 13px;
 }
 
 /* ---------- Typography ---------- */
+.label {
+    -fx-text-fill: -theme-text;
+}
+
 .page-title {
     -fx-font-size: 24px;
     -fx-font-weight: bold;
@@ -185,19 +221,19 @@
 }
 
 .btn-secondary {
-    -fx-background-color: #FFFFFF;
-    -fx-text-fill: #374151;
+    -fx-background-color: -theme-surface;
+    -fx-text-fill: -theme-text;
     -fx-font-size: 13px;
     -fx-padding: 9 20 9 20;
     -fx-background-radius: 6;
-    -fx-border-color: #D1D5DB;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-cursor: hand;
 }
 
 .btn-secondary:hover {
-    -fx-background-color: #F9FAFB;
+    -fx-background-color: -theme-bg;
 }
 
 .btn-danger {
@@ -247,7 +283,7 @@
 
 .btn-link {
     -fx-background-color: transparent;
-    -fx-text-fill: #2563EB;
+    -fx-text-fill: -theme-primary;
     -fx-font-size: 13px;
     -fx-cursor: hand;
     -fx-border-width: 0;
@@ -263,29 +299,28 @@
 .form-label {
     -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-text-fill: #374151;
+    -fx-text-fill: -theme-text;
 }
 
 .text-field,
 .password-field,
 .text-area,
 .combo-box {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #D1D5DB;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-padding: 8 12 8 12;
     -fx-font-size: 13px;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .text-field:focused,
 .password-field:focused,
 .text-area:focused,
 .combo-box:focused {
-    -fx-border-color: #2563EB;
-    /* -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.2), 4, 0, 0, 0); */
+    -fx-border-color: -theme-primary;
 }
 
 .text-area {
@@ -312,7 +347,7 @@
 }
 
 .table-view .column-header-background {
-    -fx-background-color: linear-gradient(to right, #1E293B, #0F172A);
+    -fx-background-color: linear-gradient(to right, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.85));
     -fx-background-radius: 12 12 0 0;
 }
 
@@ -330,28 +365,28 @@
 }
 
 .table-view .table-row-cell {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: transparent transparent #F1F5F9 transparent;
+    -fx-background-color: -theme-table-row;
+    -fx-border-color: transparent transparent -theme-border transparent;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 0;
     -fx-cell-size: 48px;
 }
 
 .table-view .table-row-cell:odd {
-    -fx-background-color: #F8FAFC;
+    -fx-background-color: -theme-table-row-odd;
 }
 
 .table-view .table-row-cell:selected {
-    -fx-background-color: #DBEAFE;
-    -fx-text-fill: #1E293B;
+    -fx-background-color: -theme-table-row-selected;
+    -fx-text-fill: -theme-table-text;
 }
 
 .table-view .table-row-cell:hover {
-    -fx-background-color: #EFF6FF;
+    -fx-background-color: -theme-table-row-hover;
 }
 
 .table-view .table-cell {
-    -fx-text-fill: #374151;
+    -fx-text-fill: -theme-table-text;
     -fx-font-size: 13px;
     -fx-padding: 0 16 0 16;
     -fx-alignment: CENTER_LEFT;
@@ -381,8 +416,8 @@
 }
 
 .badge-closed {
-    -fx-background-color: #F3F4F6;
-    -fx-text-fill: #6B7280;
+    -fx-background-color: -theme-border;
+    -fx-text-fill: -theme-text-muted;
 }
 
 .badge-canceled {
@@ -392,24 +427,23 @@
 
 /* ---------- Stat Cards (Dashboard) ---------- */
 .stat-card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 20;
-    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2); */
 }
 
 .stat-value {
     -fx-font-size: 28px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .stat-label {
     -fx-font-size: 13px;
-    -fx-text-fill: #64748B;
+    -fx-text-fill: -theme-text-muted;
 }
 
 /* ---------- Login / Auth Screens ---------- */
@@ -442,8 +476,8 @@
 
 /* ---------- Bid Panel ---------- */
 .bid-panel {
-    -fx-background-color: #EFF6FF;
-    -fx-border-color: #BFDBFE;
+    -fx-background-color: -theme-bid-panel;
+    -fx-border-color: -theme-bid-border;
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
@@ -453,7 +487,7 @@
 .bid-current-price {
     -fx-font-size: 32px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1D4ED8;
+    -fx-text-fill: -theme-primary;
 }
 
 .bid-timer {
@@ -464,7 +498,7 @@
 
 /* ---------- Separator ---------- */
 .separator {
-    -fx-border-color: #E2E8F0;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1 0 0 0;
 }
 
@@ -480,8 +514,8 @@
 
 /* ---------- ListBox / Panels ---------- */
 .list-view {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
@@ -490,7 +524,7 @@
 /* ---------- Combo Box ---------- */
 .combo-box .list-cell {
     -fx-padding: 6 12 6 12;
-    -fx-text-fill: #374151;
+    -fx-text-fill: -theme-text;
 }
 
 /* ---------- Progress Bar ---------- */
@@ -500,7 +534,7 @@
 }
 
 .progress-bar .track {
-    -fx-background-color: #E2E8F0;
+    -fx-background-color: -theme-border;
     -fx-background-radius: 4;
 }
 
@@ -512,24 +546,22 @@
 
 /* ---------- Auction Item Card ---------- */
 .auction-card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 16;
     -fx-cursor: hand;
-    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 2); */
 }
 
 .auction-card:hover {
-    -fx-border-color: #BFDBFE;
-    /* -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.12), 10, 0, 0, 3); */
+    -fx-border-color: -theme-primary;
 }
 
 /* ---------- Divider line ---------- */
 .h-separator {
-    -fx-border-color: #E2E8F0;
+    -fx-border-color: -theme-border;
     -fx-border-width: 0 0 1 0;
     -fx-min-height: 1;
     -fx-pref-height: 1;

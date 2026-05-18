@@ -31,7 +31,7 @@
                                    style="-fx-font-size:52px;"/>
                             <VBox alignment="CENTER" spacing="4">
                                 <Label fx:id="displayNameLabel" text="..."
-                                       style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:#1E293B;"/>
+                                       style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
                                 <Label fx:id="roleLabel" text="..."
                                        styleClass="badge badge-open"/>
                             </VBox>
@@ -51,7 +51,7 @@
                                 <VBox HBox.hgrow="ALWAYS" alignment="CENTER" styleClass="stat-card" spacing="6">
                                     <Label text="Lượt đặt giá" styleClass="stat-label"/>
                                     <Label fx:id="totalBidsLabel" text="0"
-                                           style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:#1E293B;"/>
+                                           style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
                                 </VBox>
                             </HBox>
                         </VBox>

@@ -82,7 +82,7 @@
                             <Label text="Mô tả sản phẩm" styleClass="section-title"/>
                             <Separator/>
                             <Label fx:id="descriptionLabel" text="" wrapText="true"
-                                   style="-fx-text-fill: #374151; -fx-font-size: 13px;"/>
+                                   style="-fx-text-fill: -theme-text; -fx-font-size: 13px;"/>
                         </VBox>
 
                         <!-- Category-specific info -->
@@ -130,7 +130,7 @@
                                        styleClass="text-field"/>
                             <Label fx:id="minBidHint" text="Tối thiểu: --" styleClass="label-subtle"/>
                             <Label fx:id="balanceLabel" text="" styleClass="label-subtle"
-                                   style="-fx-text-fill: #059669; -fx-font-weight: bold;"/>
+                                   style="-fx-text-fill: -theme-success-text; -fx-font-weight: bold;"/>
                             <Label fx:id="bidErrorLabel" text="" styleClass="label-error" wrapText="true"/>
                             <Button fx:id="placeBidButton" text="🔨 Đặt giá ngay"
                                     onAction="#handlePlaceBid"
@@ -139,13 +139,13 @@
 
                         <!-- Winner box (shown after CLOSED) -->
                         <VBox fx:id="winnerBox" styleClass="card" spacing="8"
-                              style="-fx-background-color:#F0FDF4; -fx-border-color:#86EFAC;"
+                              style="-fx-background-color: -theme-success-bg; -fx-border-color: -theme-success-border;"
                               visible="false" managed="false">
                             <Label text="🏆 Người thắng cuộc" styleClass="section-title"
-                                   style="-fx-text-fill:#15803D;"/>
+                                   style="-fx-text-fill: -theme-success-text;"/>
                             <Label fx:id="winnerLabel"      text="" styleClass="label-subtle"/>
                             <Label fx:id="winnerPriceLabel" text=""
-                                   style="-fx-font-weight:bold; -fx-text-fill:#15803D;"/>
+                                   style="-fx-font-weight:bold; -fx-text-fill: -theme-success-text;"/>
                         </VBox>
 
                         <!-- Live bid feed (merged from LiveBidding) -->
