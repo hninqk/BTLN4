@@ -13,6 +13,16 @@ import javafx.scene.control.*;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import javafx.animation.ScaleTransition;
+import javafx.geometry.Pos;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
+import javafx.scene.Cursor;
+import javafx.scene.layout.Priority;
+import javafx.application.Platform;
+import javafx.util.Duration;
+import com.auction.util.ImageLoaderUtil;
 
 /**
  * DashboardController – system overview.
@@ -29,30 +39,14 @@ public class DashboardController {
     @FXML private Label openAuctionsLabel;
     @FXML private Label pendingAuctionsLabel;
 
-    @FXML private TableView<Auction>           recentAuctionsTable;
-    @FXML private TableColumn<Auction, String> colTitle;
-    @FXML private TableColumn<Auction, String> colSeller;
-    @FXML private TableColumn<Auction, String> colStatus;
-    @FXML private TableColumn<Auction, String> colPrice;
-    @FXML private TableColumn<Auction, String> colEndTime;
+    @FXML private HBox hotItemsBox;
 
     private final AppFacade app = AppFacade.getInstance();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @FXML
     public void initialize() {
-        setupTableColumns();
         loadData();
-    }
-
-    private void setupTableColumns() {
-        colTitle.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getName()));
-        colSeller.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getSeller().getUsername()));
-        colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatusDisplay()));
-        colPrice.setCellValueFactory(c -> new SimpleStringProperty(
-                String.format("%,.0f ₫", c.getValue().getHighestBid())));
-        colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
-                c.getValue().getEndTime().format(FMT)));
     }
 
     /**
@@ -97,8 +91,17 @@ public class DashboardController {
                 openAuctionsLabel.setText(String.valueOf(open));
                 if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText(String.valueOf(pending));
 
-                List<Auction> recent = all.subList(0, Math.min(all.size(), 10));
-                recentAuctionsTable.setItems(FXCollections.observableArrayList(recent));
+                List<Auction> recent = all.stream()
+                        .filter(a -> a.getStatus() == AuctionStatus.OPEN || a.getStatus() == AuctionStatus.RUNNING)
+                        .sorted((a1, a2) -> Integer.compare(a2.getBidHistory().size(), a1.getBidHistory().size()))
+                        .limit(5).toList();
+                
+                Platform.runLater(() -> {
+                    hotItemsBox.getChildren().clear();
+                    for (Auction a : recent) {
+                        hotItemsBox.getChildren().add(createHotItemCard(a));
+                    }
+                });
             }
 
             @Override
@@ -119,5 +122,54 @@ public class DashboardController {
             NavigationManager.getInstance().navigateTo(
                     NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
         } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    private VBox createHotItemCard(Auction auction) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("card");
+        card.setStyle("-fx-background-radius: 16; -fx-border-radius: 16; -fx-min-width: 240; -fx-pref-width: 240; -fx-alignment: center;");
+        card.setCursor(Cursor.HAND);
+
+        ImageView iv = new ImageView();
+        iv.setFitWidth(200);
+        iv.setFitHeight(120);
+        iv.setPreserveRatio(true);
+        javafx.concurrent.Task<javafx.scene.image.Image> imgTask = new javafx.concurrent.Task<>() {
+            @Override protected javafx.scene.image.Image call() {
+                return ImageLoaderUtil.loadItemImage(auction.getItem().getImageUrl(), 200, 120);
+            }
+            @Override protected void succeeded() { iv.setImage(getValue()); }
+        };
+        Thread t = new Thread(imgTask);
+        t.setDaemon(true);
+        t.start();
+
+        Label title = new Label(auction.getItem().getName());
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: -theme-text;");
+
+        Label price = new Label(String.format("Giá: %,.0f ₫", auction.getHighestBid()));
+        price.setStyle("-fx-text-fill: #16A34A; -fx-font-weight: bold; -fx-font-size: 14px;");
+
+        Label status = new Label(auction.getStatusDisplay());
+        status.getStyleClass().addAll("badge", auction.getStatus() == AuctionStatus.RUNNING ? "badge-running" : "badge-open");
+
+        card.getChildren().addAll(iv, title, price, status);
+
+        // Hover scale animation
+        ScaleTransition scaleUp = new ScaleTransition(Duration.millis(200), card);
+        scaleUp.setToX(1.05); scaleUp.setToY(1.05);
+        ScaleTransition scaleDown = new ScaleTransition(Duration.millis(200), card);
+        scaleDown.setToX(1.0); scaleDown.setToY(1.0);
+
+        card.setOnMouseEntered(e -> scaleUp.playFromStart());
+        card.setOnMouseExited(e -> scaleDown.playFromStart());
+        
+        card.setOnMouseClicked(e -> {
+            try {
+                NavigationManager.getInstance().navigateTo(NavigationManager.AUCTION_DETAIL, "Chi tiết", auction);
+            } catch (IOException ex) { ex.printStackTrace(); }
+        });
+
+        return card;
     }
 }

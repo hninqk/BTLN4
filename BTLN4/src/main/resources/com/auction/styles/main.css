@@ -8,6 +8,21 @@
     -fx-font-family: "Segoe UI", "Arial", sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: #F5F6FA;
+    -theme-bg: #F5F6FA;
+    -theme-surface: #FFFFFF;
+    -theme-text: #1E293B;
+    -theme-text-muted: #64748B;
+    -theme-border: #E2E8F0;
+    -theme-primary: #2563EB;
+}
+
+.dark-mode {
+    -theme-bg: #0F172A;
+    -theme-surface: #1E293B;
+    -theme-text: #F8FAFC;
+    -theme-text-muted: #94A3B8;
+    -theme-border: #334155;
+    -theme-primary: #3B82F6;
 }
 
 /* ---------- Colors (via style classes) ---------- */
@@ -15,26 +30,26 @@
 
 /* ---------- Base Containers ---------- */
 .main-container {
-    -fx-background-color: #F5F6FA;
+    -fx-background-color: -theme-bg;
 }
 
 .card {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2); */
-    -fx-padding: 20;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 10, 0, 0, 4);
+    -fx-padding: 24;
 }
 
 .card-no-padding {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 8, 0, 0, 2); */
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.04), 10, 0, 0, 4);
 }
 
 /* ---------- Sidebar Navigation ---------- */
@@ -74,27 +89,30 @@
     -fx-text-fill: #CBD5E1;
     -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
-    -fx-padding: 10 16 10 16;
+    -fx-padding: 12 16 12 20;
     -fx-cursor: hand;
-    -fx-border-width: 0;
+    -fx-border-width: 0 0 0 4;
+    -fx-border-color: transparent;
     -fx-background-radius: 0;
     -fx-min-width: 220;
     -fx-pref-width: 220;
 }
 
 .nav-button:hover {
-    -fx-background-color: #334155;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
     -fx-text-fill: #FFFFFF;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
 }
 
 .nav-button-active {
-    -fx-background-color: #2563EB;
+    -fx-background-color: rgba(37, 99, 235, 0.1);
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
+    -fx-border-color: #3B82F6;
 }
 
 .nav-button-active:hover {
-    -fx-background-color: #1D4ED8;
+    -fx-background-color: rgba(37, 99, 235, 0.2);
 }
 
 /* ---------- Top Bar ---------- */
@@ -120,19 +138,19 @@
 
 /* ---------- Typography ---------- */
 .page-title {
-    -fx-font-size: 22px;
+    -fx-font-size: 24px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .section-title {
     -fx-font-size: 16px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .label-subtle {
-    -fx-text-fill: #64748B;
+    -fx-text-fill: -theme-text-muted;
     -fx-font-size: 12px;
 }
 
@@ -274,48 +292,68 @@
     -fx-pref-row-count: 4;
 }
 
-/* ---------- TableView ---------- */
-.table-view {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
-    -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
+/* ---------- Aesthetic Geometric Backgrounds ---------- */
+.geo-shape-1 {
+    -fx-fill: linear-gradient(to bottom right, rgba(37,99,235,0.06), rgba(124,58,237,0.06));
+}
+.geo-shape-2 {
+    -fx-fill: linear-gradient(to top left, rgba(59,130,246,0.06), rgba(16,185,129,0.06));
+}
+.geo-shape-3 {
+    -fx-fill: linear-gradient(to right, rgba(236,72,153,0.05), rgba(239,68,68,0.05));
 }
 
-.table-view .column-header {
-    -fx-background-color: #F8FAFC;
-    -fx-border-color: #E2E8F0;
-    -fx-border-width: 0 0 1 0;
+/* ---------- TableView ---------- */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 6);
+}
+
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to right, #1E293B, #0F172A);
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
 }
 
 .table-view .column-header .label {
     -fx-font-weight: bold;
-    -fx-text-fill: #374151;
-    -fx-font-size: 12px;
-    -fx-padding: 12 12 12 12;
+    -fx-text-fill: #F8FAFC;
+    -fx-font-size: 13px;
+    -fx-padding: 16 12;
 }
 
 .table-view .table-row-cell {
+    -fx-background-color: #FFFFFF;
     -fx-border-color: transparent transparent #F1F5F9 transparent;
     -fx-border-width: 0 0 1 0;
     -fx-padding: 0;
-    -fx-cell-size: 40px;
+    -fx-cell-size: 48px;
+}
+
+.table-view .table-row-cell:odd {
+    -fx-background-color: #F8FAFC;
 }
 
 .table-view .table-row-cell:selected {
-    -fx-background-color: #EFF6FF;
+    -fx-background-color: #DBEAFE;
     -fx-text-fill: #1E293B;
 }
 
 .table-view .table-row-cell:hover {
-    -fx-background-color: #F8FAFC;
+    -fx-background-color: #EFF6FF;
 }
 
 .table-view .table-cell {
     -fx-text-fill: #374151;
     -fx-font-size: 13px;
-    -fx-padding: 0 12 0 12;
+    -fx-padding: 0 16 0 16;
     -fx-alignment: CENTER_LEFT;
 }
 
@@ -376,19 +414,19 @@
 
 /* ---------- Login / Auth Screens ---------- */
 .auth-container {
-    -fx-background-color: #F5F6FA;
+    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0, #cbd5e1);
 }
 
 .auth-card {
-    -fx-background-color: #FFFFFF;
+    -fx-background-color: rgba(255, 255, 255, 0.95);
     -fx-border-color: #E2E8F0;
     -fx-border-width: 1;
-    -fx-border-radius: 12;
-    -fx-background-radius: 12;
-    -fx-padding: 40;
-    /* -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 16, 0, 0, 4); */
-    -fx-pref-width: 400;
-    -fx-max-width: 400;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 48 40;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 30, 0, 0, 10);
+    -fx-pref-width: 420;
+    -fx-max-width: 420;
 }
 
 .auth-title {
@@ -468,8 +506,8 @@
 
 /* ---------- Content Area ---------- */
 .content-area {
-    -fx-background-color: #F5F6FA;
-    -fx-padding: 24;
+    -fx-background-color: -theme-bg;
+    -fx-padding: 32;
 }
 
 /* ---------- Auction Item Card ---------- */

@@ -64,6 +64,9 @@ public class RestApiHandler {
         });
         app.options("/*", ctx -> ctx.status(204));  // CORS pre-flight
 
+        // Health check
+        app.get("/api/health", ctx -> ctx.status(200).result("OK"));
+
         // ── Auth ──────────────────────────────────────────────────────────────
         app.post("/api/login",    this::handleLogin);
         app.post("/api/register", this::handleRegister);

@@ -24,7 +24,7 @@ public class Main extends Application {
         stage.setMinWidth(900);
         stage.setMinHeight(600);
 
-        nav.navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
+        nav.navigateTo(NavigationManager.SPLASH, "Đang tải...", null);
 
         stage.centerOnScreen();
         stage.show();

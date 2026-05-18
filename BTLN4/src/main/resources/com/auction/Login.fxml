@@ -3,19 +3,24 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.*?>
 
 <StackPane xmlns:fx="http://javafx.com/fxml/1"
            xmlns="http://javafx.com/javafx/21"
            fx:controller="com.auction.controller.LoginController"
            styleClass="auth-container"
-           stylesheets="@styles/main.css">
+           stylesheets="@styles/main.css"
+           style="-fx-padding: 0;">
 
-    <VBox alignment="CENTER" spacing="0" maxWidth="420"
-          styleClass="auth-card">
+    <VBox alignment="CENTER" spacing="0" prefWidth="420" prefHeight="500"
+          styleClass="auth-card" style="-fx-margin: 0; -fx-background-radius: 0;">
 
-        <!-- Header -->
-        <VBox alignment="CENTER" spacing="6">
+        <!-- Header & Branding -->
+        <VBox alignment="CENTER" spacing="12">
+            <!-- Gavel Vector Icon -->
+            <SVGPath content="M14 2L2 14M5 5l5 5M9 9l8-8 4 4-8 8M17 17l5 5" stroke="#3B82F6" strokeWidth="3" fill="transparent" scaleX="1.5" scaleY="1.5"/>
+            <Region prefHeight="8"/>
             <Label text="Đấu Giá Trực Tuyến" styleClass="auth-title"/>
             <Label text="Đăng nhập để tiếp tục" styleClass="auth-subtitle"/>
         </VBox>

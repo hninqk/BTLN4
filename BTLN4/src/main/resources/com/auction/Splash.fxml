@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.auction.controller.SplashController"
+           style="-fx-background-color: #0F172A;" prefWidth="900" prefHeight="600">
+    <VBox alignment="CENTER" spacing="30">
+        <!-- Abstract / Geometric Logo -->
+        <HBox fx:id="loadingBox" alignment="CENTER" spacing="12">
+            <Rectangle fx:id="sq1" width="24" height="24" fill="#3B82F6" arcWidth="8" arcHeight="8"/>
+            <Rectangle fx:id="sq2" width="24" height="24" fill="#60A5FA" arcWidth="8" arcHeight="8"/>
+            <Rectangle fx:id="sq3" width="24" height="24" fill="#93C5FD" arcWidth="8" arcHeight="8"/>
+        </HBox>
+        <VBox alignment="CENTER" spacing="8">
+            <Label text="AUCTIONSYS" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 32px; -fx-letter-spacing: 6px;"/>
+            <Label text="PREMIUM BIDDING PLATFORM" style="-fx-text-fill: #94A3B8; -fx-font-size: 14px; -fx-letter-spacing: 2px;"/>
+        </VBox>
+        <Label fx:id="lblStatus" text="Đang kết nối tới máy chủ..." style="-fx-text-fill: #3B82F6; -fx-font-size: 14px;"/>
+    </VBox>
+</StackPane>

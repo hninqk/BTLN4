@@ -17,7 +17,15 @@
     </left>
 
     <center>
-        <ScrollPane fitToWidth="true" styleClass="scroll-pane">
+        <StackPane pickOnBounds="false">
+            <!-- Aesthetic Geometric Background -->
+            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+            </Pane>
+            
+            <ScrollPane fitToWidth="true" styleClass="scroll-pane" style="-fx-background-color: transparent;">
             <VBox styleClass="content-area" spacing="16" fillWidth="true">
 
                 <!-- ── Header ──────────────────────────────────────────── -->
@@ -153,7 +161,8 @@
 
             </VBox>
 
-        </ScrollPane>
+            </ScrollPane>
+        </StackPane>
     </center>
 
 </BorderPane>

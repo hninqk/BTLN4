@@ -25,6 +25,16 @@
                 </VBox>
             </HBox>
 
+            <!-- Main Actions Dashboard -->
+            <VBox styleClass="card" spacing="12">
+                <Label text="⚡ Thao tác nhanh (Main Actions)" styleClass="section-title"/>
+                <HBox spacing="16">
+                    <Button text="✅ Duyệt sản phẩm chờ" onAction="#handleQuickApprove" styleClass="btn-primary" style="-fx-padding: 12 24;"/>
+                    <Button text="▶ Bắt đầu phiên đấu giá" onAction="#handleQuickStart" styleClass="btn-success" style="-fx-padding: 12 24;"/>
+                    <Button text="📊 Xem thống kê" onAction="#handleRefreshStats" styleClass="btn-secondary" style="-fx-padding: 12 24;"/>
+                </HBox>
+            </VBox>
+
             <!-- Tabs -->
             <TabPane fx:id="adminTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
 

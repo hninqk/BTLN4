@@ -98,42 +98,69 @@ public class BidHistoryController {
             return;
         }
 
-        allRows = new ArrayList<>();
-        long won = 0, active = 0;
-        double totalSpent = 0;
+        statusLabel.setText("Đang tải dữ liệu từ server...");
 
-        for (Auction auction : app.getAllAuctions()) {
-            Optional<BidTransaction> myLatest = auction.getBidHistory().stream()
-                    .filter(b -> b.getBidder().getId().equals(bidder.getId()))
-                    .reduce((first, second) -> second);
-            if (myLatest.isEmpty())
-                continue;
+        javafx.concurrent.Task<List<BidRow>> fetchTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected List<BidRow> call() throws Exception {
+                List<BidRow> rows = new ArrayList<>();
+                // Since getAllAuctions only returns a shallow list (no bids),
+                // we must fetch the detailed versions to find the bidder's history.
+                List<Auction> shallowAuctions = app.getAllAuctions();
+                for (Auction shallow : shallowAuctions) {
+                    Auction full = app.findAuctionById(shallow.getId()).orElse(null);
+                    if (full == null) continue;
 
-            BidTransaction myBid = myLatest.get();
-            String result;
-            AuctionStatus status = auction.getStatus();
-            if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN || status == AuctionStatus.PENDING) {
-                result = "Đang tham gia";
-                active++;
-            } else {
-                BidTransaction winner = auction.getWinner();
-                if (winner != null && winner.getBidder().getId().equals(bidder.getId())) {
-                    result = "🏆 Thắng";
+                    Optional<BidTransaction> myLatest = full.getBidHistory().stream()
+                            .filter(b -> b.getBidder().getId().equals(bidder.getId()))
+                            .reduce((first, second) -> second);
+                            
+                    if (myLatest.isEmpty()) continue;
+
+                    BidTransaction myBid = myLatest.get();
+                    String result;
+                    AuctionStatus status = full.getStatus();
+                    if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN || status == AuctionStatus.PENDING) {
+                        result = "Đang tham gia";
+                    } else {
+                        BidTransaction winner = full.getWinner();
+                        if (winner != null && winner.getBidder().getId().equals(bidder.getId())) {
+                            result = "🏆 Thắng";
+                        } else {
+                            result = "Thua";
+                        }
+                    }
+                    rows.add(new BidRow(full, myBid, result));
+                }
+                return rows;
+            }
+        };
+
+        fetchTask.setOnSucceeded(e -> {
+            allRows = fetchTask.getValue();
+            long won = 0, active = 0;
+            double totalSpent = 0;
+
+            for (BidRow r : allRows) {
+                if (r.result().contains("Thắng")) {
                     won++;
-                    totalSpent += myBid.getAmount();
-                } else {
-                    result = "Thua";
+                    totalSpent += r.myBid().getAmount();
+                } else if (r.result().equals("Đang tham gia")) {
+                    active++;
                 }
             }
-            allRows.add(new BidRow(auction, myBid, result));
-        }
 
-        totalBidsLabel.setText(String.valueOf(allRows.size()));
-        wonAuctionsLabel.setText(String.valueOf(won));
-        activeParticipationsLabel.setText(String.valueOf(active));
-        totalSpentLabel.setText(String.format("%,.0f ₫", totalSpent));
-        historyTable.setItems(FXCollections.observableArrayList(allRows));
-        statusLabel.setText("Tổng: " + allRows.size() + " lượt tham gia");
+            totalBidsLabel.setText(String.valueOf(allRows.size()));
+            wonAuctionsLabel.setText(String.valueOf(won));
+            activeParticipationsLabel.setText(String.valueOf(active));
+            totalSpentLabel.setText(String.format("%,.0f ₫", totalSpent));
+            historyTable.setItems(FXCollections.observableArrayList(allRows));
+            statusLabel.setText("Tổng: " + allRows.size() + " lượt tham gia");
+        });
+
+        Thread th = new Thread(fetchTask);
+        th.setDaemon(true);
+        th.start();
     }
 
     @FXML
