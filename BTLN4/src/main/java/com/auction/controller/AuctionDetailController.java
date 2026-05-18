@@ -274,6 +274,8 @@ public class AuctionDetailController implements DataReceiver {
         double highestBid   = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
         String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
 
+        AuctionStatus previousStatus = currentAuction != null ? currentAuction.getStatus() : null;
+
         if (currentAuction != null) {
             // Patch in-memory object directly from WS data.
             // DO NOT reload from local DB — local DB is stale on remote machines.
@@ -292,6 +294,13 @@ public class AuctionDetailController implements DataReceiver {
 
         refreshLivePanel();
         System.out.println("[AuctionDetail] Status → " + newStatusStr);
+
+        // Hiển thị thông báo người chiến thắng khi phiên CLOSED
+        if ("CLOSED".equals(newStatusStr) && !AuctionStatus.CLOSED.equals(previousStatus)) {
+            String winnerUsername = json.has("winnerUsername") ? json.get("winnerUsername").getAsString() : null;
+            double winnerBid      = json.has("winnerBid")      ? json.get("winnerBid").getAsDouble()      : -1;
+            showWinnerAnnouncement(winnerUsername, winnerBid);
+        }
     }
 
     /** Server tells this client its bidder's balance was updated (after auction finish). */
@@ -519,7 +528,8 @@ public class AuctionDetailController implements DataReceiver {
 
         // Bid button & balance
         User user = SessionManager.getInstance().getCurrentUser();
-        boolean canBid = status == AuctionStatus.RUNNING && user instanceof Bidder && wsConnected;
+        boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
+        boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
         if (balanceLabel != null) {
@@ -619,5 +629,25 @@ public class AuctionDetailController implements DataReceiver {
             NavigationManager.getInstance().navigateTo(
                     NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
         } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    /**
+     * Hiển thị thông báo người chiến thắng khi phiên đấu giá kết thúc.
+     * Gọi trên FX thread (từ Platform.runLater trong handleWsMessage).
+     */
+    private void showWinnerAnnouncement(String winnerUsername, double winnerBid) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("🏆 Phiên đấu giá kết thúc");
+        alert.setHeaderText("Phiên đấu giá: " + (currentAuction != null
+                ? currentAuction.getItem().getName() : ""));
+        if (winnerUsername != null && winnerBid > 0) {
+            alert.setContentText(String.format(
+                    "🎉 Người chiến thắng: %s%n💰 Giá chốt: %,.0f ₫%n%nSố dư của người thắng đã được trừ tự động.",
+                    winnerUsername, winnerBid));
+        } else {
+            alert.setContentText("Phiên đấu giá đã kết thúc.\nKhông có ai đặt giá trong phiên này.");
+        }
+        alert.showAndWait();
     }
 }

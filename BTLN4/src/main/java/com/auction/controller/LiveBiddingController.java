@@ -283,7 +283,8 @@ public class LiveBiddingController implements DataReceiver {
         refreshDisplay();
 
         User user = SessionManager.getInstance().getCurrentUser();
-        boolean canBid = currentAuction.getStatus() == AuctionStatus.RUNNING && user instanceof Bidder;
+        boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
+        boolean canBid = currentAuction.getStatus() == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder;
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
     }
@@ -324,6 +325,8 @@ public class LiveBiddingController implements DataReceiver {
         if (remaining.isNegative()) {
             liveTimerLabel.setText("Đã kết thúc");
             shutdownTimers();
+            placeBidButton.setDisable(true);
+            bidAmountField.setDisable(true);
         } else {
             liveTimerLabel.setText(String.format("%02d:%02d:%02d",
                     remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart()));

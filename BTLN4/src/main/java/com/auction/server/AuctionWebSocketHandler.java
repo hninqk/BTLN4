@@ -16,6 +16,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * AuctionWebSocketHandler – full message-based protocol.
@@ -43,9 +46,88 @@ public class AuctionWebSocketHandler {
     // All currently connected clients
     private final Set<WsContext> sessions = ConcurrentHashMap.newKeySet();
 
+    // Scheduler for auto-finishing expired auctions
+    private final ScheduledExecutorService autoFinishScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "AutoFinish-Scheduler");
+        t.setDaemon(true);
+        return t;
+    });
+
     public AuctionWebSocketHandler(AuctionService auctionService) {
         this.auctionService = auctionService;
         this.userService = UserService.getInstance();
+        startAutoFinishScheduler();
+    }
+
+    /**
+     * Chạy mỗi 30 giây: tự động kết thúc các phiên RUNNING đã hết giờ.
+     * Đây là cơ chế đảm bảo tiền được trừ ngay khi auction hết giờ,
+     * thay vì phải chờ Admin bấm nút "Kết thúc".
+     */
+    private void startAutoFinishScheduler() {
+        autoFinishScheduler.scheduleAtFixedRate(() -> {
+            try {
+                List<Auction> all = auctionService.getAllAuctions();
+                LocalDateTime now = LocalDateTime.now();
+                for (Auction a : all) {
+                    if (a.getStatus() == AuctionStatus.RUNNING
+                            && a.getEndTime() != null
+                            && now.isAfter(a.getEndTime())) {
+                        try {
+                            BidTransaction preWinner = a.getWinner();
+                            auctionService.finishAuction(a);
+                            broadcastFinishResult(a, preWinner);
+                            System.out.printf("[AutoFinish] Auto-closed auction %s%n", a.getId());
+                        } catch (Exception e) {
+                            System.err.printf("[AutoFinish] Failed to finish auction %s: %s%n",
+                                    a.getId(), e.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[AutoFinish] Scheduler error: " + e.getMessage());
+            }
+        }, 30, 30, TimeUnit.SECONDS);
+        System.out.println("[Server] Auto-finish scheduler started (every 30s).");
+    }
+
+    /**
+     * Phát sóng kết quả khi 1 auction kết thúc (cả auto-finish và admin-finish).
+     * Gửi: BALANCE_UPDATE tới winner + AUCTION_STATUS_CHANGED kèm thông tin winner.
+     */
+    private void broadcastFinishResult(Auction auction, BidTransaction preWinner) {
+        // 1. Gửi BALANCE_UPDATE nếu có winner
+        if (preWinner != null) {
+            String winnerId = preWinner.getBidder().getId();
+            userService.findById(winnerId)
+                    .filter(u -> u instanceof Bidder)
+                    .map(u -> (Bidder) u)
+                    .ifPresent(winner -> {
+                        JsonObject balUpdate = new JsonObject();
+                        balUpdate.addProperty("type",       "BALANCE_UPDATE");
+                        balUpdate.addProperty("bidderId",   winner.getId());
+                        balUpdate.addProperty("newBalance", winner.getAccountBalance());
+                        broadcastAll(balUpdate.toString());
+                        System.out.printf("[Server] BALANCE_UPDATE bidder=%s newBalance=%.0f%n",
+                                winner.getUsername(), winner.getAccountBalance());
+                    });
+        }
+
+        // 2. Gửi AUCTION_STATUS_CHANGED kèm thông tin winner
+        Auction fresh = auctionService.findById(auction.getId()).orElse(auction);
+        JsonObject broadcast = new JsonObject();
+        broadcast.addProperty("type",       "AUCTION_STATUS_CHANGED");
+        broadcast.addProperty("auctionId",  fresh.getId());
+        broadcast.addProperty("newStatus",  fresh.getStatus().name());
+        broadcast.addProperty("highestBid", fresh.getHighestBid());
+        broadcast.addProperty("startTime",  fresh.getStartTime() != null
+                ? fresh.getStartTime().toString() : "");
+        // Thêm thông tin người thắng cuộc
+        if (preWinner != null) {
+            broadcast.addProperty("winnerUsername", preWinner.getBidder().getUsername());
+            broadcast.addProperty("winnerBid",      preWinner.getAmount());
+        }
+        broadcastAll(broadcast.toString());
     }
 
     // =========================================================================
@@ -213,26 +295,14 @@ public class AuctionWebSocketHandler {
                 case "approve" -> auctionService.approveAuction(auction);
                 case "start"   -> auctionService.startAuction(auction);
                 case "finish"  -> {
-                    // finishAuction charges winner → we must broadcast BALANCE_UPDATE
-                    BidTransaction preWinner = auction.getWinner(); // before finish
+                    BidTransaction preWinner = auction.getWinner();
                     auctionService.finishAuction(auction);
-
-                    // Reload winner from DB to get updated balance
-                    if (preWinner != null) {
-                        String winnerId = preWinner.getBidder().getId();
-                        userService.findById(winnerId)
-                                .filter(u -> u instanceof Bidder)
-                                .map(u -> (Bidder) u)
-                                .ifPresent(winner -> {
-                                    JsonObject balUpdate = new JsonObject();
-                                    balUpdate.addProperty("type",       "BALANCE_UPDATE");
-                                    balUpdate.addProperty("bidderId",   winner.getId());
-                                    balUpdate.addProperty("newBalance", winner.getAccountBalance());
-                                    broadcastAll(balUpdate.toString());
-                                    System.out.printf("[Server] BALANCE_UPDATE  bidder=%s  newBalance=%.0f%n",
-                                            winner.getUsername(), winner.getAccountBalance());
-                                });
-                    }
+                    broadcastFinishResult(auction, preWinner);
+                    // broadcastFinishResult đã gửi BALANCE_UPDATE + AUCTION_STATUS_CHANGED
+                    // → return sớm để tránh broadcast trùng bên dưới
+                    System.out.printf("[Server] AUCTION_STATUS_CHANGED id=%s action=finish status=CLOSED%n",
+                            auctionId);
+                    return;
                 }
                 case "cancel"  -> auctionService.cancelAuction(auction);
                 default        -> throw new Exception("Unknown admin action: " + action);
@@ -241,7 +311,7 @@ public class AuctionWebSocketHandler {
             // Reload fresh auction state from DB after the operation
             Auction fresh = auctionService.findById(auctionId).orElse(auction);
 
-            // ── Broadcast AUCTION_STATUS_CHANGED to ALL ──
+            // ── Broadcast AUCTION_STATUS_CHANGED to ALL (approve/start/cancel) ──
             JsonObject broadcast = new JsonObject();
             broadcast.addProperty("type",        "AUCTION_STATUS_CHANGED");
             broadcast.addProperty("auctionId",   fresh.getId());

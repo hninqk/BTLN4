@@ -51,11 +51,12 @@ public class AuctionService {
         return auctionRepo.findAll();
     }
 
-    /** Only OPEN + RUNNING — visible to public bidders. */
+    /** OPEN + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see finished results). */
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
                 .filter(a -> a.getStatus() == AuctionStatus.OPEN
-                        || a.getStatus() == AuctionStatus.RUNNING)
+                        || a.getStatus() == AuctionStatus.RUNNING
+                        || a.getStatus() == AuctionStatus.CLOSED)
                 .toList();
     }
 
