@@ -117,11 +117,34 @@ public class AuctionDetailController implements DataReceiver {
         if (data instanceof Auction a) {
             this.auctionId      = a.getId();
             this.currentAuction = a;
+
+            // 1. Show basic info immediately
             populateStaticView();
-            preloadBidsIntoChartAndFeed();
             refreshLivePanel();
-            connectWebSocket();   // WS handles everything; REQUEST_SYNC on open
-            startTimerScheduler(); // 1-second countdown only (no DB polling)
+
+            // 2. Fetch full details (including bids) in background
+            javafx.concurrent.Task<java.util.Optional<Auction>> task = new javafx.concurrent.Task<>() {
+                @Override protected java.util.Optional<Auction> call() {
+                    return com.auction.service.AppFacade.getInstance().findAuctionById(auctionId);
+                }
+            };
+
+            task.setOnSucceeded(e -> {
+                task.getValue().ifPresent(full -> {
+                    this.currentAuction = full;
+                    preloadBidsIntoChartAndFeed();
+                    refreshLivePanel();
+                    connectWebSocket(); // Only connect WS after we have baseline bids
+                });
+            });
+
+            task.setOnFailed(e -> {
+                System.err.println("[AuctionDetail] Failed to fetch full details: " + task.getException().getMessage());
+                connectWebSocket(); // Fallback: connect anyway
+            });
+
+            new Thread(task, "fetch-full-auction").start();
+            startTimerScheduler(); 
         }
     }
 

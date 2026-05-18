@@ -185,7 +185,7 @@ public class AuctionWebSocketHandler {
             Auction auction = auctionService.createAuction(seller, item, endTime);
 
             // ── Broadcast AUCTION_CREATED to ALL clients ──
-            JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction);
+            JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction, false);
             broadcastAll(broadcast.toString());
 
             System.out.printf("[Server] AUCTION_CREATED  id=%s  item=%s  seller=%s%n",
@@ -271,7 +271,7 @@ public class AuctionWebSocketHandler {
             List<Auction> all = auctionService.getAllAuctions();
             JsonArray arr = new JsonArray();
             for (Auction a : all) {
-                arr.add(AuctionSerializer.auctionToJson(a));
+                arr.add(AuctionSerializer.auctionToJson(a, false));
             }
             JsonObject resp = new JsonObject();
             resp.addProperty("type", "FULL_SYNC");

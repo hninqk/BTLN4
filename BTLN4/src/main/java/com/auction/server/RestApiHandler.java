@@ -143,7 +143,7 @@ public class RestApiHandler {
                     : auctionService.getAllAuctions();
 
             JsonArray arr = new JsonArray();
-            for (Auction a : auctions) arr.add(AuctionSerializer.auctionToJson(a));
+            for (Auction a : auctions) arr.add(AuctionSerializer.auctionToJson(a, false));
             ctx.status(200).contentType("application/json").result(arr.toString());
         } catch (Exception e) {
             ctx.status(500).contentType("application/json").result(errorJson("Failed to load auctions: " + e.getMessage()));
@@ -155,7 +155,7 @@ public class RestApiHandler {
             String id = ctx.pathParam("id");
             auctionService.findById(id)
                     .ifPresentOrElse(
-                            a -> ctx.status(200).contentType("application/json").result(AuctionSerializer.auctionToJson(a).toString()),
+                            a -> ctx.status(200).contentType("application/json").result(AuctionSerializer.auctionToJson(a, true).toString()),
                             () -> ctx.status(404).contentType("application/json").result("{\"error\":\"Auction not found.\"}"));
         } catch (Exception e) {
             ctx.status(500).contentType("application/json").result(errorJson(e.getMessage()));
@@ -185,7 +185,7 @@ public class RestApiHandler {
             item.setImageUrl(imageUrl);
 
             Auction auction = auctionService.createAuction(seller, item, endTime);
-            ctx.status(201).contentType("application/json").result(AuctionSerializer.auctionToJson(auction).toString());
+            ctx.status(201).contentType("application/json").result(AuctionSerializer.auctionToJson(auction, true).toString());
         } catch (Exception e) {
             ctx.status(400).contentType("application/json").result(errorJson("Create auction failed: " + e.getMessage()));
         }
@@ -209,7 +209,7 @@ public class RestApiHandler {
             }
 
             Auction fresh = auctionService.findById(auctionId).orElse(auction);
-            ctx.status(200).contentType("application/json").result(AuctionSerializer.auctionToJson(fresh).toString());
+            ctx.status(200).contentType("application/json").result(AuctionSerializer.auctionToJson(fresh, true).toString());
         } catch (Exception e) {
             ctx.status(400).contentType("application/json").result(errorJson("Admin action failed: " + e.getMessage()));
         }
@@ -319,7 +319,7 @@ public class RestApiHandler {
 
             JsonArray arr = new JsonArray();
             for (Auction a : auctionService.getAuctionsBySeller(seller)) {
-                arr.add(AuctionSerializer.auctionToJson(a));
+                arr.add(AuctionSerializer.auctionToJson(a, false));
             }
             ctx.status(200).contentType("application/json").result(arr.toString());
         } catch (Exception e) {

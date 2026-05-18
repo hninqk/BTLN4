@@ -9,6 +9,7 @@ module com.auction {
     requires io.javalin;
     requires com.google.gson;
     requires org.slf4j;
+    requires com.zaxxer.hikari;
 
     // Open model to JavaFX property binding and Gson
     opens com.auction.model to javafx.base, javafx.fxml, com.google.gson;

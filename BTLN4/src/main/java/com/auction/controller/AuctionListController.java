@@ -14,7 +14,6 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -86,13 +85,25 @@ public class AuctionListController {
             private final ImageView iv = new ImageView();
             {
                 iv.setFitWidth(64); iv.setFitHeight(44); iv.setPreserveRatio(true);
-                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
             }
             @Override protected void updateItem(String url, boolean empty) {
                 super.updateItem(url, empty);
-                if (empty) { setGraphic(null); return; }
-                iv.setImage(ImageLoaderUtil.loadItemImage(url, 64, 44));
+                if (empty || url == null) { setGraphic(null); return; }
                 setGraphic(iv);
+                // Load ảnh trên background thread để không block FX thread khi scroll
+                javafx.concurrent.Task<javafx.scene.image.Image> imgTask =
+                        new javafx.concurrent.Task<>() {
+                    @Override protected javafx.scene.image.Image call() {
+                        return ImageLoaderUtil.loadItemImage(url, 64, 44);
+                    }
+                    @Override protected void succeeded() {
+                        iv.setImage(getValue());
+                    }
+                };
+                Thread t = new Thread(imgTask, "img-load");
+                t.setDaemon(true);
+                t.start();
             }
         });
         colName.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getName()));

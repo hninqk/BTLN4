@@ -30,7 +30,7 @@ public final class AuctionSerializer {
      * broadcasts. The optional {@code type} field is included when non-empty
      * (e.g. "AUCTION_CREATED"), omitted for pure REST responses.
      */
-    public static JsonObject auctionToJson(String type, Auction a) {
+    public static JsonObject auctionToJson(String type, Auction a, boolean includeBids) {
         JsonObject o = new JsonObject();
         if (type != null && !type.isEmpty()) o.addProperty("type", type);
         o.addProperty("auctionId",        a.getId());
@@ -49,23 +49,30 @@ public final class AuctionSerializer {
                 ? a.getStartTime().toString() : "");
         o.addProperty("endTime",          a.getEndTime().toString());
 
-        JsonArray bids = new JsonArray();
-        for (BidTransaction bt : a.getBidHistory()) {
-            JsonObject bid = new JsonObject();
-            bid.addProperty("bidId",          bt.getId());
-            bid.addProperty("bidderId",       bt.getBidder().getId());
-            bid.addProperty("bidderUsername", bt.getBidder().getUsername());
-            bid.addProperty("amount",         bt.getAmount());
-            bid.addProperty("time",           bt.getTimestamp().toString());
-            bids.add(bid);
+        if (includeBids) {
+            JsonArray bids = new JsonArray();
+            for (BidTransaction bt : a.getBidHistory()) {
+                JsonObject bid = new JsonObject();
+                bid.addProperty("bidId",          bt.getId());
+                bid.addProperty("bidderId",       bt.getBidder().getId());
+                bid.addProperty("bidderUsername", bt.getBidder().getUsername());
+                bid.addProperty("amount",         bt.getAmount());
+                bid.addProperty("time",           bt.getTimestamp().toString());
+                bids.add(bid);
+            }
+            o.add("bidHistory", bids);
         }
-        o.add("bidHistory", bids);
         return o;
     }
 
     /** Convenience overload with no type field (for REST responses). */
+    public static JsonObject auctionToJson(Auction a, boolean includeBids) {
+        return auctionToJson(null, a, includeBids);
+    }
+
+    /** Legacy overload: includes bids by default. */
     public static JsonObject auctionToJson(Auction a) {
-        return auctionToJson(null, a);
+        return auctionToJson(null, a, true);
     }
 
     // ── User → JsonObject ─────────────────────────────────────────────────────
