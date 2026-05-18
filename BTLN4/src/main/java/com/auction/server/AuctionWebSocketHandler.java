@@ -212,7 +212,8 @@ public class AuctionWebSocketHandler {
             // Server balance is authoritative — never overwrite with client-reported value
 
             // ── Process bid (validates, saves, updates highest_bid in DB) ──
-            auctionService.placeBid(auction, bidder, amount);
+            // Returns the created BidTransaction with the exact server-assigned timestamp
+            BidTransaction createdBid = auctionService.placeBid(auction, bidder, amount);
 
             // ── Broadcast BID_UPDATE to ALL clients ──
             JsonObject broadcast = new JsonObject();
@@ -221,7 +222,8 @@ public class AuctionWebSocketHandler {
             broadcast.addProperty("amount",         amount);
             broadcast.addProperty("bidderId",       bidder.getId());
             broadcast.addProperty("bidderUsername", bidder.getUsername());
-            broadcast.addProperty("time",           LocalDateTime.now().toString());
+            // Use the exact timestamp from the created bid — NOT LocalDateTime.now() at broadcast time
+            broadcast.addProperty("time",           createdBid.getTimestamp().toString());
             broadcastAll(broadcast.toString());
 
             System.out.printf("[Server] BID_UPDATE  auction=%s  bidder=%s  amount=%.0f%n",

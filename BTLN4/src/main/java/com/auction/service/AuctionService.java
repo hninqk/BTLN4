@@ -115,22 +115,28 @@ public class AuctionService {
         // Charge the winner
         BidTransaction winner = auction.getWinner();
         if (winner != null) {
-            Bidder winnerBidder = winner.getBidder();
+            String winnerId = winner.getBidder().getId();
+            // Always load fresh bidder from DB — the in-memory object may have stale/zero balance
+            // if the winner connected from a remote machine
+            Bidder winnerBidder = (Bidder) userRepo.findById(winnerId)
+                    .filter(u -> u instanceof Bidder)
+                    .orElse(winner.getBidder());
             boolean charged = winnerBidder.deductBalance(winner.getAmount());
             if (charged) {
                 userRepo.update(winnerBidder);
-                // Refresh session if the winner is currently logged in
+                // Refresh session if the winner is currently logged in on this machine
                 var sessionUser = SessionManager.getInstance().getCurrentUser();
                 if (sessionUser != null && sessionUser.getId().equals(winnerBidder.getId())) {
                     SessionManager.getInstance().setCurrentUser(winnerBidder);
                 }
-                System.out.printf("[AuctionService] Winner %s charged %,.0f ₫%n",
-                        winnerBidder.getUsername(), winner.getAmount());
+                System.out.printf("[AuctionService] Winner %s charged %,.0f ₫ | new balance: %,.0f ₫%n",
+                        winnerBidder.getUsername(), winner.getAmount(), winnerBidder.getAccountBalance());
             } else {
-                System.err.printf("[AuctionService] WARNING: winner %s has insufficient balance%n",
-                        winnerBidder.getUsername());
+                System.err.printf("[AuctionService] WARNING: winner %s has insufficient balance (%.0f < %.0f)%n",
+                        winnerBidder.getUsername(), winnerBidder.getAccountBalance(), winner.getAmount());
             }
         }
+
     }
 
     /** Admin or Seller: cancel any non-closed auction. No money movement. */
@@ -151,7 +157,7 @@ public class AuctionService {
      * 3. Bidder must have enough balance to cover the bid IF they win.
      * (Balance is NOT deducted here — only charged at finishAuction.)
      */
-    public void placeBid(Auction auction, Bidder bidder, double amount)
+    public BidTransaction placeBid(Auction auction, Bidder bidder, double amount)
             throws InvalidBidException, InvalidStatusException {
 
         // Solvency check — must be able to afford the bid if they end up winning
@@ -168,14 +174,16 @@ public class AuctionService {
                 auction,
                 amount);
 
-        // Throws InvalidBidException if amount ≤ highest, InvalidStatusException if not
-        // RUNNING
+        // Throws InvalidBidException if amount ≤ highest, InvalidStatusException if not RUNNING
         auction.placeBid(bid);
 
         // Persist bid + updated highest price. Balance is NOT touched.
         bidRepo.save(bid);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
+
+        // Return the created bid so callers (e.g. WS handler) can use the exact timestamp
+        return bid;
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────

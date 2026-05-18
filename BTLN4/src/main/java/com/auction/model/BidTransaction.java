@@ -9,11 +9,12 @@ public class BidTransaction extends Entity {
     private LocalDateTime timestamp;
 
     public BidTransaction(String id, LocalDateTime createdAt, Bidder bidder, Auction auction, double amount) {
-        super(id, createdAt); 
+        super(id, createdAt);
         this.bidder = bidder;
         this.auction = auction;
         this.amount = amount;
-        this.timestamp = LocalDateTime.now();
+        // Use createdAt as the canonical timestamp so restored bids (from DB/JSON) keep their original time
+        this.timestamp = (createdAt != null) ? createdAt : LocalDateTime.now();
     }
 
     public Bidder getBidder() {

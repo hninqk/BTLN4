@@ -10,8 +10,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -82,11 +80,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label winnerLabel;
     @FXML private Label winnerPriceLabel;
 
-    // ── Bid history table ─────────────────────────────────────────────────────
-    @FXML private TableView<BidTransaction>           bidHistoryTable;
-    @FXML private TableColumn<BidTransaction, String> colBidder;
-    @FXML private TableColumn<BidTransaction, String> colAmount;
-    @FXML private TableColumn<BidTransaction, String> colBidTime;
 
     // ── Internal state ────────────────────────────────────────────────────────
     private String  auctionId;
@@ -151,7 +144,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML
     public void initialize() {
         bidErrorLabel.setText("");
-        setupBidHistoryColumns();
         setupChart();
 
         UnaryOperator<TextFormatter.Change> numericFilter = change ->
@@ -413,14 +405,6 @@ public class AuctionDetailController implements DataReceiver {
     // Setup
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void setupBidHistoryColumns() {
-        colBidder.setCellValueFactory(c ->
-                new SimpleStringProperty(c.getValue().getBidder().getUsername()));
-        colAmount.setCellValueFactory(c ->
-                new SimpleStringProperty(String.format("%,.0f ₫", c.getValue().getAmount())));
-        colBidTime.setCellValueFactory(c ->
-                new SimpleStringProperty(c.getValue().getTimestamp().format(FMT_SEC)));
-    }
 
     private void setupChart() {
         priceSeries = new XYChart.Series<>();
@@ -458,8 +442,6 @@ public class AuctionDetailController implements DataReceiver {
             addBidToFeed(bid);
         }
         knownBidCount = history.size();
-        // Populate bảng lịch sử ngay lập tức từ dữ liệu REST, không chờ WebSocket
-        bidHistoryTable.setItems(FXCollections.observableArrayList(history));
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -509,10 +491,6 @@ public class AuctionDetailController implements DataReceiver {
             }
             knownBidCount = history.size();
         }
-
-        // Bid history table
-        bidHistoryTable.setItems(FXCollections.observableArrayList(
-                currentAuction.getBidHistory()));
 
         // Winner box
         if (status == AuctionStatus.CLOSED) {

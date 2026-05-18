@@ -151,26 +151,8 @@
                     </VBox>
                 </HBox>
 
-                <!-- ── Full-width bid history table ────────────────────── -->
-                <VBox styleClass="card-no-padding" spacing="0">
-                    <HBox style="-fx-padding: 14 20 10 20;">
-                        <Label text="Lịch sử đặt giá" styleClass="section-title"/>
-                    </HBox>
-                    <Separator/>
-                    <TableView fx:id="bidHistoryTable" prefHeight="200"
-                               style="-fx-border-width:0; -fx-background-color:transparent;">
-                        <columns>
-                            <TableColumn fx:id="colBidder"  text="Người đấu giá"  prefWidth="200"/>
-                            <TableColumn fx:id="colAmount"  text="Số tiền"        prefWidth="170"/>
-                            <TableColumn fx:id="colBidTime" text="Thời gian"      prefWidth="220"/>
-                        </columns>
-                        <placeholder>
-                            <Label text="Chưa có lượt đặt giá nào." styleClass="label-subtle"/>
-                        </placeholder>
-                    </TableView>
-                </VBox>
-
             </VBox>
+
         </ScrollPane>
     </center>
 

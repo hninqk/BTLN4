@@ -4,6 +4,8 @@ import com.auction.model.*;
 import com.auction.service.AppFacade;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import com.auction.client.AuctionClient;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
@@ -44,6 +46,7 @@ public class BidHistoryController {
 
     private final AppFacade app = AppFacade.getInstance();
     private List<BidRow> allRows;
+    private AuctionClient wsClient;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     public record BidRow(Auction auction, BidTransaction myBid, String result) {}
@@ -54,6 +57,7 @@ public class BidHistoryController {
         resultFilter.getSelectionModel().selectFirst();
         setupTableColumns();
         loadHistory();
+        connectWebSocket();
     }
 
     private void setupTableColumns() {
@@ -145,4 +149,39 @@ public class BidHistoryController {
                     NavigationManager.AUCTION_DETAIL, "Chi tiết đấu giá", auction);
         } catch (IOException e) { e.printStackTrace(); }
     }
+
+    // ── WebSocket Live Updates ────────────────────────────────────────────────
+
+    private void connectWebSocket() {
+        wsClient = new AuctionClient();
+        Thread t = new Thread(() -> {
+            wsClient.connect(
+                    msg -> Platform.runLater(() -> handleWsMessage(msg)),
+                    err -> System.err.println("[BidHistory] WS Error: " + err)
+            );
+        }, "BidHistory-WS");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void handleWsMessage(String msg) {
+        try {
+            com.google.gson.JsonObject json = new com.google.gson.Gson().fromJson(msg, com.google.gson.JsonObject.class);
+            if (!json.has("type")) return;
+            
+            String type = json.get("type").getAsString();
+            if (type.equals("BID_UPDATE") || type.equals("AUCTION_STATUS_CHANGED") || type.equals("FULL_SYNC")) {
+                loadHistory(); // Reload from server
+            }
+        } catch (Exception e) {
+            System.err.println("[BidHistory] WS parse error: " + e.getMessage());
+        }
+    }
+
+    public void cleanup() {
+        if (wsClient != null) {
+            wsClient.disconnect();
+        }
+    }
 }
+
