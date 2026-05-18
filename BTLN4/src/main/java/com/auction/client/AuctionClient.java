@@ -60,6 +60,7 @@ public class AuctionClient {
 
                         @Override
                         public void onOpen(WebSocket webSocket) {
+                            ws = webSocket;
                             connected = true;
                             System.out.println("[AuctionClient] Connected to server.");
                             webSocket.request(1);

@@ -69,7 +69,8 @@ public class BidHistoryController {
     private void loadHistory() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) {
-            statusLabel.setText("Chỉ Bidder mới có lịch sử đấu giá."); return;
+            statusLabel.setText("Chỉ Bidder mới có lịch sử đấu giá."); 
+            return;
         }
 
         allRows = new ArrayList<>();

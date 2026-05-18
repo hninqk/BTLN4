@@ -420,11 +420,14 @@ public class AuctionDetailController implements DataReceiver {
     private void preloadBidsIntoChartAndFeed() {
         if (currentAuction == null) return;
         List<BidTransaction> history = currentAuction.getBidHistory();
+        System.out.println("[AuctionDetail] REST data: " + history.size() + " bids for auction " + currentAuction.getId());
         for (BidTransaction bid : history) {
             addBidToChart(bid);
             addBidToFeed(bid);
         }
         knownBidCount = history.size();
+        // Populate bảng lịch sử ngay lập tức từ dữ liệu REST, không chờ WebSocket
+        bidHistoryTable.setItems(FXCollections.observableArrayList(history));
     }
 
     // ──────────────────────────────────────────────────────────────────────────

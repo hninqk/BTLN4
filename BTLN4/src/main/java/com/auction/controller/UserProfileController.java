@@ -61,7 +61,6 @@ public class UserProfileController {
         displayNameLabel.setText(currentUser.getUsername());
         roleLabel.setText(currentUser.getRole());
         memberSinceLabel.setText("Thành viên từ: " + currentUser.getCreatedAt().toLocalDate());
-        usernameField.setText(currentUser.getUsername());
 
         if (bidderStatsBox != null) { bidderStatsBox.setVisible(false); bidderStatsBox.setManaged(false); }
         if (sellerStatsBox != null) { sellerStatsBox.setVisible(false); sellerStatsBox.setManaged(false); }
@@ -78,8 +77,6 @@ public class UserProfileController {
             if (sellerStatsBox != null) { sellerStatsBox.setVisible(true); sellerStatsBox.setManaged(true); }
             if (shopNameBox != null)    { shopNameBox.setVisible(true);    shopNameBox.setManaged(true); }
             shopNameLabel.setText(seller.getShopName());
-            ratingLabel.setText(seller.getCntvoted() == 0 ? "Chưa có đánh giá"
-                    : String.format("%.1f / 5.0 (%d đánh giá)", seller.getRating(), seller.getCntvoted()));
             shopNameField.setText(seller.getShopName());
             loadSellerAuctionCount(seller);
         }
