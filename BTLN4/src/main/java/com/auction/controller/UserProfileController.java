@@ -148,10 +148,16 @@ public class UserProfileController {
         Task<Long> task = new Task<>() {
             @Override
             protected Long call() {
-                return app.getAllAuctions().stream()
-                        .flatMap(a -> a.getBidHistory().stream())
-                        .filter(b -> b.getBidder().getId().equals(bidder.getId()))
-                        .count();
+                long count = 0;
+                for (Auction shallow : app.getAllAuctions()) {
+                    Auction full = app.findAuctionById(shallow.getId()).orElse(null);
+                    if (full != null) {
+                        count += full.getBidHistory().stream()
+                                .filter(b -> b.getBidder().getId().equals(bidder.getId()))
+                                .count();
+                    }
+                }
+                return count;
             }
         };
         task.setOnSucceeded(e -> totalBidsLabel.setText(String.valueOf(task.getValue())));

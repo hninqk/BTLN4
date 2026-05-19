@@ -18,9 +18,6 @@
 
         <!-- Header & Branding -->
         <VBox alignment="CENTER" spacing="12">
-            <!-- Gavel Vector Icon -->
-            <SVGPath content="M14 2L2 14M5 5l5 5M9 9l8-8 4 4-8 8M17 17l5 5" stroke="#3B82F6" strokeWidth="3" fill="transparent" scaleX="1.5" scaleY="1.5"/>
-            <Region prefHeight="8"/>
             <Label text="Đấu Giá Trực Tuyến" styleClass="auth-title"/>
             <Label text="Đăng nhập để tiếp tục" styleClass="auth-subtitle"/>
         </VBox>

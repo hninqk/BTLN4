@@ -531,6 +531,31 @@
     -fx-text-fill: -theme-text;
 }
 
+/* ---------- Combo Box Dropdown (Popup) ---------- */
+.combo-box-popup .list-view {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -theme-text;
+    -fx-padding: 6 12 6 12;
+}
+
+.combo-box-popup .list-cell:filled:hover {
+    -fx-background-color: -theme-table-row-hover;
+}
+
+.combo-box-popup .list-cell:filled:selected,
+.combo-box-popup .list-cell:filled:selected:hover {
+    -fx-background-color: -theme-primary;
+    -fx-text-fill: #FFFFFF;
+}
+
 /* ---------- Progress Bar ---------- */
 .progress-bar .bar {
     -fx-background-color: #2563EB;

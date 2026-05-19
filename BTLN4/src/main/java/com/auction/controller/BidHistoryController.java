@@ -98,6 +98,10 @@ public class BidHistoryController {
             return;
         }
 
+        if (currentBalanceLabel != null) {
+            currentBalanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
+        }
+
         statusLabel.setText("Đang tải dữ liệu từ server...");
 
         javafx.concurrent.Task<List<BidRow>> fetchTask = new javafx.concurrent.Task<>() {
