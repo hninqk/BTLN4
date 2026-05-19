@@ -2,6 +2,7 @@ package com.auction.controller;
 
 import com.auction.model.*;
 import com.auction.service.AppFacade;
+import com.auction.util.HotItemCache;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
 import javafx.beans.property.SimpleStringProperty;
@@ -13,7 +14,10 @@ import javafx.scene.control.*;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import javafx.animation.ScaleTransition;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
 import javafx.geometry.Pos;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
@@ -63,10 +67,14 @@ public class DashboardController {
     private int currentNewsIndex = 0;
     private javafx.animation.Timeline newsTimeline;
 
+    private final HotItemCache hotCache = HotItemCache.getInstance();
+    private Timeline hotRefreshTimeline;
+
     @FXML
     public void initialize() {
         loadData();
         startNewsTicker();
+        startHotItemRefresh();
     }
 
     private void startNewsTicker() {
@@ -93,25 +101,18 @@ public class DashboardController {
         newsTimeline.play();
     }
 
-    /**
-     * Tải dữ liệu Dashboard trên background thread.
-     * FIX: getAllAuctions() và getAllUsers() không chạy trên FX thread nữa.
-     */
     private void loadData() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
             welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
         }
 
-        // Hiện trạng thái chờ trong khi query đang chạy
         activeAuctionsLabel.setText("...");
         totalAuctionsLabel.setText("...");
         totalUsersLabel.setText("...");
         openAuctionsLabel.setText("...");
-        if (pendingAuctionsLabel != null)
-            pendingAuctionsLabel.setText("...");
+        if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText("...");
 
-        // ── CHẠY QUERY TRÊN BACKGROUND THREAD ──
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
             private List<Auction> all;
             private int userCount;
@@ -120,34 +121,25 @@ public class DashboardController {
             protected Void call() {
                 all = app.getAllAuctions();
                 userCount = app.getAllUsers().size();
+                // Seed hot-item cache from fresh data (background thread – safe)
+                hotCache.seedFromList(all);
                 return null;
             }
 
             @Override
             protected void succeeded() {
-                // Chạy trên FX thread sau khi query hoàn thành
                 long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                long open = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
                 long pending = all.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
 
                 activeAuctionsLabel.setText(String.valueOf(running));
                 totalAuctionsLabel.setText(String.valueOf(all.size()));
                 totalUsersLabel.setText(String.valueOf(userCount));
                 openAuctionsLabel.setText(String.valueOf(open));
-                if (pendingAuctionsLabel != null)
-                    pendingAuctionsLabel.setText(String.valueOf(pending));
+                if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText(String.valueOf(pending));
 
-                List<Auction> recent = all.stream()
-                        .filter(a -> a.getStatus() == AuctionStatus.OPEN || a.getStatus() == AuctionStatus.RUNNING)
-                        .sorted((a1, a2) -> Integer.compare(a2.getBidHistory().size(), a1.getBidHistory().size()))
-                        .limit(5).toList();
-
-                Platform.runLater(() -> {
-                    hotItemsBox.getChildren().clear();
-                    for (Auction a : recent) {
-                        hotItemsBox.getChildren().add(createHotItemCard(a));
-                    }
-                });
+                // Render hot items using cached bid counts for ordering
+                refreshHotItems(all);
             }
 
             @Override
@@ -160,6 +152,62 @@ public class DashboardController {
         Thread t = new Thread(task, "dashboard-load");
         t.setDaemon(true);
         t.start();
+    }
+
+    /**
+     * Re-renders the hot-items strip using current HotItemCache bid counts.
+     * Must be called on the FX thread.
+     */
+    private void refreshHotItems(List<Auction> all) {
+        // Pull top-5 IDs from O(1) cache
+        List<String> topIds = hotCache.getTopN(5);
+
+        // Map IDs → Auction objects (prefer cache order, fall back to bid-history size)
+        List<Auction> hotList;
+        if (!topIds.isEmpty()) {
+            Map<String, Auction> byId = new java.util.HashMap<>();
+            all.forEach(a -> byId.put(a.getId(), a));
+            hotList = topIds.stream()
+                    .map(byId::get)
+                    .filter(a -> a != null
+                            && (a.getStatus() == AuctionStatus.RUNNING
+                                || a.getStatus() == AuctionStatus.OPEN))
+                    .toList();
+        } else {
+            // Fallback: sort by bid-history size
+            hotList = all.stream()
+                    .filter(a -> a.getStatus() == AuctionStatus.OPEN
+                            || a.getStatus() == AuctionStatus.RUNNING)
+                    .sorted((a1, a2) -> Integer.compare(
+                            a2.getBidHistory().size(), a1.getBidHistory().size()))
+                    .limit(5).toList();
+        }
+
+        hotItemsBox.getChildren().clear();
+        for (Auction a : hotList) {
+            hotItemsBox.getChildren().add(createHotItemCard(a));
+        }
+    }
+
+    /**
+     * Schedules a lightweight hot-item re-sort every 5 seconds on a background thread.
+     * No DB query – purely reads the in-memory HotItemCache and existing auction list.
+     */
+    private void startHotItemRefresh() {
+        hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(5), e -> {
+            javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
+                @Override protected List<Auction> call() { return app.getAllAuctions(); }
+            };
+            refreshTask.setOnSucceeded(ev -> {
+                hotCache.seedFromList(refreshTask.getValue());
+                Platform.runLater(() -> refreshHotItems(refreshTask.getValue()));
+            });
+            Thread t = new Thread(refreshTask, "hot-refresh");
+            t.setDaemon(true);
+            t.start();
+        }));
+        hotRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        hotRefreshTimeline.play();
     }
 
     @FXML
@@ -233,8 +281,7 @@ public class DashboardController {
     }
 
     public void cleanup() {
-        if (newsTimeline != null) {
-            newsTimeline.stop();
-        }
+        if (newsTimeline != null) newsTimeline.stop();
+        if (hotRefreshTimeline != null) hotRefreshTimeline.stop();
     }
 }

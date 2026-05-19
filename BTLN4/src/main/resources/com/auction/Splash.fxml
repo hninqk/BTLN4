@@ -9,7 +9,11 @@
            fx:controller="com.auction.controller.SplashController"
            style="-fx-background-color: #0F172A;" prefWidth="900" prefHeight="600">
     <VBox alignment="CENTER" spacing="30">
-        <!-- Abstract / Geometric Logo -->
+        <!-- Word animation slot – slides in/out above the logo -->
+        <Label fx:id="animatedWordLabel" text=""
+               style="-fx-text-fill: #F8FAFC; -fx-font-size: 46px; -fx-font-weight: bold; -fx-opacity: 0;"/>
+
+        <!-- Abstract / Geometric Logo (original) -->
         <HBox fx:id="loadingBox" alignment="CENTER" spacing="12">
             <Rectangle fx:id="sq1" width="24" height="24" fill="#3B82F6" arcWidth="8" arcHeight="8"/>
             <Rectangle fx:id="sq2" width="24" height="24" fill="#60A5FA" arcWidth="8" arcHeight="8"/>

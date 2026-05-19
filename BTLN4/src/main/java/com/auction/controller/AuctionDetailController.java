@@ -3,6 +3,7 @@ package com.auction.controller;
 import com.auction.client.AuctionClient;
 import com.auction.model.*;
 import com.auction.util.DataReceiver;
+import com.auction.util.HotItemCache;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
@@ -236,6 +237,11 @@ public class AuctionDetailController implements DataReceiver {
         String timeStr       = json.has("time")           ? json.get("time").getAsString()           : LocalDateTime.now().toString();
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+
+        // O(1) cache update – runs on FX thread via Platform.runLater, which is fine
+        // because ConcurrentHashMap + AtomicInteger are thread-safe for the increment
+        if (aid != null) HotItemCache.getInstance().recordBid(aid);
+        else if (currentAuction != null) HotItemCache.getInstance().recordBid(currentAuction.getId());
 
         LocalDateTime ts = LocalDateTime.parse(timeStr);
         if (com.auction.util.ServerConfig.isRemote()) {

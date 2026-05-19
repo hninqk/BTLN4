@@ -2,8 +2,14 @@ package com.auction.controller;
 
 import com.auction.client.ApiClient;
 import com.auction.util.NavigationManager;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.SequentialTransition;
+import javafx.animation.Timeline;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -17,12 +23,19 @@ public class SplashController {
     @FXML private Rectangle sq3;
 
     @FXML private Label lblStatus;
+    @FXML private Label animatedWordLabel;
+    
+    private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
+    private int wordIndex = 0;
+    private Timeline wordCycler;
 
     @FXML
     public void initialize() {
         animateSquare(sq1, 0);
         animateSquare(sq2, 150);
         animateSquare(sq3, 300);
+
+        startWordCycle();
 
         Task<Void> pingTask = new Task<>() {
             @Override
@@ -47,6 +60,7 @@ public class SplashController {
         };
 
         pingTask.setOnSucceeded(e -> {
+            if (wordCycler != null) wordCycler.stop();
             Platform.runLater(() -> {
                 try {
                     NavigationManager.getInstance().navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
@@ -74,5 +88,48 @@ public class SplashController {
         seq.setDelay(Duration.millis(delay));
         seq.setCycleCount(SequentialTransition.INDEFINITE);
         seq.play();
+    }
+
+    private void startWordCycle() {
+        playWordIn(WORDS[0], 0);
+
+        wordCycler = new Timeline(new KeyFrame(Duration.seconds(2.4), e -> cycleWord()));
+        wordCycler.setDelay(Duration.seconds(1.2));
+        wordCycler.setCycleCount(Timeline.INDEFINITE);
+        wordCycler.play();
+    }
+
+    private void cycleWord() {
+        TranslateTransition slideOut = new TranslateTransition(Duration.millis(320), animatedWordLabel);
+        slideOut.setToX(-60);
+        slideOut.setInterpolator(Interpolator.SPLINE(0.55, 0.0, 1.0, 0.45));
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(280), animatedWordLabel);
+        fadeOut.setToValue(0);
+        ParallelTransition exit = new ParallelTransition(slideOut, fadeOut);
+
+        exit.setOnFinished(done -> {
+            wordIndex = (wordIndex + 1) % WORDS.length;
+            animatedWordLabel.setTranslateX(60);
+            animatedWordLabel.setText(WORDS[wordIndex]);
+            playWordIn(WORDS[wordIndex], 0);
+        });
+        exit.play();
+    }
+
+    private void playWordIn(String word, long delayMs) {
+        animatedWordLabel.setText(word);
+
+        TranslateTransition slideIn = new TranslateTransition(Duration.millis(520), animatedWordLabel);
+        slideIn.setFromX(60);
+        slideIn.setToX(0);
+        slideIn.setInterpolator(Interpolator.SPLINE(0.1, 0.8, 0.15, 1.0));
+        slideIn.setDelay(Duration.millis(delayMs));
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(400), animatedWordLabel);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+        fadeIn.setDelay(Duration.millis(delayMs));
+
+        new ParallelTransition(slideIn, fadeIn).play();
     }
 }

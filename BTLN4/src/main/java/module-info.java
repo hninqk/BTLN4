@@ -18,7 +18,7 @@ module com.auction {
     // Open all controller packages to FXML loader
     opens com.auction to javafx.fxml;
     opens com.auction.controller to javafx.fxml;
-    opens com.auction.util to javafx.fxml;
+    opens com.auction.util to javafx.fxml, com.google.gson;
     opens com.auction.service to javafx.fxml;
 
     // Exports
