@@ -265,15 +265,23 @@ public class BidHistoryController {
             if (type.equals("BID_UPDATE") || type.equals("AUCTION_STATUS_CHANGED") || type.equals("FULL_SYNC")) {
                 loadHistory(); // Reload from server
             } else if (type.equals("BALANCE_UPDATE")) {
-                String bidderId = json.get("bidderId").getAsString();
+                String bidderId  = json.get("bidderId").getAsString();
                 double newBalance = json.get("newBalance").getAsDouble();
+                double frozen    = json.has("frozenBalance") ? json.get("frozenBalance").getAsDouble() : -1;
 
                 User me = SessionManager.getInstance().getCurrentUser();
                 if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
                     myBidder.setAccountBalance(newBalance);
+                    if (frozen >= 0) myBidder.setFrozenBalance(frozen);
                     SessionManager.getInstance().setCurrentUser(myBidder);
                     if (currentBalanceLabel != null) {
-                        currentBalanceLabel.setText(String.format("%,.0f ₫", newBalance));
+                        double available = myBidder.getAvailableBalance();
+                        double frozenAmt = myBidder.getFrozenBalance();
+                        if (frozenAmt > 0) {
+                            currentBalanceLabel.setText(String.format("%,.0f ₫  (đóng băng: %,.0f ₫)", available, frozenAmt));
+                        } else {
+                            currentBalanceLabel.setText(String.format("%,.0f ₫", available));
+                        }
                     }
                 }
             }

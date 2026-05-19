@@ -104,12 +104,18 @@ public class AuctionWebSocketHandler {
                     .map(u -> (Bidder) u)
                     .ifPresent(winner -> {
                         JsonObject balUpdate = new JsonObject();
-                        balUpdate.addProperty("type",       "BALANCE_UPDATE");
-                        balUpdate.addProperty("bidderId",   winner.getId());
-                        balUpdate.addProperty("newBalance", winner.getAccountBalance());
+                        balUpdate.addProperty("type",             "BALANCE_UPDATE");
+                        balUpdate.addProperty("bidderId",         winner.getId());
+                        balUpdate.addProperty("newBalance",       winner.getAccountBalance());
+                        balUpdate.addProperty("frozenBalance",    winner.getFrozenBalance());
+                        balUpdate.addProperty("availableBalance", winner.getAvailableBalance());
                         broadcastAll(balUpdate.toString());
-                        System.out.printf("[Server] BALANCE_UPDATE bidder=%s newBalance=%.0f%n",
-                                winner.getUsername(), winner.getAccountBalance());
+                        System.out.printf("[Server] BALANCE_UPDATE (finish/winner) bidder=%s " +
+                                          "total=%.0f frozen=%.0f available=%.0f%n",
+                                winner.getUsername(),
+                                winner.getAccountBalance(),
+                                winner.getFrozenBalance(),
+                                winner.getAvailableBalance());
                     });
         }
 
@@ -192,11 +198,11 @@ public class AuctionWebSocketHandler {
             double bidderBalance  = req.has("bidderBalance")  ? req.get("bidderBalance").getAsDouble()  : 0.0;
             double amount         = req.get("amount").getAsDouble();
 
-            // ── Load auction from server DB ──
+            // ── Load auction từ server DB ──
             Auction auction = auctionService.findById(auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
 
-            // ── Load or auto-register bidder on server DB ──
+            // ── Load hoặc tự động đăng ký bidder trên server DB ──
             Bidder bidder = (Bidder) userService.findById(bidderId)
                     .filter(u -> u instanceof Bidder)
                     .orElseGet(() -> {
@@ -204,27 +210,65 @@ public class AuctionWebSocketHandler {
                                 ? bidderUsername
                                 : "Guest_" + bidderId.substring(0, Math.min(6, bidderId.length()));
                         System.out.println("[Server] Auto-registering remote bidder: " + uname);
-                        // Use client-reported balance only for new bidder registration
+                        // Dùng balance client-reported chỉ khi đăng ký lần đầu
                         Bidder nb = new Bidder(bidderId, LocalDateTime.now(), uname, "remote_pass", bidderBalance);
                         userService.saveUser(nb);
                         return nb;
                     });
-            // Server balance is authoritative — never overwrite with client-reported value
+            // Server balance là authoritative — không ghi đè bằng giá trị từ client
 
-            // ── Process bid (validates, saves, updates highest_bid in DB) ──
-            // Returns the created BidTransaction with the exact server-assigned timestamp
+            // ── Xử lý bid (validate, freeze, save, cập nhật highest_bid) ──
             BidTransaction createdBid = auctionService.placeBid(auction, bidder, amount);
 
-            // ── Broadcast BID_UPDATE to ALL clients ──
-            JsonObject broadcast = new JsonObject();
-            broadcast.addProperty("type",           "BID_UPDATE");
-            broadcast.addProperty("auctionId",      auction.getId());
-            broadcast.addProperty("amount",         amount);
-            broadcast.addProperty("bidderId",       bidder.getId());
-            broadcast.addProperty("bidderUsername", bidder.getUsername());
-            // Use the exact timestamp from the created bid — NOT LocalDateTime.now() at broadcast time
-            broadcast.addProperty("time",           createdBid.getTimestamp().toString());
-            broadcastAll(broadcast.toString());
+            // ── Unfreeze old highest bidder (đồng bộ, ngay sau placeBid) ──
+            // processOutbidUnfreeze() lấy thông tin old bidder đã được lưu trong placeBid()
+            // và thực hiện unfreeze + ghi DB với ReentrantLock của old bidder.
+            Bidder unfrozenOldBidder = auctionService.processOutbidUnfreeze();
+
+            // ── Broadcast BID_UPDATE tới TẤT CẢ client ──
+            JsonObject bidUpdate = new JsonObject();
+            bidUpdate.addProperty("type",           "BID_UPDATE");
+            bidUpdate.addProperty("auctionId",      auction.getId());
+            bidUpdate.addProperty("amount",         amount);
+            bidUpdate.addProperty("bidderId",       bidder.getId());
+            bidUpdate.addProperty("bidderUsername", bidder.getUsername());
+            bidUpdate.addProperty("time",           createdBid.getTimestamp().toString());
+            broadcastAll(bidUpdate.toString());
+
+            // ── Broadcast BALANCE_UPDATE cho bidder vừa đặt giá (frozen tăng → available giảm) ──
+            userService.findById(bidderId)
+                    .filter(u -> u instanceof Bidder)
+                    .map(u -> (Bidder) u)
+                    .ifPresent(freshBidder -> {
+                        JsonObject balUpdate = new JsonObject();
+                        balUpdate.addProperty("type",             "BALANCE_UPDATE");
+                        balUpdate.addProperty("bidderId",         freshBidder.getId());
+                        balUpdate.addProperty("newBalance",       freshBidder.getAccountBalance());
+                        balUpdate.addProperty("frozenBalance",    freshBidder.getFrozenBalance());
+                        balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
+                        broadcastAll(balUpdate.toString());
+                        System.out.printf("[Server] BALANCE_UPDATE (freeze) bidder=%s " +
+                                          "available=%.0f frozen=%.0f%n",
+                                freshBidder.getUsername(),
+                                freshBidder.getAvailableBalance(),
+                                freshBidder.getFrozenBalance());
+                    });
+
+            // ── Broadcast BALANCE_UPDATE cho old highest bidder (frozen giảm → available tăng) ──
+            if (unfrozenOldBidder != null) {
+                JsonObject oldBalUpdate = new JsonObject();
+                oldBalUpdate.addProperty("type",             "BALANCE_UPDATE");
+                oldBalUpdate.addProperty("bidderId",         unfrozenOldBidder.getId());
+                oldBalUpdate.addProperty("newBalance",       unfrozenOldBidder.getAccountBalance());
+                oldBalUpdate.addProperty("frozenBalance",    unfrozenOldBidder.getFrozenBalance());
+                oldBalUpdate.addProperty("availableBalance", unfrozenOldBidder.getAvailableBalance());
+                broadcastAll(oldBalUpdate.toString());
+                System.out.printf("[Server] BALANCE_UPDATE (unfreeze/outbid) bidder=%s " +
+                                  "available=%.0f frozen=%.0f%n",
+                        unfrozenOldBidder.getUsername(),
+                        unfrozenOldBidder.getAvailableBalance(),
+                        unfrozenOldBidder.getFrozenBalance());
+            }
 
             System.out.printf("[Server] BID_UPDATE  auction=%s  bidder=%s  amount=%.0f%n",
                     auctionId, bidder.getUsername(), amount);

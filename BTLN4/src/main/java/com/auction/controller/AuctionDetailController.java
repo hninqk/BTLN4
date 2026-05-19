@@ -306,16 +306,19 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    /** Server tells this client its bidder's balance was updated (after auction finish). */
+    /** Server thông báo số dư của bidder đã thay đổi (sau khi bid hoặc auction finish). */
     private void onBalanceUpdate(JsonObject json) {
         String bidderId  = json.get("bidderId").getAsString();
-        double newBalance= json.get("newBalance").getAsDouble();
+        double newBalance = json.get("newBalance").getAsDouble();
+        double frozen    = json.has("frozenBalance")    ? json.get("frozenBalance").getAsDouble()    : -1;
 
         User me = SessionManager.getInstance().getCurrentUser();
         if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
             myBidder.setAccountBalance(newBalance);
+            if (frozen >= 0) myBidder.setFrozenBalance(frozen);
             SessionManager.getInstance().setCurrentUser(myBidder);
-            System.out.printf("[AuctionDetail] Balance updated: %.0f ₫%n", newBalance);
+            System.out.printf("[AuctionDetail] Balance updated: total=%.0f ₫ frozen=%.0f ₫ available=%.0f ₫%n",
+                    newBalance, myBidder.getFrozenBalance(), myBidder.getAvailableBalance());
             refreshLivePanel(); // re-render balanceLabel
         }
     }
@@ -519,11 +522,40 @@ public class AuctionDetailController implements DataReceiver {
         User user = SessionManager.getInstance().getCurrentUser();
         boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
         boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
+
+        // Chặn đặt giá liên tiếp nếu đang giữ giá cao nhất
+        boolean isHighestBidder = false;
+        if (canBid && user != null) {
+            BidTransaction highestBid = currentAuction.getWinner();
+            if (highestBid != null && highestBid.getBidder().getUsername().equals(user.getUsername())) {
+                isHighestBidder = true;
+                canBid = false; // Vô hiệu hóa đặt giá
+            }
+        }
+
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
+
+        if (isHighestBidder) {
+            bidErrorLabel.setText("🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
+            bidErrorLabel.setStyle("-fx-text-fill: #e5a93c; -fx-font-weight: bold;");
+        } else {
+            // Reset về default nếu đang hiển thị thông báo highest-bidder hoặc pending
+            String cur = bidErrorLabel.getText();
+            if (cur.contains("giữ giá cao nhất") || cur.contains("Đang gửi")) {
+                bidErrorLabel.setText("");
+                bidErrorLabel.setStyle(""); // Reset màu về mặc định
+            }
+        }
         if (balanceLabel != null) {
             if (user instanceof Bidder bidder) {
-                balanceLabel.setText(String.format("Số dư: %,.0f ₫", bidder.getAccountBalance()));
+                double available = bidder.getAvailableBalance();
+                double frozen    = bidder.getFrozenBalance();
+                if (frozen > 0) {
+                    balanceLabel.setText(String.format("Khả dụng: %,.0f ₫  (đóng băng: %,.0f ₫)", available, frozen));
+                } else {
+                    balanceLabel.setText(String.format("Số dư: %,.0f ₫", available));
+                }
                 balanceLabel.setVisible(true);
             } else {
                 balanceLabel.setVisible(false);
@@ -609,6 +641,13 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("amount",         amount);
         wsClient.send(req.toString());
         bidAmountField.clear();
+
+        // Vô hiệu hóa ngay lập tức để tránh double-click trong khi chờ server phản hồi.
+        // refreshLivePanel() sẽ tự quản lý trạng thái sau khi nhận BID_UPDATE từ server.
+        placeBidButton.setDisable(true);
+        bidAmountField.setDisable(true);
+        bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
+        bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
     @FXML

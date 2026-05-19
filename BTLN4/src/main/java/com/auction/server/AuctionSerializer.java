@@ -90,7 +90,9 @@ public final class AuctionSerializer {
         o.addProperty("createdAt", user.getCreatedAt().toString());
 
         if (user instanceof Bidder bidder) {
-            o.addProperty("balance", bidder.getAccountBalance());
+            o.addProperty("balance",          bidder.getAccountBalance());
+            o.addProperty("frozenBalance",    bidder.getFrozenBalance());
+            o.addProperty("availableBalance", bidder.getAvailableBalance());
         } else if (user instanceof Seller seller) {
             o.addProperty("shopName",  seller.getShopName());
             o.addProperty("rating",    seller.getRating());
@@ -121,8 +123,9 @@ public final class AuctionSerializer {
 
             return switch (role) {
                 case "Bidder" -> {
-                    double balance = o.has("balance") ? o.get("balance").getAsDouble() : 0.0;
-                    yield new Bidder(id, ts, username, "", balance);
+                    double balance = o.has("balance")       ? o.get("balance").getAsDouble()       : 0.0;
+                    double frozen  = o.has("frozenBalance") ? o.get("frozenBalance").getAsDouble() : 0.0;
+                    yield new Bidder(id, ts, username, "", balance, frozen);
                 }
                 case "Seller" -> {
                     String shopName = o.has("shopName") ? o.get("shopName").getAsString()
