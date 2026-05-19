@@ -183,9 +183,46 @@ public class DashboardController {
                     .limit(5).toList();
         }
 
-        hotItemsBox.getChildren().clear();
-        for (Auction a : hotList) {
-            hotItemsBox.getChildren().add(createHotItemCard(a));
+        // Smart update: only clear and rebuild if the list of items changed
+        boolean changed = false;
+        if (hotItemsBox.getChildren().size() != hotList.size()) {
+            changed = true;
+        } else {
+            for (int i = 0; i < hotList.size(); i++) {
+                VBox card = (VBox) hotItemsBox.getChildren().get(i);
+                if (!hotList.get(i).getId().equals(card.getUserData())) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed) {
+            hotItemsBox.getChildren().clear();
+            for (Auction a : hotList) {
+                VBox card = createHotItemCard(a);
+                card.setUserData(a.getId()); // Store ID for future checks
+                hotItemsBox.getChildren().add(card);
+            }
+        } else {
+            // Hot items are the same, just gracefully update the prices and statuses!
+            for (int i = 0; i < hotList.size(); i++) {
+                Auction a = hotList.get(i);
+                VBox card = (VBox) hotItemsBox.getChildren().get(i);
+                
+                // createHotItemCard structure: [0] ImageView, [1] Title Label, [2] Price Label, [3] Status Label
+                if (card.getChildren().size() >= 4) {
+                    Label price = (Label) card.getChildren().get(2);
+                    price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
+                    
+                    Label status = (Label) card.getChildren().get(3);
+                    status.setText(a.getStatusDisplay());
+                    
+                    // Update badge color
+                    status.getStyleClass().removeAll("badge-running", "badge-open");
+                    status.getStyleClass().add(a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
+                }
+            }
         }
     }
 

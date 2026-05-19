@@ -45,7 +45,45 @@ public final class CatboxUploader {
         }
 
         String boundary = "---Boundary" + System.currentTimeMillis();
-        byte[] fileBytes = Files.readAllBytes(file.toPath());
+        byte[] fileBytes;
+        String uploadFileName = file.getName();
+        try {
+            java.awt.image.BufferedImage original = javax.imageio.ImageIO.read(file);
+            if (original != null) {
+                int targetWidth = original.getWidth();
+                int targetHeight = original.getHeight();
+                int maxDim = 800; // Increased to 800px for better quality
+
+                if (targetWidth > maxDim || targetHeight > maxDim) {
+                    if (targetWidth > targetHeight) {
+                        targetHeight = (targetHeight * maxDim) / targetWidth;
+                        targetWidth = maxDim;
+                    } else {
+                        targetWidth = (targetWidth * maxDim) / targetHeight;
+                        targetHeight = maxDim;
+                    }
+                }
+
+                // Use ARGB to preserve transparency and prevent "caro" checkerboard artifacts
+                java.awt.image.BufferedImage resized = new java.awt.image.BufferedImage(targetWidth, targetHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                java.awt.Graphics2D g2d = resized.createGraphics();
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC); // BICUBIC for best quality
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.drawImage(original, 0, 0, targetWidth, targetHeight, null);
+                g2d.dispose();
+
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(resized, "png", baos);
+                fileBytes = baos.toByteArray();
+                uploadFileName = "image.png"; // Force .png extension
+            } else {
+                fileBytes = Files.readAllBytes(file.toPath());
+            }
+        } catch (Exception e) {
+            System.err.println("[CatboxUploader] Image processing failed, falling back to raw file: " + e.getMessage());
+            fileBytes = Files.readAllBytes(file.toPath());
+        }
         
         StringBuilder sb = new StringBuilder();
         
@@ -54,7 +92,7 @@ public final class CatboxUploader {
         sb.append("fileupload\r\n");
         
         sb.append("--").append(boundary).append("\r\n");
-        sb.append("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"").append(file.getName()).append("\"\r\n");
+        sb.append("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"").append(uploadFileName).append("\"\r\n");
         sb.append("Content-Type: application/octet-stream\r\n\r\n");
 
         byte[] headerBytes = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
