@@ -478,6 +478,32 @@
     -fx-text-fill: #64748B;
 }
 
+/* Force light mode styles for auth screens to prevent dark mode bleeding */
+.auth-container .form-label {
+    -fx-text-fill: #1E293B;
+}
+
+.auth-container .text-field,
+.auth-container .password-field {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+    -fx-text-fill: #1E293B;
+}
+
+.auth-container .text-field:focused,
+.auth-container .password-field:focused {
+    -fx-border-color: #2563EB;
+}
+
+.auth-container .label-subtle {
+    -fx-text-fill: #64748B;
+}
+
+.auth-container .btn-link {
+    -fx-text-fill: #2563EB;
+}
+
+
 /* ---------- Bid Panel ---------- */
 .bid-panel {
     -fx-background-color: -theme-bid-panel;
@@ -523,6 +549,30 @@
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
+}
+
+.list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -theme-text;
+    -fx-padding: 8 12;
+}
+
+.list-view .list-cell:empty {
+    -fx-background-color: transparent;
+}
+
+.list-view .list-cell:filled {
+    -fx-border-color: transparent transparent -theme-border transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.list-view .list-cell:filled:hover {
+    -fx-background-color: -theme-table-row-hover;
+}
+
+.list-view .list-cell:filled:selected {
+    -fx-background-color: -theme-table-row-selected;
+    -fx-text-fill: -theme-table-text;
 }
 
 /* ---------- Combo Box ---------- */

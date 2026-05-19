@@ -141,10 +141,19 @@ public class UserProfileController {
         }
     }
 
+    private static final java.util.Map<String, Long> bidCountCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private void loadBidCount(Bidder bidder) {
         if (totalBidsLabel == null)
             return;
-        totalBidsLabel.setText("...");
+            
+        Long cached = bidCountCache.get(bidder.getId());
+        if (cached != null) {
+            totalBidsLabel.setText(String.valueOf(cached));
+        } else {
+            totalBidsLabel.setText("...");
+        }
+        
         Task<Long> task = new Task<>() {
             @Override
             protected Long call() {
@@ -160,8 +169,13 @@ public class UserProfileController {
                 return count;
             }
         };
-        task.setOnSucceeded(e -> totalBidsLabel.setText(String.valueOf(task.getValue())));
-        task.setOnFailed(e -> totalBidsLabel.setText("?"));
+        task.setOnSucceeded(e -> {
+            bidCountCache.put(bidder.getId(), task.getValue());
+            totalBidsLabel.setText(String.valueOf(task.getValue()));
+        });
+        task.setOnFailed(e -> {
+            if (bidCountCache.get(bidder.getId()) == null) totalBidsLabel.setText("?");
+        });
         new Thread(task, "profile-bid-count").start();
     }
 

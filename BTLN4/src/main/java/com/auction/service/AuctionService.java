@@ -11,6 +11,9 @@ import com.auction.util.SessionManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 
 /**
  * AuctionService – manages the full auction lifecycle.
@@ -33,6 +36,9 @@ public class AuctionService {
     private final JdbcAuctionRepository auctionRepo = new JdbcAuctionRepository();
     private final JdbcBidRepository bidRepo = new JdbcBidRepository();
     private final JdbcUserRepository userRepo = new JdbcUserRepository();
+    
+    // In-memory cache for fast lookups
+    private final Map<String, Auction> auctionCache = new ConcurrentHashMap<>();
 
     private AuctionService() {
         ensureSeeded();
@@ -66,7 +72,12 @@ public class AuctionService {
     }
 
     public Optional<Auction> findById(String id) {
-        return auctionRepo.findById(id);
+        if (auctionCache.containsKey(id)) {
+            return Optional.of(auctionCache.get(id));
+        }
+        Optional<Auction> auctionOpt = auctionRepo.findById(id);
+        auctionOpt.ifPresent(a -> auctionCache.put(id, a));
+        return auctionOpt;
     }
 
     // ── Create / Delete ───────────────────────────────────────────────────────
@@ -87,6 +98,7 @@ public class AuctionService {
     /** Admin: PENDING → OPEN */
     public void approveAuction(Auction auction) throws InvalidStatusException {
         auction.approveAuction();
+        auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
     }
@@ -98,6 +110,7 @@ public class AuctionService {
      */
     public void startAuction(Auction auction) throws InvalidStatusException {
         auction.startAuction(); // model sets startTime = LocalDateTime.now()
+        auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
     }
@@ -109,6 +122,7 @@ public class AuctionService {
      */
     public void finishAuction(Auction auction) throws InvalidStatusException {
         auction.finishAuction();
+        auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
 
@@ -142,6 +156,7 @@ public class AuctionService {
     /** Admin or Seller: cancel any non-closed auction. No money movement. */
     public void cancelAuction(Auction auction) throws InvalidStatusException {
         auction.cancelAuction();
+        auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
     }
@@ -176,11 +191,16 @@ public class AuctionService {
 
         // Throws InvalidBidException if amount ≤ highest, InvalidStatusException if not RUNNING
         auction.placeBid(bid);
+        
+        // Update cache immediately
+        auctionCache.put(auction.getId(), auction);
 
-        // Persist bid + updated highest price. Balance is NOT touched.
-        bidRepo.save(bid);
-        auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
-                auction.getHighestBid(), auction.getStartTime());
+        // Persist bid + updated highest price asynchronously to avoid blocking
+        CompletableFuture.runAsync(() -> {
+            bidRepo.save(bid);
+            auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
+                    auction.getHighestBid(), auction.getStartTime());
+        });
 
         // Return the created bid so callers (e.g. WS handler) can use the exact timestamp
         return bid;

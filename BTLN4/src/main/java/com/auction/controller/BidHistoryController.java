@@ -67,6 +67,12 @@ public class BidHistoryController {
     private AuctionClient wsClient;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
+    private static class HistoryCache {
+        List<BidRow> rows;
+        String totalBids, won, active, spent;
+    }
+    private static final java.util.Map<String, HistoryCache> cacheMap = new java.util.concurrent.ConcurrentHashMap<>();
+
     public record BidRow(Auction auction, BidTransaction myBid, String result) {
     }
 
@@ -102,7 +108,18 @@ public class BidHistoryController {
             currentBalanceLabel.setText(String.format("%,.0f ₫", bidder.getAccountBalance()));
         }
 
-        statusLabel.setText("Đang tải dữ liệu từ server...");
+        HistoryCache cache = cacheMap.get(bidder.getId());
+        if (cache != null) {
+            allRows = cache.rows;
+            totalBidsLabel.setText(cache.totalBids);
+            wonAuctionsLabel.setText(cache.won);
+            activeParticipationsLabel.setText(cache.active);
+            totalSpentLabel.setText(cache.spent);
+            handleSearch(null); // Apply current filter to cached rows
+            statusLabel.setText("Dữ liệu từ cache. Đang làm mới...");
+        } else {
+            statusLabel.setText("Đang tải dữ liệu từ server...");
+        }
 
         javafx.concurrent.Task<List<BidRow>> fetchTask = new javafx.concurrent.Task<>() {
             @Override
@@ -154,11 +171,20 @@ public class BidHistoryController {
                 }
             }
 
-            totalBidsLabel.setText(String.valueOf(allRows.size()));
-            wonAuctionsLabel.setText(String.valueOf(won));
-            activeParticipationsLabel.setText(String.valueOf(active));
-            totalSpentLabel.setText(String.format("%,.0f ₫", totalSpent));
-            historyTable.setItems(FXCollections.observableArrayList(allRows));
+            HistoryCache fresh = new HistoryCache();
+            fresh.rows = allRows;
+            fresh.totalBids = String.valueOf(allRows.size());
+            fresh.won = String.valueOf(won);
+            fresh.active = String.valueOf(active);
+            fresh.spent = String.format("%,.0f ₫", totalSpent);
+            cacheMap.put(bidder.getId(), fresh);
+
+            totalBidsLabel.setText(fresh.totalBids);
+            wonAuctionsLabel.setText(fresh.won);
+            activeParticipationsLabel.setText(fresh.active);
+            totalSpentLabel.setText(fresh.spent);
+            
+            handleSearch(null); // Reapply search filter to new rows
             statusLabel.setText("Tổng: " + allRows.size() + " lượt tham gia");
         });
 
