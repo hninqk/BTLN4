@@ -318,10 +318,9 @@ public class AuctionService {
             }, "BidPersist-" + bidderId).start();
 
             // ── 7. Ghi nhận thông tin old bidder để WebSocket handler xử lý unfreeze ──
-            // Lưu vào volatile field, WebSocket handler sẽ gọi processOutbidUnfreeze()
-            // NGAY SAU khi placeBid() return – đảm bảo unfreeze đồng bộ, không race condition.
-            this.pendingUnfreezeId     = (oldHighestBidder != null) ? oldHighestBidder.getId() : null;
-            this.pendingUnfreezeAmount = oldHighestAmount;
+            // Sử dụng ThreadLocal để an toàn khi nhiều luồng cùng gọi placeBid()
+            this.pendingUnfreezeId.set((oldHighestBidder != null) ? oldHighestBidder.getId() : null);
+            this.pendingUnfreezeAmount.set(oldHighestAmount);
 
             return bid;
 
@@ -339,10 +338,10 @@ public class AuctionService {
      * @return old bidder đã được unfreeze (để broadcast BALANCE_UPDATE), hoặc null
      */
     public Bidder processOutbidUnfreeze() {
-        String oldId     = this.pendingUnfreezeId;
-        double oldAmount = this.pendingUnfreezeAmount;
-        this.pendingUnfreezeId     = null;
-        this.pendingUnfreezeAmount = 0;
+        String oldId     = this.pendingUnfreezeId.get();
+        double oldAmount = this.pendingUnfreezeAmount.get();
+        this.pendingUnfreezeId.remove();
+        this.pendingUnfreezeAmount.remove();
 
         if (oldId == null || oldAmount <= 0) return null;
 
@@ -366,9 +365,9 @@ public class AuctionService {
         }
     }
 
-    /** Thông tin old bidder cần unfreeze – volatile để an toàn giữa các thread. */
-    private volatile String pendingUnfreezeId     = null;
-    private volatile double pendingUnfreezeAmount = 0;
+    /** Thông tin old bidder cần unfreeze – ThreadLocal để an toàn giữa các luồng. */
+    private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
+    private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
