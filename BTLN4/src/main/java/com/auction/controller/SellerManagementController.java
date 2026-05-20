@@ -123,7 +123,9 @@ public class SellerManagementController {
 
     private void handleWsMessage(String msg) {
         try {
-            JsonObject json = gson.fromJson(msg, JsonObject.class);
+            com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
+            if (!element.isJsonObject()) return;
+            JsonObject json = element.getAsJsonObject();
             if (json.has("error")) {
                 showFormError("Lỗi server: " + json.get("error").getAsString());
                 return;

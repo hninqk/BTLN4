@@ -58,6 +58,8 @@ public class AuctionClient {
                     .header("ngrok-skip-browser-warning", "true")
                     .buildAsync(URI.create(url), new WebSocket.Listener() {
 
+                        private final StringBuilder messageBuffer = new StringBuilder();
+
                         @Override
                         public void onOpen(WebSocket webSocket) {
                             ws = webSocket;
@@ -72,7 +74,11 @@ public class AuctionClient {
                         @Override
                         public CompletionStage<?> onText(WebSocket webSocket,
                                 CharSequence data, boolean last) {
-                            onMessage.accept(data.toString());
+                            messageBuffer.append(data);
+                            if (last) {
+                                onMessage.accept(messageBuffer.toString());
+                                messageBuffer.setLength(0);
+                            }
                             webSocket.request(1);
                             return null;
                         }

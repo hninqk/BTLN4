@@ -218,7 +218,9 @@ public class AuctionDetailController implements DataReceiver {
 
     private void handleWsMessage(String msg) {
         try {
-            JsonObject json = gson.fromJson(msg, JsonObject.class);
+            com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
+            if (!element.isJsonObject()) return;
+            JsonObject json = element.getAsJsonObject();
 
             if (json.has("error")) {
                 String errMsg = "⚠ " + json.get("error").getAsString();

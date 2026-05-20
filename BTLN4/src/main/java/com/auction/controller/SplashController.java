@@ -107,8 +107,8 @@ public class SplashController {
                         if (a.getStatus() == com.auction.model.AuctionStatus.RUNNING || a.getStatus() == com.auction.model.AuctionStatus.PENDING) {
                             if (a.getItem() != null && a.getItem().getImageUrl() != null && !a.getItem().getImageUrl().isEmpty()) {
                                 // Load standard sizes used in Dashboard and AuctionList (e.g. 250x200 or 80x80)
-                                com.auction.util.ImageLoaderUtil.loadItemImage(a.getItem().getImageUrl(), 250, 200);
-                                com.auction.util.ImageLoaderUtil.loadItemImage(a.getItem().getImageUrl(), 80, 80);
+                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 250, 200);
+                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 80, 80);
                                 preloadedImages++;
                                 if (preloadedImages >= 10) break;
                             }

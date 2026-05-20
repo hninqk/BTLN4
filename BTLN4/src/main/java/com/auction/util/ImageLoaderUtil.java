@@ -23,6 +23,14 @@ public final class ImageLoaderUtil {
     private ImageLoaderUtil() {}
 
     public static Image loadItemImage(String imageUrl, double width, double height) {
+        return loadItemImage(imageUrl, width, height, true);
+    }
+
+    public static Image loadItemImageSync(String imageUrl, double width, double height) {
+        return loadItemImage(imageUrl, width, height, false);
+    }
+
+    private static Image loadItemImage(String imageUrl, double width, double height, boolean backgroundLoading) {
         String url = imageUrl == null ? "" : imageUrl.trim();
         if (url.isEmpty()) return createFallbackImage((int) width, (int) height);
 
@@ -47,12 +55,12 @@ public final class ImageLoaderUtil {
                     Files.write(tempFile.toPath(), decoded);
                 }
                 
-                // true = background loading -> Không chặn UI thread
-                Image img = new Image(tempFile.toURI().toString(), width, height, true, true, true);
+                // backgroundLoading determines if we block UI thread
+                Image img = new Image(tempFile.toURI().toString(), width, height, true, true, backgroundLoading);
                 CacheManager.getInstance().putImage(cacheKey, img);
                 return img;
             } else if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:")) {
-                Image remote = new Image(url, width, height, true, true, true); // true = background loading
+                Image remote = new Image(url, width, height, true, true, backgroundLoading);
                 if (!remote.isError()) {
                     CacheManager.getInstance().putImage(cacheKey, remote);
                     return remote;
@@ -60,7 +68,7 @@ public final class ImageLoaderUtil {
             } else {
                 File localFile = new File(url);
                 if (localFile.exists()) {
-                    Image local = new Image(localFile.toURI().toString(), width, height, true, true, true);
+                    Image local = new Image(localFile.toURI().toString(), width, height, true, true, backgroundLoading);
                     if (!local.isError()) {
                         CacheManager.getInstance().putImage(cacheKey, local);
                         return local;

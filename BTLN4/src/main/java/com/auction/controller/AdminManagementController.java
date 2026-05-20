@@ -136,7 +136,9 @@ public class AdminManagementController {
 
     private void handleWsMessage(String msg) {
         try {
-            JsonObject json = gson.fromJson(msg, JsonObject.class);
+            com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
+            if (!element.isJsonObject()) return;
+            JsonObject json = element.getAsJsonObject();
             if (json.has("error")) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi Server", json.get("error").getAsString());
                 return;

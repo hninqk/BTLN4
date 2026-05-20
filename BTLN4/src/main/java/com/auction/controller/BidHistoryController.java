@@ -311,8 +311,9 @@ public class BidHistoryController {
 
     private void handleWsMessage(String msg) {
         try {
-            com.google.gson.JsonObject json = new com.google.gson.Gson().fromJson(msg,
-                    com.google.gson.JsonObject.class);
+            com.google.gson.JsonElement element = new com.google.gson.Gson().fromJson(msg, com.google.gson.JsonElement.class);
+            if (!element.isJsonObject()) return;
+            com.google.gson.JsonObject json = element.getAsJsonObject();
             if (!json.has("type"))
                 return;
 
