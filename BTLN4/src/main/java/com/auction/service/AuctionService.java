@@ -57,8 +57,11 @@ public class AuctionService {
      * computeIfAbsent đảm bảo mỗi bidderId chỉ có đúng 1 lock.
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
+    
+    private final ProxyBiddingEngine proxyBiddingEngine;
 
     private AuctionService() {
+        this.proxyBiddingEngine = new ProxyBiddingEngine(autoBidRepo, userRepo, this);
         ensureSeeded();
     }
 
@@ -151,6 +154,31 @@ public class AuctionService {
                 auction.getHighestBid(), auction.getStartTime());
 
         BidTransaction winner = auction.getWinner();
+        
+        // --- AutoBid Cleanup ---
+        List<AutoBid> abs = autoBidRepo.findByAuctionId(auction.getId());
+        for (AutoBid ab : abs) {
+            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), ab.getBidderId());
+            ReentrantLock lock = getUserLock(ab.getBidderId());
+            lock.lock();
+            try {
+                Bidder b = (Bidder) userRepo.findById(ab.getBidderId()).filter(u -> u instanceof Bidder).orElse(null);
+                if (b != null) {
+                    double toUnfreeze = ab.getMaxBid();
+                    if (winner != null && winner.getBidder().getId().equals(b.getId())) {
+                        toUnfreeze = Math.max(0, ab.getMaxBid() - winner.getAmount());
+                    }
+                    if (toUnfreeze > 0) {
+                        b.unfreezeFunds(toUnfreeze);
+                        userRepo.updateFrozenBalance(b.getId(), b.getFrozenBalance());
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        // -----------------------
+
         if (winner != null) {
             String winnerId = winner.getBidder().getId();
             ReentrantLock lock = getUserLock(winnerId);
@@ -195,6 +223,24 @@ public class AuctionService {
      * Nếu đang có highest bidder, hoàn trả tiền đóng băng cho họ.
      */
     public void cancelAuction(Auction auction) throws InvalidStatusException {
+        // --- AutoBid Cleanup ---
+        List<AutoBid> abs = autoBidRepo.findByAuctionId(auction.getId());
+        for (AutoBid ab : abs) {
+            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), ab.getBidderId());
+            ReentrantLock lock = getUserLock(ab.getBidderId());
+            lock.lock();
+            try {
+                Bidder b = (Bidder) userRepo.findById(ab.getBidderId()).filter(u -> u instanceof Bidder).orElse(null);
+                if (b != null) {
+                    b.unfreezeFunds(ab.getMaxBid());
+                    userRepo.updateFrozenBalance(b.getId(), b.getFrozenBalance());
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        // -----------------------
+
         // Lưu thông tin highest bidder trước khi cancel
         BidTransaction currentHighest = auction.getWinner();
 
@@ -301,13 +347,21 @@ public class AuctionService {
             }
 
             // ── 5. Đóng băng tiền bidder mới ──
-            freshBidder.freezeFunds(amount);
-            userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
-            System.out.printf("[AuctionService] FREEZE bidder=%s amount=%,.0f ₫ | " +
-                    "frozen=%.0f ₫ | available=%.0f ₫%n",
-                    freshBidder.getUsername(), amount,
-                    freshBidder.getFrozenBalance(),
-                    freshBidder.getAvailableBalance());
+            boolean hasAutoBid = autoBidRepo.findByAuctionId(auction.getId()).stream()
+                    .anyMatch(ab -> ab.getBidderId().equals(freshBidder.getId()));
+            
+            if (!hasAutoBid) {
+                freshBidder.freezeFunds(amount);
+                userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
+                System.out.printf("[AuctionService] FREEZE bidder=%s amount=%,.0f ₫ | " +
+                        "frozen=%.0f ₫ | available=%.0f ₫%n",
+                        freshBidder.getUsername(), amount,
+                        freshBidder.getFrozenBalance(),
+                        freshBidder.getAvailableBalance());
+            }
+
+            // Ghi nhớ auctionId để unfreeze
+            this.pendingUnfreezeAuctionId.set(auction.getId());
 
             // ── 6. Tạo bid transaction và ghi vào auction (synchronized) ──
             BidTransaction bid = new BidTransaction(
@@ -320,6 +374,15 @@ public class AuctionService {
             // Throws InvalidBidException nếu amount ≤ highest, InvalidStatusException nếu
             // không RUNNING
             auction.placeBid(bid);
+
+            // --- Anti-Sniping (Bid Extension) ---
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime endTime = auction.getEndTime();
+            if (endTime != null && java.time.Duration.between(now, endTime).getSeconds() <= 60) {
+                auction.setEndTime(endTime.plusMinutes(3));
+                auctionRepo.updateEndTime(auction.getId(), auction.getEndTime());
+                System.out.printf("[AuctionService] Anti-Sniping activated for auction %s: Extended end time by 3 minutes.%n", auction.getId());
+            }
 
             // Cập nhật cache
             auctionCache.put(auction.getId(), auction);
@@ -355,11 +418,14 @@ public class AuctionService {
     public Bidder processOutbidUnfreeze() {
         String oldId = this.pendingUnfreezeId.get();
         double oldAmount = this.pendingUnfreezeAmount.get();
+        String auctionId = this.pendingUnfreezeAuctionId.get();
         this.pendingUnfreezeId.remove();
         this.pendingUnfreezeAmount.remove();
+        this.pendingUnfreezeAuctionId.remove();
 
-        if (oldId == null || oldAmount <= 0)
+        if (oldId == null || oldAmount <= 0) {
             return null;
+        }
 
         ReentrantLock oldLock = getUserLock(oldId);
         oldLock.lock();
@@ -370,12 +436,20 @@ public class AuctionService {
             if (freshOld == null)
                 return null;
 
-            freshOld.unfreezeFunds(oldAmount);
-            userRepo.updateFrozenBalance(freshOld.getId(), freshOld.getFrozenBalance());
-            System.out.printf("[AuctionService] UNFREEZE (outbid) bidder=%s amount=%,.0f ₫ | " +
-                    "frozen=%.0f ₫ | available=%.0f ₫%n",
-                    freshOld.getUsername(), oldAmount,
-                    freshOld.getFrozenBalance(), freshOld.getAvailableBalance());
+            boolean oldHasAutoBid = auctionId != null && autoBidRepo.findByAuctionId(auctionId).stream()
+                    .anyMatch(ab -> ab.getBidderId().equals(freshOld.getId()));
+
+            if (!oldHasAutoBid) {
+                freshOld.unfreezeFunds(oldAmount);
+                userRepo.updateFrozenBalance(freshOld.getId(), freshOld.getFrozenBalance());
+                System.out.printf("[AuctionService] UNFREEZE (outbid) bidder=%s amount=%,.0f ₫ | " +
+                        "frozen=%.0f ₫ | available=%.0f ₫%n",
+                        freshOld.getUsername(), oldAmount,
+                        freshOld.getFrozenBalance(), freshOld.getAvailableBalance());
+            } else {
+                System.out.printf("[AuctionService] SKIP UNFREEZE (AutoBid active) bidder=%s amount=%,.0f ₫%n",
+                        freshOld.getUsername(), oldAmount);
+            }
             return freshOld;
         } finally {
             oldLock.unlock();
@@ -387,6 +461,7 @@ public class AuctionService {
      */
     private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
     private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
+    private final ThreadLocal<String> pendingUnfreezeAuctionId = new ThreadLocal<>();
 
     // ── Auto-Bidding ──────────────────────────────────────────────────────────
 
@@ -400,8 +475,22 @@ public class AuctionService {
         if (maxBid <= auction.getHighestBid()) {
             throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
         }
+        if (bidder.getAvailableBalance() < maxBid) {
+            throw new InvalidBidException("Số dư không đủ. Cần " + String.format("%,.0f ₫", maxBid) + " để đặt Auto-Bid.");
+        }
         
-        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
+        // Remove existing autobid if any, and unfreeze its old maxBid
+        AutoBid existing = autoBidRepo.findByAuctionId(auction.getId()).stream()
+                .filter(ab -> ab.getBidderId().equals(bidder.getId())).findFirst().orElse(null);
+        if (existing != null) {
+            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
+            bidder.unfreezeFunds(existing.getMaxBid());
+            userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
+        }
+        
+        // Freeze new maxBid immediately (Dong Bang)
+        bidder.freezeFunds(maxBid);
+        userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
         
         AutoBid ab = new AutoBid(
             java.util.UUID.randomUUID().toString(),
@@ -417,111 +506,7 @@ public class AuctionService {
     }
 
     public AutoBidResult resolveBiddingWar(Auction auction) {
-        AutoBidResult result = new AutoBidResult();
-        boolean resolved = false;
-
-        while (!resolved) {
-            List<AutoBid> activeBids = autoBidRepo.findByAuctionId(auction.getId());
-            double currentHighest = auction.getHighestBid();
-            String currentWinnerId = auction.getWinner() != null ? auction.getWinner().getBidder().getId() : null;
-
-            List<AutoBid> validBids = new java.util.ArrayList<>();
-            for (AutoBid ab : activeBids) {
-                if (ab.getMaxBid() > currentHighest) {
-                    validBids.add(ab);
-                }
-            }
-
-            if (validBids.isEmpty()) {
-                break; 
-            }
-
-            validBids.sort((a, b) -> {
-                int cmp = Double.compare(b.getMaxBid(), a.getMaxBid());
-                if (cmp == 0) {
-                    return a.getCreatedAt().compareTo(b.getCreatedAt());
-                }
-                return cmp;
-            });
-
-            AutoBid top1 = validBids.get(0);
-            Bidder top1Bidder = (Bidder) userRepo.findById(top1.getBidderId()).orElse(null);
-            if (top1Bidder == null) {
-                autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
-                continue;
-            }
-
-            if (validBids.size() == 1) {
-                if (top1.getBidderId().equals(currentWinnerId)) {
-                    resolved = true;
-                    break;
-                }
-                double nextPrice = Math.min(currentHighest + top1.getIncrement(), top1.getMaxBid());
-                try {
-                    BidTransaction b = placeBid(auction, top1Bidder, nextPrice);
-                    Bidder unfrozen = processOutbidUnfreeze();
-                    result.newBids.add(b);
-                    if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
-                    result.virtualLogs.add(String.format("Auto-Bid của %s đã tự động đặt giá %,.0f ₫", top1Bidder.getUsername(), nextPrice));
-                    resolved = true;
-                } catch (Exception e) {
-                    autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
-                }
-            } else {
-                AutoBid top2 = validBids.get(1);
-                Bidder top2Bidder = (Bidder) userRepo.findById(top2.getBidderId()).orElse(null);
-                if (top2Bidder == null) {
-                    autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
-                    continue;
-                }
-
-                double top2BidPrice;
-                double top1BidPrice;
-
-                if (top1.getMaxBid() > top2.getMaxBid()) {
-                    top2BidPrice = top2.getMaxBid();
-                    top1BidPrice = Math.min(top2.getMaxBid() + top1.getIncrement(), top1.getMaxBid());
-                } else { 
-                    top2BidPrice = top2.getMaxBid() - top2.getIncrement();
-                    if (top2BidPrice <= currentHighest) {
-                        top2BidPrice = currentHighest + 1000; 
-                    }
-                    top1BidPrice = top1.getMaxBid();
-                }
-
-                boolean top2Success = false;
-                if (!top2.getBidderId().equals(currentWinnerId) && top2BidPrice > currentHighest) {
-                    try {
-                        BidTransaction b = placeBid(auction, top2Bidder, top2BidPrice);
-                        Bidder unfrozen = processOutbidUnfreeze();
-                        result.newBids.add(b);
-                        if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
-                        result.virtualLogs.add(String.format("Auto-Bid của %s tự động nâng giá lên %,.0f ₫", top2Bidder.getUsername(), top2BidPrice));
-                        top2Success = true;
-                    } catch (Exception e) {
-                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
-                        continue; 
-                    }
-                } else {
-                    top2Success = true; 
-                }
-
-                if (top2Success) {
-                    try {
-                        BidTransaction b = placeBid(auction, top1Bidder, top1BidPrice);
-                        Bidder unfrozen = processOutbidUnfreeze();
-                        result.newBids.add(b);
-                        if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
-                        result.virtualLogs.add(String.format("Auto-Bid của %s tự động chốt giá %,.0f ₫ (Thắng Bidding War)", top1Bidder.getUsername(), top1BidPrice));
-                        resolved = true;
-                    } catch (Exception e) {
-                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
-                        continue; 
-                    }
-                }
-            }
-        }
-        return result;
+        return proxyBiddingEngine.resolveBiddingWar(auction);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -24,6 +24,9 @@ public class SplashController {
 
     @FXML private Label lblStatus;
     @FXML private Label animatedWordLabel;
+    @FXML private Label logStreamLabel;
+    
+    private final java.util.List<SequentialTransition> animations = new java.util.ArrayList<>();
     
     private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
     private int wordIndex = 0;
@@ -37,30 +40,102 @@ public class SplashController {
 
         startWordCycle();
 
-        Task<Void> pingTask = new Task<>() {
+        Platform.runLater(() -> {
+            if (sq1 != null && sq1.getScene() != null && sq1.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                com.auction.util.AnimationUtil.createWaveBackground(p);
+            }
+        });
+
+        Task<Void> bootTask = new Task<>() {
             @Override
             protected Void call() throws Exception {
+                // Step 1: Connecting
+                updateProgress(0.1, 1.0);
+                updateMessage("Đang kết nối tới Máy Chủ...");
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang kết nối API..."));
+                
                 boolean connected = false;
                 while (!connected && !isCancelled()) {
                     try {
                         String resp = ApiClient.getInstance().getSync("/api/auctions");
-                        // If it responds with JSON (or array brackets), it's awake!
                         if (resp != null && (resp.contains("[") || resp.contains("{"))) {
                             connected = true;
                         } else {
-                            Thread.sleep(2000);
+                            Thread.sleep(1000);
                         }
                     } catch (Exception e) {
-                        Platform.runLater(() -> lblStatus.setText("Đang chờ máy chủ (khởi động lạnh mất tới 15s)..."));
-                        Thread.sleep(2500);
+                        updateMessage("Đang chờ máy chủ (khởi động lạnh)...");
+                        Platform.runLater(() -> logStreamLabel.setText("[CẢNH BÁO] Không thể kết nối, đang thử lại..."));
+                        Thread.sleep(1500);
                     }
                 }
+
+                // Step 2: Init DB
+                updateProgress(0.4, 1.0);
+                updateMessage("Đang khởi tạo cấu trúc Dữ liệu...");
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang thiết lập connection pool..."));
+                Thread.sleep(400); // Simulate/Wait for pool init
+                
+                try {
+                    com.auction.util.DatabaseConnection.getConnection().close();
+                } catch(Exception e){}
+
+                // Step 3: Fetch Configs
+                updateProgress(0.7, 1.0);
+                updateMessage("Đang nạp Cấu hình Người dùng...");
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải cấu hình Auto-Bid..."));
+                Thread.sleep(300);
+
+                // Step 4: Cache Assets
+                updateProgress(0.9, 1.0);
+                updateMessage("Đang lưu Cache Tài nguyên...");
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải chi tiết đấu giá để lưu Cache..."));
+                
+                try {
+                    com.auction.service.AppFacade facade = com.auction.service.AppFacade.getInstance();
+                    java.util.List<com.auction.model.Auction> allAuctions = facade.getAllAuctions();
+                    java.util.List<com.auction.model.Auction> fullAuctions = new java.util.ArrayList<>();
+                    for (com.auction.model.Auction a : allAuctions) {
+                        facade.findAuctionById(a.getId()).ifPresent(fullAuctions::add);
+                    }
+                    UserProfileController.preloadCache(fullAuctions);
+                    BidHistoryController.preloadCache(fullAuctions);
+
+                    // Preload images for first 10 active auctions
+                    int preloadedImages = 0;
+                    for (com.auction.model.Auction a : fullAuctions) {
+                        if (a.getStatus() == com.auction.model.AuctionStatus.RUNNING || a.getStatus() == com.auction.model.AuctionStatus.PENDING) {
+                            if (a.getItem() != null && a.getItem().getImageUrl() != null && !a.getItem().getImageUrl().isEmpty()) {
+                                // Load standard sizes used in Dashboard and AuctionList (e.g. 250x200 or 80x80)
+                                com.auction.util.ImageLoaderUtil.loadItemImage(a.getItem().getImageUrl(), 250, 200);
+                                com.auction.util.ImageLoaderUtil.loadItemImage(a.getItem().getImageUrl(), 80, 80);
+                                preloadedImages++;
+                                if (preloadedImages >= 10) break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Cache preload error: " + e.getMessage());
+                }
+
+                // Step 5: Done
+                updateProgress(1.0, 1.0);
+                updateMessage("Sẵn sàng.");
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Quá trình khởi động hoàn tất trong " + String.format("%.2fs", 1.5) + "."));
+                Thread.sleep(200);
+                
                 return null;
             }
         };
 
-        pingTask.setOnSucceeded(e -> {
+        lblStatus.textProperty().bind(bootTask.messageProperty());
+
+        bootTask.setOnSucceeded(e -> {
             if (wordCycler != null) wordCycler.stop();
+            // Dọn dẹp hiệu ứng lặp vô tận (khắc phục rò rỉ RAM)
+            animations.forEach(SequentialTransition::stop);
+            animations.clear();
+            
             Platform.runLater(() -> {
                 try {
                     NavigationManager.getInstance().navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
@@ -70,7 +145,7 @@ public class SplashController {
             });
         });
 
-        Thread t = new Thread(pingTask);
+        Thread t = new Thread(bootTask);
         t.setDaemon(true);
         t.start();
     }
@@ -88,6 +163,7 @@ public class SplashController {
         seq.setDelay(Duration.millis(delay));
         seq.setCycleCount(SequentialTransition.INDEFINITE);
         seq.play();
+        animations.add(seq);
     }
 
     private void startWordCycle() {

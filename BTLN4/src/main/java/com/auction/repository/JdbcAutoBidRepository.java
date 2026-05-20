@@ -40,6 +40,30 @@ public class JdbcAutoBidRepository {
         }
     }
 
+    public AutoBid findByAuctionIdAndBidderId(String auctionId, String bidderId) {
+        String sql = "SELECT * FROM auto_bids WHERE auction_id=? AND bidder_id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, auctionId);
+            ps.setString(2, bidderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new AutoBid(
+                            rs.getString("id"),
+                            rs.getString("auction_id"),
+                            rs.getString("bidder_id"),
+                            rs.getDouble("max_bid"),
+                            rs.getDouble("increment"),
+                            LocalDateTime.parse(rs.getString("created_at"))
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[AutoBidRepo] findByAuctionIdAndBidderId error: " + e.getMessage());
+        }
+        return null;
+    }
+
     public List<AutoBid> findByAuctionId(String auctionId) {
         List<AutoBid> list = new ArrayList<>();
         String sql = "SELECT * FROM auto_bids WHERE auction_id=? ORDER BY max_bid DESC, created_at ASC";

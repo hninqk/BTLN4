@@ -104,6 +104,11 @@ public class Auction extends Entity implements Subject {
     public AuctionStatus getStatus()    { return status; }
     public LocalDateTime getStartTime() { return startTime; }
     public LocalDateTime getEndTime()   { return endTime; }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
     public double getHighestBid()       { return highestBid; }
     public void setHighestBid(double highestBid) { this.highestBid = highestBid; }
 

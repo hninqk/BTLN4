@@ -191,6 +191,18 @@ public class JdbcAuctionRepository {
         }
     }
 
+    public void updateEndTime(String auctionId, LocalDateTime endTime) {
+        String sql = "UPDATE auctions SET end_time=? WHERE id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, endTime != null ? endTime.toString() : null);
+            ps.setString(2, auctionId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[AuctionRepo] updateEndTime error: " + e.getMessage());
+        }
+    }
+
     // ─────────────────────────── DELETE ───────────────────────────
 
     public boolean deleteById(String id) {

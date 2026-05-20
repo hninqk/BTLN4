@@ -74,8 +74,8 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private ScrollPane mainScrollPane;
 
     // ── Auto-Bid panel ────────────────────────────────────────────────────────
-    @FXML private StackPane autoBidModalOverlay;
-    @FXML private Button    openAutoBidModalButton;
+    @FXML private VBox      autoBidDashboard;
+    @FXML private Label     autoBidStatusBadge;
     @FXML private TextField autoMaxBidField;
     @FXML private TextField autoIncrementField;
     @FXML private Label     autoBidErrorLabel;
@@ -140,6 +140,7 @@ public class AuctionDetailController implements DataReceiver {
                     populateStaticView();
                     preloadBidsIntoChartAndFeed();
                     refreshLivePanel();
+                    loadAutoBidState();
                     connectWebSocket(); // Only connect WS after we have baseline bids
                 });
             });
@@ -221,21 +222,18 @@ public class AuctionDetailController implements DataReceiver {
 
             if (json.has("error")) {
                 String errMsg = "⚠ " + json.get("error").getAsString();
-                if (autoBidModalOverlay != null && autoBidModalOverlay.isVisible()) {
-                    if (autoBidErrorLabel != null) {
-                        autoBidErrorLabel.setText(errMsg);
-                        autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-                    }
+                if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
+                    autoBidErrorLabel.setText(errMsg);
+                    autoBidErrorLabel.setStyle("-fx-text-fill: red;");
                     if (registerAutoBidButton != null) registerAutoBidButton.setDisable(false);
                     if (autoMaxBidField != null) autoMaxBidField.setDisable(false);
                     if (autoIncrementField != null) autoIncrementField.setDisable(false);
-                } else {
-                    bidErrorLabel.setText(errMsg);
-                    bidErrorLabel.setStyle("-fx-text-fill: red;");
-                    placeBidButton.setDisable(false);
-                    bidAmountField.setDisable(false);
-                    if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
                 }
+                bidErrorLabel.setText(errMsg);
+                bidErrorLabel.setStyle("-fx-text-fill: red;");
+                placeBidButton.setDisable(false);
+                bidAmountField.setDisable(false);
+                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
                 return;
             }
 
@@ -320,10 +318,11 @@ public class AuctionDetailController implements DataReceiver {
         if (autoMaxBidField != null) autoMaxBidField.clear();
         if (autoIncrementField != null) autoIncrementField.clear();
         
-        // Đóng modal sau 1 giây
-        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
-        pause.setOnFinished(e -> handleCloseAutoBidModal(null));
-        pause.play();
+        if (autoBidStatusBadge != null) {
+            autoBidStatusBadge.setText("Đang Hoạt Động");
+            autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+            registerAutoBidButton.setText("Cập nhật Auto-Bid");
+        }
         
         refreshLivePanel();
     }
@@ -522,6 +521,25 @@ public class AuctionDetailController implements DataReceiver {
     // Live panel (updated every second and on each WS event)
     // ──────────────────────────────────────────────────────────────────────────
 
+    private void loadAutoBidState() {
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder && currentAuction != null) {
+            AutoBid activeBid = new com.auction.repository.JdbcAutoBidRepository()
+                    .findByAuctionIdAndBidderId(currentAuction.getId(), bidder.getId());
+            if (activeBid != null) {
+                Platform.runLater(() -> {
+                    if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", activeBid.getMaxBid()));
+                    if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", activeBid.getIncrement()));
+                    if (autoBidStatusBadge != null) {
+                        autoBidStatusBadge.setText("Đang Hoạt Động");
+                        autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+                        if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
+                    }
+                });
+            }
+        }
+    }
+
     private void refreshLivePanel() {
         if (currentAuction == null) return;
 
@@ -603,8 +621,9 @@ public class AuctionDetailController implements DataReceiver {
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
         
-        if (openAutoBidModalButton != null) {
-            openAutoBidModalButton.setDisable(!canAutoBid);
+        if (autoBidDashboard != null) {
+            autoBidDashboard.setVisible(canAutoBid);
+            autoBidDashboard.setManaged(canAutoBid);
         }
         
         if (registerAutoBidButton != null) {
@@ -754,23 +773,7 @@ public class AuctionDetailController implements DataReceiver {
         bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
-    @FXML
-    private void handleOpenAutoBidModal(ActionEvent event) {
-        if (autoBidModalOverlay != null) {
-            autoBidModalOverlay.setVisible(true);
-            autoBidModalOverlay.setManaged(true);
-            if (autoBidErrorLabel != null) autoBidErrorLabel.setText("");
-        }
-    }
 
-    @FXML
-    private void handleCloseAutoBidModal(ActionEvent event) {
-        if (autoBidModalOverlay != null) {
-            autoBidModalOverlay.setVisible(false);
-            autoBidModalOverlay.setManaged(false);
-            if (autoBidErrorLabel != null) autoBidErrorLabel.setText("");
-        }
-    }
 
     @FXML
     private void handleRegisterAutoBid(ActionEvent event) {

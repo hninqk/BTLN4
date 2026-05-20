@@ -75,6 +75,11 @@
     -fx-padding: 24;
 }
 
+.card:hover {
+    -fx-border-color: -theme-primary;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.4), 10, 0, 0, 0);
+}
+
 .card-no-padding {
     -fx-background-color: -theme-surface;
     -fx-border-color: -theme-border;
@@ -218,6 +223,7 @@
 
 .btn-primary:hover {
     -fx-background-color: #1D4ED8;
+    -fx-effect: dropshadow(gaussian, rgba(37, 99, 235, 0.6), 10, 0, 0, 0);
 }
 
 .btn-primary:pressed {
@@ -439,9 +445,16 @@
     -fx-background-color: -theme-surface;
     -fx-border-color: -theme-border;
     -fx-border-width: 1;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    -fx-padding: 20;
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 4);
+    -fx-cursor: hand;
+}
+
+.stat-card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 8);
+    -fx-translate-y: -2px;
 }
 
 .stat-value {
@@ -457,17 +470,17 @@
 
 /* ---------- Login / Auth Screens ---------- */
 .auth-container {
-    -fx-background-color: linear-gradient(to bottom right, #f8fafc, #e2e8f0, #cbd5e1);
+    -fx-background-color: transparent; /* Let the animated wave background show through */
 }
 
 .auth-card {
-    -fx-background-color: rgba(255, 255, 255, 0.95);
-    -fx-border-color: #E2E8F0;
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
     -fx-border-width: 1;
     -fx-border-radius: 16;
     -fx-background-radius: 16;
     -fx-padding: 48 40;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 30, 0, 0, 10);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 30, 0, 0, 10);
     -fx-pref-width: 420;
     -fx-max-width: 420;
 }
@@ -475,37 +488,39 @@
 .auth-title {
     -fx-font-size: 24px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
 }
 
 .auth-subtitle {
     -fx-font-size: 14px;
-    -fx-text-fill: #64748B;
+    -fx-text-fill: -theme-text-muted;
 }
 
-/* Force light mode styles for auth screens to prevent dark mode bleeding */
+/* Ensure form labels respect theme */
 .auth-container .form-label {
-    -fx-text-fill: #1E293B;
+    -fx-text-fill: -theme-text;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }
 
 .auth-container .text-field,
 .auth-container .password-field {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #E2E8F0;
-    -fx-text-fill: #1E293B;
+    -fx-background-color: -theme-bg;
+    -fx-border-color: -theme-border;
+    -fx-text-fill: -theme-text;
 }
 
 .auth-container .text-field:focused,
 .auth-container .password-field:focused {
-    -fx-border-color: #2563EB;
+    -fx-border-color: -theme-primary;
 }
 
 .auth-container .label-subtle {
-    -fx-text-fill: #64748B;
+    -fx-text-fill: -theme-text-muted;
 }
 
 .auth-container .btn-link {
-    -fx-text-fill: #2563EB;
+    -fx-text-fill: -theme-primary;
 }
 
 
@@ -720,4 +735,24 @@
 .dark-mode .date-picker-popup .day-name-cell,
 .dark-mode .date-picker-popup .week-number-cell {
     -fx-text-fill: -theme-text-muted;
-}
+}
+/* Dynamic GUI Effects */
+.progress-bar {
+    -fx-accent: linear-gradient(to right, #00f2fe, #4facfe);
+    -fx-control-inner-background: #1e1e1e;
+    -fx-background-radius: 15px;
+}
+.progress-bar .bar {
+    -fx-background-radius: 15px;
+    -fx-padding: 0.5em;
+}
+
+.curved-panel {
+    -fx-background-color: linear-gradient(to bottom right, #2a2a35, #1a1a25);
+    -fx-background-radius: 30px 0px 30px 0px; 
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 15, 0, 0, 5);
+}
+
+.flash-green {
+    -fx-background-color: #00ff00 !important;
+}

@@ -143,6 +143,15 @@ public class UserProfileController {
 
     private static final java.util.Map<String, Long> bidCountCache = new java.util.concurrent.ConcurrentHashMap<>();
 
+    public static void preloadCache(java.util.List<Auction> fullAuctions) {
+        bidCountCache.clear();
+        for (Auction full : fullAuctions) {
+            for (com.auction.model.BidTransaction b : full.getBidHistory()) {
+                bidCountCache.merge(b.getBidder().getId(), 1L, Long::sum);
+            }
+        }
+    }
+
     private void loadBidCount(Bidder bidder) {
         if (totalBidsLabel == null)
             return;

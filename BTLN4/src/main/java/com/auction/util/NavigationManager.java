@@ -16,7 +16,7 @@ public class NavigationManager {
     private static NavigationManager instance;
     private Stage primaryStage;
     private Object currentController; // tracks the active controller for cleanup
-    private boolean isDarkMode = false; // Persistent theme state
+    private boolean isDarkMode = true; // Persistent theme state
 
     private NavigationManager() {
     }
