@@ -64,6 +64,9 @@ public class RestApiHandler {
         });
         app.options("/*", ctx -> ctx.status(204));  // CORS pre-flight
 
+        // Health check
+        app.get("/api/health", ctx -> ctx.status(200).result("OK"));
+
         // ── Auth ──────────────────────────────────────────────────────────────
         app.post("/api/login",    this::handleLogin);
         app.post("/api/register", this::handleRegister);
@@ -277,7 +280,7 @@ public class RestApiHandler {
             User user = userService.findById(id)
                     .orElseThrow(() -> new Exception("User not found: " + id));
 
-            if (body.has("password")) {
+            if (body.has("password") && !body.get("password").getAsString().isEmpty()) {
                 user.setPassword(body.get("password").getAsString());
             }
             if (user instanceof Seller seller && body.has("shopName")) {

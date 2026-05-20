@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.StackPane?>
+
+<StackPane fx:id="rootPane" xmlns:fx="http://javafx.com/fxml/1"
+           xmlns="http://javafx.com/javafx/21"
+           fx:controller="com.auction.controller.LogoutController"
+           styleClass="auth-container"
+           stylesheets="@styles/main.css"
+           style="-fx-padding: 0;">
+
+    <VBox alignment="CENTER" spacing="20" prefWidth="420" prefHeight="500" maxWidth="420" maxHeight="500"
+          styleClass="auth-card" style="-fx-margin: 0; -fx-background-radius: 0;">
+
+        <!-- Logout Status Message -->
+        <VBox alignment="CENTER" spacing="12">
+            <Label text="Đang đăng xuất..." styleClass="auth-title"/>
+            <Label text="Vui lòng đợi hệ thống đóng kết nối an toàn." styleClass="auth-subtitle"/>
+        </VBox>
+
+        <!-- Loading Spinner -->
+        <ProgressIndicator fx:id="spinner" prefWidth="40" prefHeight="40" />
+
+    </VBox>
+
+</StackPane>

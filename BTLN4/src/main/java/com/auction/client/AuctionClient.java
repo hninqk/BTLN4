@@ -58,8 +58,11 @@ public class AuctionClient {
                     .header("ngrok-skip-browser-warning", "true")
                     .buildAsync(URI.create(url), new WebSocket.Listener() {
 
+                        private final StringBuilder messageBuffer = new StringBuilder();
+
                         @Override
                         public void onOpen(WebSocket webSocket) {
+                            ws = webSocket;
                             connected = true;
                             System.out.println("[AuctionClient] Connected to server.");
                             webSocket.request(1);
@@ -71,7 +74,11 @@ public class AuctionClient {
                         @Override
                         public CompletionStage<?> onText(WebSocket webSocket,
                                 CharSequence data, boolean last) {
-                            onMessage.accept(data.toString());
+                            messageBuffer.append(data);
+                            if (last) {
+                                onMessage.accept(messageBuffer.toString());
+                                messageBuffer.setLength(0);
+                            }
                             webSocket.request(1);
                             return null;
                         }
@@ -124,7 +131,7 @@ public class AuctionClient {
     public void disconnect() {
         if (ws != null && connected) {
             try {
-                ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").join();
+                ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing");
             } catch (Exception ignored) {
             }
             connected = false;

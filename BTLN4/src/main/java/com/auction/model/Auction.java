@@ -73,6 +73,8 @@ public class Auction extends Entity implements Subject {
     public synchronized void placeBid(BidTransaction newBid) throws InvalidBidException, InvalidStatusException {
         if (this.status != AuctionStatus.RUNNING)
             throw new InvalidStatusException("Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.");
+        if (this.endTime != null && LocalDateTime.now().isAfter(this.endTime))
+            throw new InvalidStatusException("Phiên đấu giá đã kết thúc.");
         double newBidAmount = newBid.getAmount();
         if (newBidAmount <= this.highestBid)
             throw new InvalidBidException("Giá đặt phải cao hơn giá hiện tại: " + this.highestBid);
@@ -102,6 +104,11 @@ public class Auction extends Entity implements Subject {
     public AuctionStatus getStatus()    { return status; }
     public LocalDateTime getStartTime() { return startTime; }
     public LocalDateTime getEndTime()   { return endTime; }
+
+    public void setEndTime(LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
     public double getHighestBid()       { return highestBid; }
     public void setHighestBid(double highestBid) { this.highestBid = highestBid; }
 

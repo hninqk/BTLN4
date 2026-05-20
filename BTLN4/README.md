@@ -89,3 +89,39 @@ class AuctionStatus {
   PAID
   CANCELED
 }
+```
+
+## Project Structure
+
+```text
+BTLN4/
+├── .github/
+│   └── workflows/
+│       ├── maven.yml
+│       └── render_deploy.yml
+├── BTLN4/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/auction/
+│   │   │   │   ├── client/
+│   │   │   │   ├── controller/
+│   │   │   │   ├── exception/
+│   │   │   │   ├── factory/
+│   │   │   │   ├── manager/
+│   │   │   │   ├── model/
+│   │   │   │   ├── repository/
+│   │   │   │   ├── server/
+│   │   │   │   ├── service/
+│   │   │   │   ├── util/
+│   │   │   │   ├── Launcher.java
+│   │   │   │   ├── Main.java
+│   │   │   │   └── ServerMain.java
+│   │   │   └── resources/com/auction/
+│   │   │       ├── components/
+│   │   │       ├── styles/
+│   │   │       └── *.fxml
+│   │   └── test/java/com/auction/
+│   ├── pom.xml
+│   ├── Dockerfile
+│   └── README.md
+```

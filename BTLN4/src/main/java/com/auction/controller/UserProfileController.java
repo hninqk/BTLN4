@@ -70,8 +70,26 @@ public class UserProfileController {
         };
         depositField.setTextFormatter(new javafx.scene.control.TextFormatter<>(numericFilter));
 
-        if (currentUser != null)
+        if (currentUser != null) {
             populateProfile();
+            // Fetch fresh data from server to ensure balance is up-to-date
+            Task<java.util.Optional<User>> task = new Task<>() {
+                @Override
+                protected java.util.Optional<User> call() {
+                    return app.findUserById(currentUser.getId());
+                }
+            };
+            task.setOnSucceeded(e -> {
+                task.getValue().ifPresent(u -> {
+                    SessionManager.getInstance().setCurrentUser(u);
+                    currentUser = u;
+                    populateProfile();
+                });
+            });
+            Thread t = new Thread(task, "profile-refresh");
+            t.setDaemon(true);
+            t.start();
+        }
     }
 
     private void populateProfile() {
@@ -123,21 +141,50 @@ public class UserProfileController {
         }
     }
 
+    private static final java.util.Map<String, Long> bidCountCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void preloadCache(java.util.List<Auction> fullAuctions) {
+        bidCountCache.clear();
+        for (Auction full : fullAuctions) {
+            for (com.auction.model.BidTransaction b : full.getBidHistory()) {
+                bidCountCache.merge(b.getBidder().getId(), 1L, Long::sum);
+            }
+        }
+    }
+
     private void loadBidCount(Bidder bidder) {
         if (totalBidsLabel == null)
             return;
-        totalBidsLabel.setText("...");
+            
+        Long cached = bidCountCache.get(bidder.getId());
+        if (cached != null) {
+            totalBidsLabel.setText(String.valueOf(cached));
+        } else {
+            totalBidsLabel.setText("...");
+        }
+        
         Task<Long> task = new Task<>() {
             @Override
             protected Long call() {
-                return app.getAllAuctions().stream()
-                        .flatMap(a -> a.getBidHistory().stream())
-                        .filter(b -> b.getBidder().getId().equals(bidder.getId()))
-                        .count();
+                long count = 0;
+                for (Auction shallow : app.getAllAuctions()) {
+                    Auction full = app.findAuctionById(shallow.getId()).orElse(null);
+                    if (full != null) {
+                        count += full.getBidHistory().stream()
+                                .filter(b -> b.getBidder().getId().equals(bidder.getId()))
+                                .count();
+                    }
+                }
+                return count;
             }
         };
-        task.setOnSucceeded(e -> totalBidsLabel.setText(String.valueOf(task.getValue())));
-        task.setOnFailed(e -> totalBidsLabel.setText("?"));
+        task.setOnSucceeded(e -> {
+            bidCountCache.put(bidder.getId(), task.getValue());
+            totalBidsLabel.setText(String.valueOf(task.getValue()));
+        });
+        task.setOnFailed(e -> {
+            if (bidCountCache.get(bidder.getId()) == null) totalBidsLabel.setText("?");
+        });
         new Thread(task, "profile-bid-count").start();
     }
 

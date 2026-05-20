@@ -15,7 +15,14 @@
     </left>
 
     <center>
-        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+        <StackPane pickOnBounds="false">
+            <!-- Aesthetic Geometric Background -->
+            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+            </Pane>
+            <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
 
             <!-- Header -->
             <HBox alignment="CENTER_LEFT">
@@ -46,6 +53,11 @@
                     <Label fx:id="totalSpentLabel" text="0 ₫" styleClass="stat-value"
                            style="-fx-font-size:20px; -fx-text-fill:#D97706;"/>
                 </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <Label text="Số dư hiện tại" styleClass="stat-label"/>
+                    <Label fx:id="currentBalanceLabel" text="0 ₫" styleClass="stat-value"
+                           style="-fx-font-size:20px; -fx-text-fill:#10B981;"/>
+                </VBox>
             </HBox>
 
             <!-- Filter bar -->
@@ -59,11 +71,13 @@
             </HBox>
 
             <!-- History table -->
-            <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
-                <TableView fx:id="historyTable" VBox.vgrow="ALWAYS"
-                           style="-fx-border-width:0; -fx-background-color:transparent;"
-                           onMouseClicked="#handleRowClick">
-                    <columns>
+            <TableView fx:id="historyTable" VBox.vgrow="ALWAYS"
+                       style="-fx-border-width:0; -fx-background-color:transparent; -fx-padding: 0;"
+                       onMouseClicked="#handleRowClick">
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                </columnResizePolicy>
+                <columns>
                         <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="210"/>
                         <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="120"/>
                         <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="130"/>
@@ -76,7 +90,6 @@
                         <Label text="Bạn chưa tham gia phiên đấu giá nào." styleClass="label-subtle"/>
                     </placeholder>
                 </TableView>
-            </VBox>
 
             <HBox alignment="CENTER_LEFT">
                 <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
@@ -86,6 +99,7 @@
             </HBox>
 
         </VBox>
+        </StackPane>
     </center>
 
 </BorderPane>

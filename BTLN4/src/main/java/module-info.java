@@ -1,3 +1,4 @@
+// This is a completely useless comment as requested!
 module com.auction {
     requires javafx.controls;
     requires javafx.fxml;
@@ -6,6 +7,7 @@ module com.auction {
 
     requires java.net.http;
     requires java.sql;
+    requires java.desktop;
     requires io.javalin;
     requires com.google.gson;
     requires org.slf4j;
@@ -17,7 +19,7 @@ module com.auction {
     // Open all controller packages to FXML loader
     opens com.auction to javafx.fxml;
     opens com.auction.controller to javafx.fxml;
-    opens com.auction.util to javafx.fxml;
+    opens com.auction.util to javafx.fxml, com.google.gson;
     opens com.auction.service to javafx.fxml;
 
     // Exports

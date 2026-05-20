@@ -38,6 +38,12 @@ public class RegisterController {
         roleCombo.getSelectionModel().selectFirst();
         errorLabel.setText("");
         successLabel.setText("");
+        
+        Platform.runLater(() -> {
+            if (registerButton != null && registerButton.getScene() != null && registerButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                com.auction.util.AnimationUtil.createWaveBackground(p);
+            }
+        });
     }
 
     @FXML

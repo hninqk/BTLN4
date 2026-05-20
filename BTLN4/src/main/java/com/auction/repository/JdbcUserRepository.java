@@ -22,15 +22,15 @@ public class JdbcUserRepository {
         if (DatabaseConnection.isPostgres()) {
             sql = """
                 INSERT INTO users
-                    (id, username, password, role, balance, shop_name, rating, cntvoted, access_level, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                    (id, username, password, role, balance, frozen_balance, shop_name, rating, cntvoted, access_level, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT (id) DO NOTHING
                 """;
         } else {
             sql = """
                 INSERT OR IGNORE INTO users
-                    (id, username, password, role, balance, shop_name, rating, cntvoted, access_level, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                    (id, username, password, role, balance, frozen_balance, shop_name, rating, cntvoted, access_level, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """;
         }
         try (Connection conn = DatabaseConnection.getConnection();
@@ -43,31 +43,35 @@ public class JdbcUserRepository {
 
             if (user instanceof Bidder b) {
                 ps.setDouble(5, b.getAccountBalance());
-                ps.setNull(6, Types.VARCHAR);
-                ps.setDouble(7, 0.0);
-                ps.setInt(8, 0);
-                ps.setInt(9, 1);
+                ps.setDouble(6, b.getFrozenBalance());
+                ps.setNull(7, Types.VARCHAR);
+                ps.setDouble(8, 0.0);
+                ps.setInt(9, 0);
+                ps.setInt(10, 1);
             } else if (user instanceof Seller s) {
                 ps.setDouble(5, 0.0);
-                ps.setString(6, s.getShopName());
-                ps.setDouble(7, s.getRating());
-                ps.setInt(8, s.getCntvoted());
-                ps.setInt(9, 1);
+                ps.setDouble(6, 0.0);
+                ps.setString(7, s.getShopName());
+                ps.setDouble(8, s.getRating());
+                ps.setInt(9, s.getCntvoted());
+                ps.setInt(10, 1);
             } else if (user instanceof Admin a) {
                 ps.setDouble(5, 0.0);
-                ps.setNull(6, Types.VARCHAR);
-                ps.setDouble(7, 0.0);
-                ps.setInt(8, 0);
-                ps.setInt(9, a.getAccessLevel());
+                ps.setDouble(6, 0.0);
+                ps.setNull(7, Types.VARCHAR);
+                ps.setDouble(8, 0.0);
+                ps.setInt(9, 0);
+                ps.setInt(10, a.getAccessLevel());
             } else {
                 ps.setDouble(5, 0.0);
-                ps.setNull(6, Types.VARCHAR);
-                ps.setDouble(7, 0.0);
-                ps.setInt(8, 0);
-                ps.setInt(9, 1);
+                ps.setDouble(6, 0.0);
+                ps.setNull(7, Types.VARCHAR);
+                ps.setDouble(8, 0.0);
+                ps.setInt(9, 0);
+                ps.setInt(10, 1);
             }
 
-            ps.setString(10, user.getCreatedAt().toString());
+            ps.setString(11, user.getCreatedAt().toString());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -125,7 +129,7 @@ public class JdbcUserRepository {
     public void update(User user) {
         String sql = """
             UPDATE users SET
-                username=?, password=?, balance=?, shop_name=?,
+                username=?, password=?, balance=?, frozen_balance=?, shop_name=?,
                 rating=?, cntvoted=?, access_level=?
             WHERE id=?
             """;
@@ -137,35 +141,58 @@ public class JdbcUserRepository {
 
             if (user instanceof Bidder b) {
                 ps.setDouble(3, b.getAccountBalance());
-                ps.setNull(4, Types.VARCHAR);
-                ps.setDouble(5, 0.0);
-                ps.setInt(6, 0);
-                ps.setInt(7, 1);
+                ps.setDouble(4, b.getFrozenBalance());
+                ps.setNull(5, Types.VARCHAR);
+                ps.setDouble(6, 0.0);
+                ps.setInt(7, 0);
+                ps.setInt(8, 1);
             } else if (user instanceof Seller s) {
                 ps.setDouble(3, 0.0);
-                ps.setString(4, s.getShopName());
-                ps.setDouble(5, s.getRating());
-                ps.setInt(6, s.getCntvoted());
-                ps.setInt(7, 1);
+                ps.setDouble(4, 0.0);
+                ps.setString(5, s.getShopName());
+                ps.setDouble(6, s.getRating());
+                ps.setInt(7, s.getCntvoted());
+                ps.setInt(8, 1);
             } else if (user instanceof Admin a) {
                 ps.setDouble(3, 0.0);
-                ps.setNull(4, Types.VARCHAR);
-                ps.setDouble(5, 0.0);
-                ps.setInt(6, 0);
-                ps.setInt(7, a.getAccessLevel());
+                ps.setDouble(4, 0.0);
+                ps.setNull(5, Types.VARCHAR);
+                ps.setDouble(6, 0.0);
+                ps.setInt(7, 0);
+                ps.setInt(8, a.getAccessLevel());
             } else {
                 ps.setDouble(3, 0.0);
-                ps.setNull(4, Types.VARCHAR);
-                ps.setDouble(5, 0.0);
-                ps.setInt(6, 0);
-                ps.setInt(7, 1);
+                ps.setDouble(4, 0.0);
+                ps.setNull(5, Types.VARCHAR);
+                ps.setDouble(6, 0.0);
+                ps.setInt(7, 0);
+                ps.setInt(8, 1);
             }
 
-            ps.setString(8, user.getId());
+            ps.setString(9, user.getId());
             ps.executeUpdate();
 
         } catch (SQLException e) {
             System.err.println("[UserRepo] update error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Atomic update chỉ frozen_balance – dùng trong placeBid() để không
+     * ghi đè các field khác trong lúc transaction đang xử lý.
+     *
+     * @param userId       ID của bidder
+     * @param frozenBalance giá trị frozenBalance mới
+     */
+    public void updateFrozenBalance(String userId, double frozenBalance) {
+        String sql = "UPDATE users SET frozen_balance = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, Math.max(0.0, frozenBalance));
+            ps.setString(2, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[UserRepo] updateFrozenBalance error: " + e.getMessage());
         }
     }
 
@@ -208,9 +235,9 @@ public class JdbcUserRepository {
 
         return switch (role) {
             case "Bidder" -> {
-                Bidder b = new Bidder(id, createdAt, username, password,
-                                      rs.getDouble("balance"));
-                yield b;
+                double balance = rs.getDouble("balance");
+                double frozen  = safeGetDouble(rs, "frozen_balance", 0.0);
+                yield new Bidder(id, createdAt, username, password, balance, frozen);
             }
             case "Seller" -> {
                 Seller s = new Seller(id, createdAt, username, password,
@@ -226,5 +253,17 @@ public class JdbcUserRepository {
             }
             default -> throw new SQLException("Unknown role: " + role);
         };
+    }
+
+    /**
+     * Đọc giá trị double từ ResultSet, trả về defaultValue nếu cột chưa tồn tại
+     * (backward compatibility khi DB cũ chưa có cột frozen_balance).
+     */
+    private double safeGetDouble(ResultSet rs, String column, double defaultValue) {
+        try {
+            return rs.getDouble(column);
+        } catch (SQLException e) {
+            return defaultValue;
+        }
     }
 }

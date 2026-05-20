@@ -7,6 +7,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.Parent;
 
 import java.io.IOException;
 
@@ -33,6 +34,10 @@ public class SidebarController {
     private Button btnAdmin;
     @FXML
     private Button btnProfile;
+    @FXML
+    private Button btnSettings;
+    @FXML
+    private Label lblManagement;
 
     @FXML
     public void initialize() {
@@ -53,6 +58,13 @@ public class SidebarController {
             // ADMIN strictly sees Admin Management
             btnAdmin.setVisible(isAdmin);
             btnAdmin.setManaged(isAdmin);
+
+            // Hide Management label if Bidder
+            boolean showManagement = isSeller || isAdmin;
+            if (lblManagement != null) {
+                lblManagement.setVisible(showManagement);
+                lblManagement.setManaged(showManagement);
+            }
 
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
@@ -91,9 +103,24 @@ public class SidebarController {
     }
 
     @FXML
+    private void handleSettings(ActionEvent event) {
+        navigate(NavigationManager.SETTINGS, "Cài đặt");
+    }
+
+    @FXML
     private void handleLogout(ActionEvent event) {
-        SessionManager.getInstance().logoutUser(); // Adjusted to match your SessionManager setup
-        navigate(NavigationManager.LOGIN, "Đăng nhập");
+        // Prevent multiple clicks and give immediate visual feedback
+        if (event.getSource() instanceof javafx.scene.Node node) {
+            if (node.getScene() != null && node.getScene().getRoot() != null) {
+                node.getScene().getRoot().setDisable(true);
+                node.getScene().getRoot().setOpacity(0.8);
+            }
+        }
+        
+        // Defer the scene-switch to let the button animation finish smoothly
+        javafx.application.Platform.runLater(() -> {
+            navigate(NavigationManager.LOGOUT, "Đang đăng xuất...");
+        });
     }
 
     private void navigate(String screen, String title) {

@@ -3,19 +3,23 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.*?>
 
 <StackPane xmlns:fx="http://javafx.com/fxml/1"
            xmlns="http://javafx.com/javafx/21"
            fx:controller="com.auction.controller.LoginController"
            styleClass="auth-container"
-           stylesheets="@styles/main.css">
+           stylesheets="@styles/main.css"
+           style="-fx-padding: 0;">
 
-    <VBox alignment="CENTER" spacing="0" maxWidth="420"
-          styleClass="auth-card">
+    <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color:transparent;">
+        <VBox alignment="CENTER" fillWidth="true" style="-fx-padding:40 0 40 0;">
+            <VBox alignment="CENTER" spacing="0" maxWidth="440" minHeight="600" fillWidth="true"
+                  styleClass="auth-card">
 
-        <!-- Header -->
-        <VBox alignment="CENTER" spacing="6">
+        <!-- Header & Branding -->
+        <VBox alignment="CENTER" spacing="12">
             <Label text="Đấu Giá Trực Tuyến" styleClass="auth-title"/>
             <Label text="Đăng nhập để tiếp tục" styleClass="auth-subtitle"/>
         </VBox>
@@ -56,4 +60,6 @@
                     styleClass="btn-link"/>
         </HBox>
     </VBox>
+        </VBox>
+    </ScrollPane>
 </StackPane>

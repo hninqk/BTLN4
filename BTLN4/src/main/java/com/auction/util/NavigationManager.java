@@ -16,6 +16,7 @@ public class NavigationManager {
     private static NavigationManager instance;
     private Stage primaryStage;
     private Object currentController; // tracks the active controller for cleanup
+    private boolean isDarkMode = true; // Persistent theme state
 
     private NavigationManager() {
     }
@@ -33,6 +34,22 @@ public class NavigationManager {
 
     public Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    public boolean isDarkMode() {
+        return isDarkMode;
+    }
+
+    public void setDarkMode(boolean darkMode) {
+        this.isDarkMode = darkMode;
+        if (primaryStage != null && primaryStage.getScene() != null && primaryStage.getScene().getRoot() != null) {
+            Parent root = primaryStage.getScene().getRoot();
+            if (darkMode && !root.getStyleClass().contains("dark-mode")) {
+                root.getStyleClass().add("dark-mode");
+            } else if (!darkMode) {
+                root.getStyleClass().remove("dark-mode");
+            }
+        }
     }
 
     /**
@@ -80,9 +97,15 @@ public class NavigationManager {
             scene.setRoot(root);
         }
 
+        if (isDarkMode && !root.getStyleClass().contains("dark-mode")) {
+            root.getStyleClass().add("dark-mode");
+        }
+
         if (title != null) {
             primaryStage.setTitle("Hệ thống Đấu giá - " + title);
         }
+        
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 
@@ -95,14 +118,16 @@ public class NavigationManager {
     }
 
     // Screen name constants
+    public static final String SPLASH = "Splash";
     public static final String LOGIN = "Login";
     public static final String REGISTER = "Register";
     public static final String DASHBOARD = "Dashboard";
     public static final String AUCTION_LIST = "AuctionList";
     public static final String AUCTION_DETAIL = "AuctionDetail";
-    public static final String LIVE_BIDDING = "LiveBidding";
     public static final String SELLER_MGMT = "SellerManagement";
     public static final String ADMIN_MGMT = "AdminManagement";
     public static final String USER_PROFILE = "UserProfile";
     public static final String HISTORY = "BidHistory";
+    public static final String SETTINGS = "Settings";
+    public static final String LOGOUT = "Logout";
 }

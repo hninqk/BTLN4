@@ -32,6 +32,11 @@ public class LoginController {
     @FXML
     public void initialize() {
         errorLabel.setText("");
+        Platform.runLater(() -> {
+            if (loginButton != null && loginButton.getScene() != null && loginButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                com.auction.util.AnimationUtil.createWaveBackground(p);
+            }
+        });
     }
 
     @FXML
