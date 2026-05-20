@@ -100,6 +100,8 @@ public class AuctionDetailController implements DataReceiver {
     private XYChart.Series<String, Number> priceSeries;
     private int chartTick     = 0;
     private int knownBidCount = 0;
+    /** Debounce: timestamp of last full refreshLivePanel render (ms). */
+    private volatile long lastRefreshMs = 0;
 
     // WebSocket
     private AuctionClient wsClient;
@@ -505,7 +507,18 @@ public class AuctionDetailController implements DataReceiver {
         startPriceLabel.setText(String.format("%,.0f ₫", item.getStartingPrice()));
         endTimeLabel.setText(currentAuction.getEndTime().format(FMT));
         descriptionLabel.setText(item.getDescription());
-        itemImageView.setImage(ImageLoaderUtil.loadItemImage(item.getImageUrl(), 420, 250));
+        // Check image cache first (splash preloads 420×250) – set immediately, no thread needed
+        String imgUrl = item.getImageUrl();
+        if (imgUrl != null && !imgUrl.isEmpty()) {
+            String cacheKey = (imgUrl.startsWith("data:image/") && imgUrl.contains(";base64,")
+                    ? Integer.toHexString(imgUrl.hashCode()) : imgUrl) + "_420_250";
+            javafx.scene.image.Image cachedImg = com.auction.util.CacheManager.getInstance().getImage(cacheKey);
+            if (cachedImg != null) {
+                itemImageView.setImage(cachedImg);
+            } else {
+                itemImageView.setImage(ImageLoaderUtil.loadItemImage(imgUrl, 420, 250));
+            }
+        }
     }
 
     private void preloadBidsIntoChartAndFeed() {
@@ -544,6 +557,10 @@ public class AuctionDetailController implements DataReceiver {
 
     private void refreshLivePanel() {
         if (currentAuction == null) return;
+        // Debounce: skip if called again within 150 ms (WS + scheduler fire at the same time)
+        long now = System.currentTimeMillis();
+        if (now - lastRefreshMs < 150) return;
+        lastRefreshMs = now;
 
         // Price + bid count
         currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));

@@ -101,19 +101,23 @@ public class SplashController {
                     UserProfileController.preloadCache(fullAuctions);
                     BidHistoryController.preloadCache(fullAuctions);
 
-                    // Preload images for first 10 active auctions
+                    // Preload images at every size actually used in the UI so that
+                    // CacheManager hits occur on all screens (keys include dimensions).
+                    // Dashboard card  → 200×120
+                    // AuctionDetail   → 420×250
+                    // AuctionList row → 120×80
                     int preloadedImages = 0;
                     for (com.auction.model.Auction a : fullAuctions) {
-                        if (a.getStatus() == com.auction.model.AuctionStatus.RUNNING || a.getStatus() == com.auction.model.AuctionStatus.PENDING) {
-                            if (a.getItem() != null && a.getItem().getImageUrl() != null && !a.getItem().getImageUrl().isEmpty()) {
-                                // Load standard sizes used in Dashboard and AuctionList (e.g. 250x200 or 80x80)
-                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 250, 200);
-                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 80, 80);
-                                preloadedImages++;
-                                if (preloadedImages >= 10) break;
-                            }
+                        String imgUrl = a.getItem() != null ? a.getItem().getImageUrl() : null;
+                        if (imgUrl != null && !imgUrl.isEmpty()) {
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 200, 120);
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 420, 250);
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 120, 80);
+                            preloadedImages++;
+                            if (preloadedImages >= 20) break;
                         }
                     }
+                    System.out.printf("[Splash] Pre-cached images for %d auctions at 3 sizes.%n", preloadedImages);
                 } catch (Exception e) {
                     System.err.println("Cache preload error: " + e.getMessage());
                 }

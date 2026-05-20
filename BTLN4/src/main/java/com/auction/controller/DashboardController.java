@@ -70,6 +70,8 @@ public class DashboardController {
 
     private final HotItemCache hotCache = HotItemCache.getInstance();
     private Timeline hotRefreshTimeline;
+    /** Guard to prevent overlapping hot-refresh DB queries. */
+    private volatile boolean isRefreshing = false;
 
     @FXML
     public void initialize() {
@@ -232,14 +234,20 @@ public class DashboardController {
      * No DB query – purely reads the in-memory HotItemCache and existing auction list.
      */
     private void startHotItemRefresh() {
-        hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(5), e -> {
+        // 15 s interval – reduced from 5 s to cut DB load.
+        // isRefreshing guard ensures only one background query runs at a time.
+        hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(15), e -> {
+            if (isRefreshing) return; // skip if previous query still in progress
+            isRefreshing = true;
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
                 @Override protected List<Auction> call() { return app.getAllAuctions(); }
             };
             refreshTask.setOnSucceeded(ev -> {
+                isRefreshing = false;
                 hotCache.seedFromList(refreshTask.getValue());
                 Platform.runLater(() -> refreshHotItems(refreshTask.getValue()));
             });
+            refreshTask.setOnFailed(ev -> isRefreshing = false);
             Thread t = new Thread(refreshTask, "hot-refresh");
             t.setDaemon(true);
             t.start();
@@ -269,20 +277,29 @@ public class DashboardController {
         iv.setFitWidth(200);
         iv.setFitHeight(120);
         iv.setPreserveRatio(true);
-        javafx.concurrent.Task<javafx.scene.image.Image> imgTask = new javafx.concurrent.Task<>() {
-            @Override
-            protected javafx.scene.image.Image call() {
-                return ImageLoaderUtil.loadItemImage(auction.getItem().getImageUrl(), 200, 120);
+        // Check cache first – if the splash screen already preloaded this image
+        // we can set it synchronously on the FX thread with zero overhead.
+        String imgUrl = auction.getItem() != null ? auction.getItem().getImageUrl() : null;
+        if (imgUrl != null && !imgUrl.isEmpty()) {
+            javafx.scene.image.Image cached = com.auction.util.CacheManager.getInstance()
+                    .getImage(imgUrl + "_200_120");
+            if (cached != null) {
+                iv.setImage(cached);
+            } else {
+                // Cache miss – load in background
+                javafx.concurrent.Task<javafx.scene.image.Image> imgTask = new javafx.concurrent.Task<>() {
+                    @Override
+                    protected javafx.scene.image.Image call() {
+                        return ImageLoaderUtil.loadItemImage(imgUrl, 200, 120);
+                    }
+                    @Override
+                    protected void succeeded() { iv.setImage(getValue()); }
+                };
+                Thread imgThread = new Thread(imgTask, "img-load-dashboard");
+                imgThread.setDaemon(true);
+                imgThread.start();
             }
-
-            @Override
-            protected void succeeded() {
-                iv.setImage(getValue());
-            }
-        };
-        Thread t = new Thread(imgTask);
-        t.setDaemon(true);
-        t.start();
+        }
 
         Label title = new Label(auction.getItem().getName());
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: -theme-text;");

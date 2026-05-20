@@ -34,12 +34,12 @@ public final class ImageLoaderUtil {
         String url = imageUrl == null ? "" : imageUrl.trim();
         if (url.isEmpty()) return createFallbackImage((int) width, (int) height);
 
-        // Tạo cacheKey. Dùng .hashCode() siêu tốc thay vì MD5 để giảm thời gian xử lý
+        // Cache key includes dimensions (different sizes = different entries)
         String keyBase = url;
         if (url.startsWith("data:image/") && url.contains(";base64,")) {
             keyBase = fastHash(url);
         }
-        String cacheKey = keyBase + "_" + width + "_" + height;
+        String cacheKey = keyBase + "_" + (int) width + "_" + (int) height;
         Image cached = CacheManager.getInstance().getImage(cacheKey);
         if (cached != null) {
             return cached;
@@ -47,24 +47,48 @@ public final class ImageLoaderUtil {
 
         try {
             if (url.startsWith("data:image/") && url.contains(";base64,")) {
-                // Background loading for Base64 by using temp files
+                // Sync temp-file approach for Base64
                 File tempFile = new File(System.getProperty("java.io.tmpdir"), "img_" + keyBase + ".tmp");
                 if (!tempFile.exists()) {
                     String base64Data = url.substring(url.indexOf(";base64,") + 8);
                     byte[] decoded = Base64.getDecoder().decode(base64Data);
                     Files.write(tempFile.toPath(), decoded);
                 }
-                
-                // backgroundLoading determines if we block UI thread
                 Image img = new Image(tempFile.toURI().toString(), width, height, true, true, backgroundLoading);
+                // For async loads, evict from cache on error so it can be retried later
+                if (backgroundLoading) {
+                    final String key = cacheKey;
+                    img.errorProperty().addListener((obs, wasErr, isErr) -> {
+                        if (isErr) {
+                            CacheManager.getInstance().evict(key);
+                            System.err.println("[ImageLoaderUtil] Async load error, evicted cache key: " + key);
+                        }
+                    });
+                }
                 CacheManager.getInstance().putImage(cacheKey, img);
                 return img;
+
             } else if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:")) {
                 Image remote = new Image(url, width, height, true, true, backgroundLoading);
-                if (!remote.isError()) {
+                if (backgroundLoading) {
+                    // Store immediately so other callers share the same loading Image.
+                    // Register listener to evict if it errors during async download.
+                    final String key = cacheKey;
+                    remote.errorProperty().addListener((obs, wasErr, isErr) -> {
+                        if (isErr) {
+                            CacheManager.getInstance().evict(key);
+                            System.err.println("[ImageLoaderUtil] Async load error, evicted cache key: " + key);
+                        }
+                    });
                     CacheManager.getInstance().putImage(cacheKey, remote);
-                    return remote;
+                } else {
+                    // Sync load – only cache on success
+                    if (!remote.isError()) {
+                        CacheManager.getInstance().putImage(cacheKey, remote);
+                    }
                 }
+                return remote;
+
             } else {
                 File localFile = new File(url);
                 if (localFile.exists()) {

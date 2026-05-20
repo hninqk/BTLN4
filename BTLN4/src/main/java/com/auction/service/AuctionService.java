@@ -57,7 +57,13 @@ public class AuctionService {
      * computeIfAbsent đảm bảo mỗi bidderId chỉ có đúng 1 lock.
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
-    
+
+    /**
+     * Lock per-auction để tránh race condition khi 2+ user đăng ký auto-bid
+     * cùng lúc trên cùng 1 phiên đấu giá.
+     */
+    private final ConcurrentHashMap<String, ReentrantLock> auctionLocks = new ConcurrentHashMap<>();
+
     private final ProxyBiddingEngine proxyBiddingEngine;
 
     private AuctionService() {
@@ -506,7 +512,13 @@ public class AuctionService {
     }
 
     public AutoBidResult resolveBiddingWar(Auction auction) {
-        return proxyBiddingEngine.resolveBiddingWar(auction);
+        ReentrantLock lock = getAuctionLock(auction.getId());
+        lock.lock();
+        try {
+            return proxyBiddingEngine.resolveBiddingWar(auction);
+        } finally {
+            lock.unlock();
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -517,6 +529,10 @@ public class AuctionService {
      */
     private ReentrantLock getUserLock(String userId) {
         return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true));
+    }
+
+    private ReentrantLock getAuctionLock(String auctionId) {
+        return auctionLocks.computeIfAbsent(auctionId, id -> new ReentrantLock(true));
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────
