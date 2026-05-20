@@ -51,7 +51,7 @@ public class SplashController {
             protected Void call() throws Exception {
                 // Step 1: Connecting
                 updateProgress(0.1, 1.0);
-                updateMessage("Loading...");
+                updateMessage("Đang tải dữ liệu...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang kết nối API..."));
                 
                 boolean connected = false;
@@ -64,8 +64,7 @@ public class SplashController {
                             Thread.sleep(1000);
                         }
                     } catch (Exception e) {
-                        updateMessage("Đang chờ máy chủ (khởi động lạnh)...");
-                        Platform.runLater(() -> logStreamLabel.setText("[CẢNH BÁO] Không thể kết nối, đang thử lại..."));
+                        Platform.runLater(() -> logStreamLabel.setText("Đang chờ máy chủ..."));
                         Thread.sleep(1500);
                     }
                 }
