@@ -212,6 +212,15 @@ public class AuctionDetailController implements DataReceiver {
         JsonObject req = new JsonObject();
         req.addProperty("type", "REQUEST_SYNC");
         wsClient.send(req.toString());
+        
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder && currentAuction != null) {
+            JsonObject abReq = new JsonObject();
+            abReq.addProperty("type", "CHECK_AUTO_BID");
+            abReq.addProperty("auctionId", currentAuction.getId());
+            abReq.addProperty("bidderId", bidder.getId());
+            wsClient.send(abReq.toString());
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -250,6 +259,7 @@ public class AuctionDetailController implements DataReceiver {
                 case "FULL_SYNC"              -> onFullSync(json);
                 case "AUTO_BID_LOG"           -> onAutoBidLog(json);
                 case "AUTO_BID_ACK"           -> onAutoBidAck(json);
+                case "AUTO_BID_STATUS"        -> onAutoBidStatus(json);
                 // Legacy: bare bid response without "type" field
                 default -> {
                     if (json.has("amount") && json.has("bidder")) {
@@ -329,6 +339,24 @@ public class AuctionDetailController implements DataReceiver {
         }
         
         refreshLivePanel();
+    }
+
+    private void onAutoBidStatus(JsonObject json) {
+        String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+        if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+        
+        double maxBid = json.get("maxBid").getAsDouble();
+        double increment = json.get("increment").getAsDouble();
+        
+        Platform.runLater(() -> {
+            if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", maxBid));
+            if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", increment));
+            if (autoBidStatusBadge != null) {
+                autoBidStatusBadge.setText("Đang Hoạt Động");
+                autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+                if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
+            }
+        });
     }
 
     /** Auction status changed by admin (approve/start/finish/cancel). */
@@ -537,22 +565,7 @@ public class AuctionDetailController implements DataReceiver {
     // ──────────────────────────────────────────────────────────────────────────
 
     private void loadAutoBidState() {
-        User user = SessionManager.getInstance().getCurrentUser();
-        if (user instanceof Bidder bidder && currentAuction != null) {
-            AutoBid activeBid = new com.auction.repository.JdbcAutoBidRepository()
-                    .findByAuctionIdAndBidderId(currentAuction.getId(), bidder.getId());
-            if (activeBid != null) {
-                Platform.runLater(() -> {
-                    if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", activeBid.getMaxBid()));
-                    if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", activeBid.getIncrement()));
-                    if (autoBidStatusBadge != null) {
-                        autoBidStatusBadge.setText("Đang Hoạt Động");
-                        autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
-                        if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
-                    }
-                });
-            }
-        }
+        // Will now be loaded asynchronously via WS on connection
     }
 
     private void refreshLivePanel() {

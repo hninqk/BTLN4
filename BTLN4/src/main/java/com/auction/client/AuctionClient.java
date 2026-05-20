@@ -131,7 +131,7 @@ public class AuctionClient {
     public void disconnect() {
         if (ws != null && connected) {
             try {
-                ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing").join();
+                ws.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing");
             } catch (Exception ignored) {
             }
             connected = false;

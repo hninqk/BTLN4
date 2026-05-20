@@ -179,6 +179,7 @@ public class AuctionWebSocketHandler {
                 case "CREATE_AUCTION"    -> handleCreateAuction(ctx, req);
                 case "ADMIN_ACTION"      -> handleAdminAction(ctx, req);
                 case "REQUEST_SYNC"      -> handleRequestSync(ctx);
+                case "CHECK_AUTO_BID"    -> handleCheckAutoBid(ctx, req);
                 default                  -> sendError(ctx, "Unknown message type: " + type);
             }
         } catch (Exception e) {
@@ -310,6 +311,15 @@ public class AuctionWebSocketHandler {
             ack.addProperty("type", "AUTO_BID_ACK");
             ack.addProperty("auctionId", auctionId);
             ctx.send(ack.toString());
+            
+            Bidder freshBidder = (Bidder) userService.findById(bidderId).orElse(bidder);
+            JsonObject balUpdate = new JsonObject();
+            balUpdate.addProperty("type", "BALANCE_UPDATE");
+            balUpdate.addProperty("bidderId", freshBidder.getId());
+            balUpdate.addProperty("newBalance", freshBidder.getAccountBalance());
+            balUpdate.addProperty("frozenBalance", freshBidder.getFrozenBalance());
+            balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
+            broadcastAll(balUpdate.toString());
             
             broadcastAutoBidResult(abResult, auction.getId());
             
@@ -468,6 +478,31 @@ public class AuctionWebSocketHandler {
                     + "  (" + all.size() + " auctions)");
         } catch (Exception e) {
             sendError(ctx, e.getMessage());
+        }
+    }
+
+    private void handleCheckAutoBid(WsMessageContext ctx, JsonObject req) {
+        try {
+            if (!req.has("auctionId") || !req.has("bidderId")) {
+                sendError(ctx, "Missing auctionId or bidderId in CHECK_AUTO_BID");
+                return;
+            }
+            String auctionId = req.get("auctionId").getAsString();
+            String bidderId  = req.get("bidderId").getAsString();
+            com.auction.model.AutoBid activeBid = new com.auction.repository.JdbcAutoBidRepository()
+                    .findByAuctionIdAndBidderId(auctionId, bidderId);
+            if (activeBid != null) {
+                JsonObject resp = new JsonObject();
+                resp.addProperty("type", "AUTO_BID_STATUS");
+                resp.addProperty("auctionId", auctionId);
+                resp.addProperty("maxBid", activeBid.getMaxBid());
+                resp.addProperty("increment", activeBid.getIncrement());
+                ctx.send(resp.toString());
+            }
+        } catch (Exception e) {
+            System.err.println("[Server] Error in handleCheckAutoBid: " + e.getMessage());
+            sendError(ctx, "Error in check auto bid: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
