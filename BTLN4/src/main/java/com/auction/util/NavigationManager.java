@@ -129,4 +129,5 @@ public class NavigationManager {
     public static final String USER_PROFILE = "UserProfile";
     public static final String HISTORY = "BidHistory";
     public static final String SETTINGS = "Settings";
+    public static final String LOGOUT = "Logout";
 }

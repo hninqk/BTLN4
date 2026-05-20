@@ -51,7 +51,7 @@ public class SplashController {
             protected Void call() throws Exception {
                 // Step 1: Connecting
                 updateProgress(0.1, 1.0);
-                updateMessage("Đang kết nối tới Máy Chủ...");
+                updateMessage("Loading...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang kết nối API..."));
                 
                 boolean connected = false;
@@ -72,7 +72,6 @@ public class SplashController {
 
                 // Step 2: Init DB
                 updateProgress(0.4, 1.0);
-                updateMessage("Đang khởi tạo cấu trúc Dữ liệu...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang thiết lập connection pool..."));
                 Thread.sleep(400); // Simulate/Wait for pool init
                 
@@ -82,13 +81,11 @@ public class SplashController {
 
                 // Step 3: Fetch Configs
                 updateProgress(0.7, 1.0);
-                updateMessage("Đang nạp Cấu hình Người dùng...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải cấu hình Auto-Bid..."));
                 Thread.sleep(300);
 
                 // Step 4: Cache Assets
                 updateProgress(0.9, 1.0);
-                updateMessage("Đang lưu Cache Tài nguyên...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải chi tiết đấu giá để lưu Cache..."));
                 
                 try {

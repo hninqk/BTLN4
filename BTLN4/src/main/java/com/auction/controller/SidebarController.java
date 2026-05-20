@@ -109,8 +109,18 @@ public class SidebarController {
 
     @FXML
     private void handleLogout(ActionEvent event) {
-        SessionManager.getInstance().logoutUser(); // Adjusted to match your SessionManager setup
-        navigate(NavigationManager.LOGIN, "Đăng nhập");
+        // Prevent multiple clicks and give immediate visual feedback
+        if (event.getSource() instanceof javafx.scene.Node node) {
+            if (node.getScene() != null && node.getScene().getRoot() != null) {
+                node.getScene().getRoot().setDisable(true);
+                node.getScene().getRoot().setOpacity(0.8);
+            }
+        }
+        
+        // Defer the scene-switch to let the button animation finish smoothly
+        javafx.application.Platform.runLater(() -> {
+            navigate(NavigationManager.LOGOUT, "Đang đăng xuất...");
+        });
     }
 
     private void navigate(String screen, String title) {
