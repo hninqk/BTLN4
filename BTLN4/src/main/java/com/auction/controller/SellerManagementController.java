@@ -88,7 +88,7 @@ public class SellerManagementController {
 
         for (int i = 0; i < 24; i++)
             hourCombo.getItems().add(String.format("%02d", i));
-        for (int i = 0; i < 60; i += 5)
+        for (int i = 0; i < 60; i++)
             minuteCombo.getItems().add(String.format("%02d", i));
         hourCombo.getSelectionModel().select("12");
         minuteCombo.getSelectionModel().select("00");

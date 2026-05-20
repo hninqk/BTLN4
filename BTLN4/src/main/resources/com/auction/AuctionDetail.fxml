@@ -25,7 +25,7 @@
                 <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
             </Pane>
             
-            <ScrollPane fitToWidth="true" styleClass="scroll-pane" style="-fx-background-color: transparent;">
+            <ScrollPane fx:id="mainScrollPane" fitToWidth="true" styleClass="scroll-pane" style="-fx-background-color: transparent;">
             <VBox styleClass="content-area" spacing="16" fillWidth="true">
 
                 <!-- ── Header ──────────────────────────────────────────── -->
@@ -63,7 +63,7 @@
                                 <Label text="Danh mục:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                                 <Label fx:id="categoryLabel"   text=""                 GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-                                <Label text="Người bán:"      styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <Label text="Cửa hàng:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                                 <Label fx:id="sellerLabel"     text=""                 GridPane.columnIndex="1" GridPane.rowIndex="2"/>
 
                                 <Label text="Giá khởi điểm:"  styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
@@ -85,12 +85,6 @@
                                    style="-fx-text-fill: -theme-text; -fx-font-size: 13px;"/>
                         </VBox>
 
-                        <!-- Category-specific info -->
-                        <VBox styleClass="card" spacing="8">
-                            <Label text="Thông tin thêm" styleClass="section-title"/>
-                            <Separator/>
-                            <Label fx:id="categoryInfoLabel" text="" styleClass="label-subtle" wrapText="true"/>
-                        </VBox>
 
                         <!-- Price chart (merged from LiveBidding) -->
                         <VBox styleClass="card" spacing="8">
@@ -129,8 +123,12 @@
                             <TextField fx:id="bidAmountField" promptText="Nhập số tiền..."
                                        styleClass="text-field"/>
                             <Label fx:id="minBidHint" text="Tối thiểu: --" styleClass="label-subtle"/>
+                            <Label fx:id="sellerWarningLabel" text="Bạn là seller, không được đấu giá!"
+                                   style="-fx-text-fill: red; -fx-font-weight: bold;" managed="false" visible="false"/>
                             <Label fx:id="balanceLabel" text="" styleClass="label-subtle"
                                    style="-fx-text-fill: -theme-success-text; -fx-font-weight: bold;"/>
+                            <Label fx:id="frozenLabel" text="" styleClass="label-subtle"
+                                   style="-fx-text-fill: skyblue; -fx-font-weight: bold;"/>
                             <Label fx:id="bidErrorLabel" text="" styleClass="label-error" wrapText="true"/>
                             <Button fx:id="placeBidButton" text="🔨 Đặt giá ngay"
                                     onAction="#handlePlaceBid"

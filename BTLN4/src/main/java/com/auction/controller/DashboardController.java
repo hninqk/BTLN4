@@ -22,6 +22,7 @@ import javafx.geometry.Pos;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.Cursor;
 import javafx.scene.layout.Priority;
 import javafx.application.Platform;
@@ -53,7 +54,7 @@ public class DashboardController {
     private Label newsLabel;
 
     @FXML
-    private HBox hotItemsBox;
+    private FlowPane hotItemsBox;
 
     private final AppFacade app = AppFacade.getInstance();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");

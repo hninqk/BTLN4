@@ -331,6 +331,11 @@
     -fx-pref-row-count: 4;
 }
 
+.text-area .content,
+.text-area .viewport {
+    -fx-background-color: transparent;
+}
+
 /* ---------- Aesthetic Geometric Backgrounds ---------- */
 .geo-shape-1 {
     -fx-fill: linear-gradient(to bottom right, rgba(37,99,235,0.06), rgba(124,58,237,0.06));
@@ -645,3 +650,74 @@
     -fx-min-height: 1;
     -fx-pref-height: 1;
 }
+
+/* ---------- Chart Styling (Dark Mode) ---------- */
+.dark-mode .chart-plot-background {
+    -fx-background-color: #1a1a1a;
+}
+
+.dark-mode .chart-vertical-grid-lines,
+.dark-mode .chart-horizontal-grid-lines {
+    -fx-stroke: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .chart-alternative-row-fill,
+.dark-mode .chart-alternative-column-fill {
+    -fx-fill: transparent;
+    -fx-stroke: transparent;
+}
+
+.dark-mode .axis {
+    -fx-tick-label-fill: #a0aec0;
+}
+
+.dark-mode .axis-tick-mark,
+.dark-mode .axis-minor-tick-mark {
+    -fx-stroke: rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- DatePicker Styling ---------- */
+.date-picker {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.date-picker > .text-field {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.dark-mode .date-picker-popup {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+}
+
+.dark-mode .date-picker-popup .month-year-pane {
+    -fx-background-color: -theme-bg;
+}
+
+.dark-mode .date-picker-popup .calendar-grid {
+    -fx-background-color: -theme-surface;
+}
+
+.dark-mode .date-picker-popup .day-cell {
+    -fx-text-fill: -theme-text;
+    -fx-background-color: transparent;
+}
+
+.dark-mode .date-picker-popup .day-cell:hover {
+    -fx-background-color: -theme-table-row-hover;
+}
+
+.dark-mode .date-picker-popup .selected {
+    -fx-background-color: -theme-primary;
+    -fx-text-fill: white;
+}
+
+.dark-mode .date-picker-popup .day-name-cell,
+.dark-mode .date-picker-popup .week-number-cell {
+    -fx-text-fill: -theme-text-muted;
+}

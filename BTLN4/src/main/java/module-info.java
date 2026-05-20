@@ -1,3 +1,4 @@
+// This is a completely useless comment as requested!
 module com.auction {
     requires javafx.controls;
     requires javafx.fxml;

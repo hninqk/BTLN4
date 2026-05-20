@@ -105,13 +105,7 @@ public class NavigationManager {
             primaryStage.setTitle("Hệ thống Đấu giá - " + title);
         }
         
-        if (LOGIN.equals(fxmlName)) {
-            primaryStage.setResizable(false);
-            primaryStage.sizeToScene(); // Fit snug to login bounds
-        } else {
-            primaryStage.setResizable(true);
-        }
-        
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 

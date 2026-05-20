@@ -57,7 +57,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label     endTimeLabel;
     @FXML private Label     descriptionLabel;
     @FXML private ImageView itemImageView;
-    @FXML private Label     categoryInfoLabel;
 
     // ── Live bid panel ────────────────────────────────────────────────────────
     @FXML private Label     currentPriceLabel;
@@ -65,10 +64,13 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label     timeRemainingLabel;
     @FXML private Label     lastUpdateLabel;
     @FXML private Label     minBidHint;
+    @FXML private Label     sellerWarningLabel;
     @FXML private Label     balanceLabel;
+    @FXML private Label     frozenLabel;
     @FXML private TextField bidAmountField;
     @FXML private Label     bidErrorLabel;
     @FXML private Button    placeBidButton;
+    @FXML private ScrollPane mainScrollPane;
 
     // ── Live feed ─────────────────────────────────────────────────────────────
     @FXML private ListView<String> liveFeedList;
@@ -126,6 +128,7 @@ public class AuctionDetailController implements DataReceiver {
             task.setOnSucceeded(e -> {
                 task.getValue().ifPresent(full -> {
                     this.currentAuction = full;
+                    populateStaticView();
                     preloadBidsIntoChartAndFeed();
                     refreshLivePanel();
                     connectWebSocket(); // Only connect WS after we have baseline bids
@@ -206,6 +209,10 @@ public class AuctionDetailController implements DataReceiver {
 
             if (json.has("error")) {
                 bidErrorLabel.setText("⚠ " + json.get("error").getAsString());
+                bidErrorLabel.setStyle("-fx-text-fill: red;");
+                placeBidButton.setDisable(false);
+                bidAmountField.setDisable(false);
+                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
                 return;
             }
 
@@ -439,12 +446,12 @@ public class AuctionDetailController implements DataReceiver {
         auctionIdLabel.setText("ID: " + currentAuction.getId());
         nameLabel.setText(item.getName());
         categoryLabel.setText(item.getCategory());
-        sellerLabel.setText(currentAuction.getSeller().getUsername());
+        String shopName = currentAuction.getSeller().getShopName();
+        sellerLabel.setText((shopName != null && !shopName.trim().isEmpty()) ? shopName : currentAuction.getSeller().getUsername());
         startPriceLabel.setText(String.format("%,.0f ₫", item.getStartingPrice()));
         endTimeLabel.setText(currentAuction.getEndTime().format(FMT));
         descriptionLabel.setText(item.getDescription());
         itemImageView.setImage(ImageLoaderUtil.loadItemImage(item.getImageUrl(), 420, 250));
-        categoryInfoLabel.setText(item.getCategoryInfo());
     }
 
     private void preloadBidsIntoChartAndFeed() {
@@ -469,8 +476,7 @@ public class AuctionDetailController implements DataReceiver {
         currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));
         bidCountLabel.setText(currentAuction.getBidHistory().size() + " lượt đấu giá");
         minBidHint.setText("Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT)
-                + (wsConnected ? " 🟢 Server" : " 🔴 Offline"));
+        lastUpdateLabel.setText("Đồng bộ : " + LocalDateTime.now().format(TIME_FMT));
 
         // Status badge
         updateStatusBadge();
@@ -522,6 +528,12 @@ public class AuctionDetailController implements DataReceiver {
         User user = SessionManager.getInstance().getCurrentUser();
         boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
         boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
+        
+        if (sellerWarningLabel != null) {
+            boolean isSeller = user instanceof Seller;
+            sellerWarningLabel.setVisible(isSeller);
+            sellerWarningLabel.setManaged(isSeller);
+        }
 
         // Chặn đặt giá liên tiếp nếu đang giữ giá cao nhất
         boolean isHighestBidder = false;
@@ -551,14 +563,25 @@ public class AuctionDetailController implements DataReceiver {
             if (user instanceof Bidder bidder) {
                 double available = bidder.getAvailableBalance();
                 double frozen    = bidder.getFrozenBalance();
-                if (frozen > 0) {
-                    balanceLabel.setText(String.format("Khả dụng: %,.0f ₫  (đóng băng: %,.0f ₫)", available, frozen));
-                } else {
-                    balanceLabel.setText(String.format("Số dư: %,.0f ₫", available));
-                }
+                balanceLabel.setText(String.format("Khả dụng: %,.0f ₫", available));
                 balanceLabel.setVisible(true);
+                
+                if (frozenLabel != null) {
+                    if (frozen > 0) {
+                        frozenLabel.setText(String.format("Đóng băng: %,.0f ₫", frozen));
+                        frozenLabel.setVisible(true);
+                        frozenLabel.setManaged(true);
+                    } else {
+                        frozenLabel.setVisible(false);
+                        frozenLabel.setManaged(false);
+                    }
+                }
             } else {
                 balanceLabel.setVisible(false);
+                if (frozenLabel != null) {
+                    frozenLabel.setVisible(false);
+                    frozenLabel.setManaged(false);
+                }
             }
         }
     }
@@ -620,6 +643,14 @@ public class AuctionDetailController implements DataReceiver {
         double amount;
         try { amount = Double.parseDouble(input.replace(",", "")); }
         catch (NumberFormatException e) { bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
+
+        double minBid = currentAuction.getHighestBid();
+        if (amount <= minBid) {
+            bidErrorLabel.setText("Số tiền đặt giá phải lớn hơn hoặc bằng số tiền tối thiểu quy định.");
+            bidErrorLabel.setStyle("-fx-text-fill: red;");
+            if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
+            return;
+        }
 
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) {

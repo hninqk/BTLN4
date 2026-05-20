@@ -98,8 +98,8 @@
                         </graphic>
                     </Label>
                 </HBox>
-                <ScrollPane fitToHeight="true" fitToWidth="true" vbarPolicy="NEVER" styleClass="scroll-pane" style="-fx-background-color: transparent;">
-                    <HBox fx:id="hotItemsBox" spacing="20" style="-fx-padding: 8 4 16 4;"/>
+                <ScrollPane fitToWidth="true" vbarPolicy="AS_NEEDED" hbarPolicy="NEVER" styleClass="scroll-pane" style="-fx-background-color: transparent;">
+                    <FlowPane fx:id="hotItemsBox" hgap="20" vgap="20" style="-fx-padding: 8 4 16 4;"/>
                 </ScrollPane>
             </VBox>
 

@@ -19,23 +19,25 @@ import java.util.Map;
  * AuctionService – quản lý toàn bộ vòng đời phiên đấu giá.
  *
  * Status flow:
- *   Seller tạo → PENDING
- *   Admin duyệt → OPEN (hiển thị với bidder)
- *   Admin bắt đầu → RUNNING (nhận bid)
- *   Admin kết thúc → CLOSED (trừ tiền winner)
- *   Admin/Seller → CANCELED
+ * Seller tạo → PENDING
+ * Admin duyệt → OPEN (hiển thị với bidder)
+ * Admin bắt đầu → RUNNING (nhận bid)
+ * Admin kết thúc → CLOSED (trừ tiền winner)
+ * Admin/Seller → CANCELED
  *
  * Cơ chế Fund Freezing:
- *   • placeBid() – kiểm tra availableBalance, đóng băng tiền bidder mới,
- *                  hoàn trả tiền đóng băng của old highest bidder.
- *   • finishAuction() – trừ totalBalance winner (frozenBalance đã trừ sẵn khi bid).
- *   • cancelAuction() – hoàn trả tiền đóng băng cho highest bidder hiện tại.
+ * • placeBid() – kiểm tra availableBalance, đóng băng tiền bidder mới,
+ * hoàn trả tiền đóng băng của old highest bidder.
+ * • finishAuction() – trừ totalBalance winner (frozenBalance đã trừ sẵn khi
+ * bid).
+ * • cancelAuction() – hoàn trả tiền đóng băng cho highest bidder hiện tại.
  *
  * Thread-safety:
- *   • userLocks: ConcurrentHashMap<bidderId, ReentrantLock> – mỗi user có 1 lock riêng.
- *     Đảm bảo khi user bid ở 2 phiên cùng lúc, các thao tác freeze/unfreeze
- *     trên balance của họ sẽ tuần tự, không bị race condition.
- *   • Auction.placeBid() đã được synchronized ở model layer.
+ * • userLocks: ConcurrentHashMap<bidderId, ReentrantLock> – mỗi user có 1 lock
+ * riêng.
+ * Đảm bảo khi user bid ở 2 phiên cùng lúc, các thao tác freeze/unfreeze
+ * trên balance của họ sẽ tuần tự, không bị race condition.
+ * • Auction.placeBid() đã được synchronized ở model layer.
  */
 public class AuctionService {
 
@@ -48,7 +50,8 @@ public class AuctionService {
     private final Map<String, Auction> auctionCache = new ConcurrentHashMap<>();
 
     /**
-     * Lock per-user để tránh race condition khi cùng 1 user bid ở nhiều phiên đồng thời.
+     * Lock per-user để tránh race condition khi cùng 1 user bid ở nhiều phiên đồng
+     * thời.
      * computeIfAbsent đảm bảo mỗi bidderId chỉ có đúng 1 lock.
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
@@ -70,7 +73,10 @@ public class AuctionService {
         return auctionRepo.findAll();
     }
 
-    /** OPEN + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see finished results). */
+    /**
+     * OPEN + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see
+     * finished results).
+     */
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
                 .filter(a -> a.getStatus() == AuctionStatus.OPEN
@@ -132,8 +138,9 @@ public class AuctionService {
      *
      * Sau khi đóng:
      * - Winner: totalBalance -= winAmount, frozenBalance -= winAmount
-     *   (frozenBalance đã được cộng vào lúc bid, giờ trừ đi khi thanh toán thật).
-     * - Các bidder khác: tiền đã được unfreeze từng bước khi bị outbid → không cần xử lý thêm.
+     * (frozenBalance đã được cộng vào lúc bid, giờ trừ đi khi thanh toán thật).
+     * - Các bidder khác: tiền đã được unfreeze từng bước khi bị outbid → không cần
+     * xử lý thêm.
      */
     public void finishAuction(Auction auction) throws InvalidStatusException {
         auction.finishAuction();
@@ -161,14 +168,14 @@ public class AuctionService {
                         SessionManager.getInstance().setCurrentUser(winnerBidder);
                     }
                     System.out.printf("[AuctionService] Winner %s charged %,.0f ₫ | " +
-                                    "totalBalance: %,.0f ₫ | frozenBalance: %,.0f ₫ | available: %,.0f ₫%n",
+                            "totalBalance: %,.0f ₫ | frozenBalance: %,.0f ₫ | available: %,.0f ₫%n",
                             winnerBidder.getUsername(), winner.getAmount(),
                             winnerBidder.getAccountBalance(),
                             winnerBidder.getFrozenBalance(),
                             winnerBidder.getAvailableBalance());
                 } else {
                     System.err.printf("[AuctionService] WARNING: winner %s insufficient balance " +
-                                    "(total=%.0f, frozen=%.0f, need=%.0f)%n",
+                            "(total=%.0f, frozen=%.0f, need=%.0f)%n",
                             winnerBidder.getUsername(),
                             winnerBidder.getAccountBalance(),
                             winnerBidder.getFrozenBalance(),
@@ -197,7 +204,7 @@ public class AuctionService {
         // Hoàn trả tiền đóng băng cho highest bidder hiện tại (nếu có)
         if (currentHighest != null) {
             String highestBidderId = currentHighest.getBidder().getId();
-            double frozenAmount    = currentHighest.getAmount();
+            double frozenAmount = currentHighest.getAmount();
 
             ReentrantLock lock = getUserLock(highestBidderId);
             lock.lock();
@@ -209,7 +216,7 @@ public class AuctionService {
                     bidder.unfreezeFunds(frozenAmount);
                     userRepo.update(bidder);
                     System.out.printf("[AuctionService] CANCEL unfreeze bidder=%s amount=%,.0f ₫ | " +
-                                    "available now: %,.0f ₫%n",
+                            "available now: %,.0f ₫%n",
                             bidder.getUsername(), frozenAmount, bidder.getAvailableBalance());
                 }
             } finally {
@@ -224,15 +231,15 @@ public class AuctionService {
      * Bidder đặt giá.
      *
      * Luồng xử lý (thread-safe):
-     *   1. Lock user theo bidderId
-     *   2. Load bidder fresh từ DB (balance chính xác nhất)
-     *   3. Kiểm tra bidder có đang là highest bidder không → chặn double-bid
-     *   4. Kiểm tra availableBalance >= amount → từ chối nếu không đủ
-     *   5. Lưu thông tin old highest bidder (để unfreeze sau)
-     *   6. Freeze tiền bidder mới: frozenBalance += amount → persist DB
-     *   7. auction.placeBid() [synchronized trong Auction model]
-     *   8. Unfreeze old highest bidder (nếu có và khác bidder mới)
-     *   9. Unlock
+     * 1. Lock user theo bidderId
+     * 2. Load bidder fresh từ DB (balance chính xác nhất)
+     * 3. Kiểm tra bidder có đang là highest bidder không → chặn double-bid
+     * 4. Kiểm tra availableBalance >= amount → từ chối nếu không đủ
+     * 5. Lưu thông tin old highest bidder (để unfreeze sau)
+     * 6. Freeze tiền bidder mới: frozenBalance += amount → persist DB
+     * 7. auction.placeBid() [synchronized trong Auction model]
+     * 8. Unfreeze old highest bidder (nếu có và khác bidder mới)
+     * 9. Unlock
      *
      * @param auction phiên đấu giá
      * @param bidder  người đặt giá (có thể stale — sẽ reload fresh từ DB)
@@ -256,20 +263,25 @@ public class AuctionService {
             if (currentHighest != null
                     && currentHighest.getBidder().getUsername().equals(freshBidder.getUsername())) {
                 throw new InvalidBidException(
-                    "Bạn đang là người ra giá cao nhất (" +
-                    String.format("%,.0f ₫", currentHighest.getAmount()) +
-                    "), không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
+                        "Bạn đang là người ra giá cao nhất (" +
+                                String.format("%,.0f ₫", currentHighest.getAmount()) +
+                                "), không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
+            }
+
+            // ── 2.5 Kiểm tra số tiền đặt tối thiểu ──
+            if (amount <= auction.getHighestBid()) {
+                throw new InvalidBidException("Số tiền đặt giá chưa đủ!");
             }
 
             // ── 3. Kiểm tra số dư khả dụng ──
             double available = freshBidder.getAvailableBalance();
             if (amount > available) {
                 throw new InvalidBidException(
-                    String.format("Số dư khả dụng không đủ. " +
-                                  "Khả dụng: %,.0f ₫ | Đóng băng: %,.0f ₫ | Giá đặt: %,.0f ₫",
-                                  available,
-                                  freshBidder.getFrozenBalance(),
-                                  amount));
+                        String.format("Số dư khả dụng không đủ. " +
+                                "Khả dụng: %,.0f ₫ | Đóng băng: %,.0f ₫ | Giá đặt: %,.0f ₫",
+                                available,
+                                freshBidder.getFrozenBalance(),
+                                amount));
             }
 
             // ── 4. Lưu old highest bidder trước khi đặt giá mới ──
@@ -290,7 +302,7 @@ public class AuctionService {
             freshBidder.freezeFunds(amount);
             userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
             System.out.printf("[AuctionService] FREEZE bidder=%s amount=%,.0f ₫ | " +
-                              "frozen=%.0f ₫ | available=%.0f ₫%n",
+                    "frozen=%.0f ₫ | available=%.0f ₫%n",
                     freshBidder.getUsername(), amount,
                     freshBidder.getFrozenBalance(),
                     freshBidder.getAvailableBalance());
@@ -303,7 +315,8 @@ public class AuctionService {
                     auction,
                     amount);
 
-            // Throws InvalidBidException nếu amount ≤ highest, InvalidStatusException nếu không RUNNING
+            // Throws InvalidBidException nếu amount ≤ highest, InvalidStatusException nếu
+            // không RUNNING
             auction.placeBid(bid);
 
             // Cập nhật cache
@@ -338,12 +351,13 @@ public class AuctionService {
      * @return old bidder đã được unfreeze (để broadcast BALANCE_UPDATE), hoặc null
      */
     public Bidder processOutbidUnfreeze() {
-        String oldId     = this.pendingUnfreezeId.get();
+        String oldId = this.pendingUnfreezeId.get();
         double oldAmount = this.pendingUnfreezeAmount.get();
         this.pendingUnfreezeId.remove();
         this.pendingUnfreezeAmount.remove();
 
-        if (oldId == null || oldAmount <= 0) return null;
+        if (oldId == null || oldAmount <= 0)
+            return null;
 
         ReentrantLock oldLock = getUserLock(oldId);
         oldLock.lock();
@@ -351,12 +365,13 @@ public class AuctionService {
             Bidder freshOld = (Bidder) userRepo.findById(oldId)
                     .filter(u -> u instanceof Bidder)
                     .orElse(null);
-            if (freshOld == null) return null;
+            if (freshOld == null)
+                return null;
 
             freshOld.unfreezeFunds(oldAmount);
             userRepo.updateFrozenBalance(freshOld.getId(), freshOld.getFrozenBalance());
             System.out.printf("[AuctionService] UNFREEZE (outbid) bidder=%s amount=%,.0f ₫ | " +
-                              "frozen=%.0f ₫ | available=%.0f ₫%n",
+                    "frozen=%.0f ₫ | available=%.0f ₫%n",
                     freshOld.getUsername(), oldAmount,
                     freshOld.getFrozenBalance(), freshOld.getAvailableBalance());
             return freshOld;
@@ -365,7 +380,9 @@ public class AuctionService {
         }
     }
 
-    /** Thông tin old bidder cần unfreeze – ThreadLocal để an toàn giữa các luồng. */
+    /**
+     * Thông tin old bidder cần unfreeze – ThreadLocal để an toàn giữa các luồng.
+     */
     private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
     private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
 
