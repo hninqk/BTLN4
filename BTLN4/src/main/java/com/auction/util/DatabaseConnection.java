@@ -213,10 +213,21 @@ public class DatabaseConnection {
                     + "FOREIGN KEY (bidder_id) REFERENCES users(id), "
                     + "FOREIGN KEY (auction_id) REFERENCES auctions(id))");
 
+            st.execute("CREATE TABLE IF NOT EXISTS auto_bids ("
+                    + "id         TEXT PRIMARY KEY, "
+                    + "auction_id TEXT NOT NULL, "
+                    + "bidder_id  TEXT NOT NULL, "
+                    + "max_bid    " + realType + " NOT NULL, "
+                    + "increment  " + realType + " NOT NULL, "
+                    + "created_at TEXT NOT NULL, "
+                    + "FOREIGN KEY (auction_id) REFERENCES auctions(id), "
+                    + "FOREIGN KEY (bidder_id) REFERENCES users(id))");
+
             // Index để tăng tốc độ query phổ biến
             st.execute("CREATE INDEX IF NOT EXISTS idx_auctions_seller ON auctions(seller_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_bids_auction ON bid_transactions(auction_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_autobids_auction ON auto_bids(auction_id)");
 
             System.out.println("[DB] Tables & indexes ready.");
             System.out.println("[DB] Schema includes frozen_balance for fund-freezing support.");

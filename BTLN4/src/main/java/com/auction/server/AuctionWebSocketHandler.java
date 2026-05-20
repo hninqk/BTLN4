@@ -174,11 +174,12 @@ public class AuctionWebSocketHandler {
             String type = req.has("type") ? req.get("type").getAsString() : "PLACE_BID";
 
             switch (type) {
-                case "PLACE_BID"      -> handlePlaceBid(ctx, req);
-                case "CREATE_AUCTION" -> handleCreateAuction(ctx, req);
-                case "ADMIN_ACTION"   -> handleAdminAction(ctx, req);
-                case "REQUEST_SYNC"   -> handleRequestSync(ctx);
-                default               -> sendError(ctx, "Unknown message type: " + type);
+                case "PLACE_BID"         -> handlePlaceBid(ctx, req);
+                case "REGISTER_AUTO_BID" -> handleRegisterAutoBid(ctx, req);
+                case "CREATE_AUCTION"    -> handleCreateAuction(ctx, req);
+                case "ADMIN_ACTION"      -> handleAdminAction(ctx, req);
+                case "REQUEST_SYNC"      -> handleRequestSync(ctx);
+                default                  -> sendError(ctx, "Unknown message type: " + type);
             }
         } catch (Exception e) {
             sendError(ctx, "Server error: " + e.getMessage());
@@ -269,6 +270,10 @@ public class AuctionWebSocketHandler {
                         unfrozenOldBidder.getAvailableBalance(),
                         unfrozenOldBidder.getFrozenBalance());
             }
+            
+            // ── Cập nhật Auto-Bidding sau manual bid ──
+            AuctionService.AutoBidResult abResult = auctionService.resolveBiddingWar(auction);
+            broadcastAutoBidResult(abResult, auction.getId());
 
             System.out.printf("[Server] BID_UPDATE  auction=%s  bidder=%s  amount=%.0f%n",
                     auctionId, bidder.getUsername(), amount);
@@ -278,6 +283,72 @@ public class AuctionWebSocketHandler {
         } catch (Exception e) {
             sendError(ctx, e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    // =========================================================================
+    // REGISTER_AUTO_BID
+    // =========================================================================
+
+    private void handleRegisterAutoBid(WsMessageContext ctx, JsonObject req) {
+        try {
+            String auctionId = req.get("auctionId").getAsString();
+            String bidderId  = req.get("bidderId").getAsString();
+            double maxBid    = req.get("maxBid").getAsDouble();
+            double increment = req.get("increment").getAsDouble();
+            
+            Auction auction = auctionService.findById(auctionId)
+                    .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
+                    
+            Bidder bidder = (Bidder) userService.findById(bidderId)
+                    .filter(u -> u instanceof Bidder)
+                    .orElseThrow(() -> new Exception("Bidder not found: " + bidderId));
+                    
+            AuctionService.AutoBidResult abResult = auctionService.registerAutoBid(auction, bidder, maxBid, increment);
+            
+            JsonObject ack = new JsonObject();
+            ack.addProperty("type", "AUTO_BID_ACK");
+            ack.addProperty("auctionId", auctionId);
+            ctx.send(ack.toString());
+            
+            broadcastAutoBidResult(abResult, auction.getId());
+            
+        } catch (InvalidBidException | InvalidStatusException e) {
+            sendError(ctx, e.getMessage());
+        } catch (Exception e) {
+            sendError(ctx, e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void broadcastAutoBidResult(AuctionService.AutoBidResult abResult, String auctionId) {
+        for (String log : abResult.virtualLogs) {
+            JsonObject logObj = new JsonObject();
+            logObj.addProperty("type", "AUTO_BID_LOG");
+            logObj.addProperty("auctionId", auctionId);
+            logObj.addProperty("message", log);
+            broadcastAll(logObj.toString());
+        }
+        
+        for (BidTransaction b : abResult.newBids) {
+            JsonObject bidUpdate = new JsonObject();
+            bidUpdate.addProperty("type", "BID_UPDATE");
+            bidUpdate.addProperty("auctionId", auctionId);
+            bidUpdate.addProperty("amount", b.getAmount());
+            bidUpdate.addProperty("bidderId", b.getBidder().getId());
+            bidUpdate.addProperty("bidderUsername", b.getBidder().getUsername());
+            bidUpdate.addProperty("time", b.getTimestamp().toString());
+            broadcastAll(bidUpdate.toString());
+        }
+        
+        for (Bidder freshBidder : abResult.unfrozenBidders) {
+            JsonObject balUpdate = new JsonObject();
+            balUpdate.addProperty("type", "BALANCE_UPDATE");
+            balUpdate.addProperty("bidderId", freshBidder.getId());
+            balUpdate.addProperty("newBalance", freshBidder.getAccountBalance());
+            balUpdate.addProperty("frozenBalance", freshBidder.getFrozenBalance());
+            balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
+            broadcastAll(balUpdate.toString());
         }
     }
 

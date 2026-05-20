@@ -19,6 +19,7 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -71,6 +72,14 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label     bidErrorLabel;
     @FXML private Button    placeBidButton;
     @FXML private ScrollPane mainScrollPane;
+
+    // ── Auto-Bid panel ────────────────────────────────────────────────────────
+    @FXML private StackPane autoBidModalOverlay;
+    @FXML private Button    openAutoBidModalButton;
+    @FXML private TextField autoMaxBidField;
+    @FXML private TextField autoIncrementField;
+    @FXML private Label     autoBidErrorLabel;
+    @FXML private Button    registerAutoBidButton;
 
     // ── Live feed ─────────────────────────────────────────────────────────────
     @FXML private ListView<String> liveFeedList;
@@ -153,6 +162,9 @@ public class AuctionDetailController implements DataReceiver {
         UnaryOperator<TextFormatter.Change> numericFilter = change ->
                 change.getControlNewText().matches("[0-9,.]*") ? change : null;
         bidAmountField.setTextFormatter(new TextFormatter<>(numericFilter));
+        
+        if (autoMaxBidField != null) autoMaxBidField.setTextFormatter(new TextFormatter<>(numericFilter));
+        if (autoIncrementField != null) autoIncrementField.setTextFormatter(new TextFormatter<>(numericFilter));
     }
 
     public void shutdown() {
@@ -208,11 +220,22 @@ public class AuctionDetailController implements DataReceiver {
             JsonObject json = gson.fromJson(msg, JsonObject.class);
 
             if (json.has("error")) {
-                bidErrorLabel.setText("⚠ " + json.get("error").getAsString());
-                bidErrorLabel.setStyle("-fx-text-fill: red;");
-                placeBidButton.setDisable(false);
-                bidAmountField.setDisable(false);
-                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
+                String errMsg = "⚠ " + json.get("error").getAsString();
+                if (autoBidModalOverlay != null && autoBidModalOverlay.isVisible()) {
+                    if (autoBidErrorLabel != null) {
+                        autoBidErrorLabel.setText(errMsg);
+                        autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+                    }
+                    if (registerAutoBidButton != null) registerAutoBidButton.setDisable(false);
+                    if (autoMaxBidField != null) autoMaxBidField.setDisable(false);
+                    if (autoIncrementField != null) autoIncrementField.setDisable(false);
+                } else {
+                    bidErrorLabel.setText(errMsg);
+                    bidErrorLabel.setStyle("-fx-text-fill: red;");
+                    placeBidButton.setDisable(false);
+                    bidAmountField.setDisable(false);
+                    if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
+                }
                 return;
             }
 
@@ -223,6 +246,8 @@ public class AuctionDetailController implements DataReceiver {
                 case "AUCTION_STATUS_CHANGED" -> onStatusChanged(json);
                 case "BALANCE_UPDATE"         -> onBalanceUpdate(json);
                 case "FULL_SYNC"              -> onFullSync(json);
+                case "AUTO_BID_LOG"           -> onAutoBidLog(json);
+                case "AUTO_BID_ACK"           -> onAutoBidAck(json);
                 // Legacy: bare bid response without "type" field
                 default -> {
                     if (json.has("amount") && json.has("bidder")) {
@@ -272,6 +297,34 @@ public class AuctionDetailController implements DataReceiver {
         addRawToChart(amount);
 
         bidErrorLabel.setText("");
+        refreshLivePanel();
+    }
+
+    private void onAutoBidLog(JsonObject json) {
+        String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+        if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+        
+        String msg = json.get("message").getAsString();
+        String timeDisplay = LocalDateTime.now().format(TIME_FMT);
+        appendToFeed(String.format("[%s] ⚡ %s", timeDisplay, msg));
+    }
+    
+    private void onAutoBidAck(JsonObject json) {
+        String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+        if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+        
+        if (autoBidErrorLabel != null) {
+            autoBidErrorLabel.setText("✅ Đăng ký thành công.");
+            autoBidErrorLabel.setStyle("-fx-text-fill: #81c784;");
+        }
+        if (autoMaxBidField != null) autoMaxBidField.clear();
+        if (autoIncrementField != null) autoIncrementField.clear();
+        
+        // Đóng modal sau 1 giây
+        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(1));
+        pause.setOnFinished(e -> handleCloseAutoBidModal(null));
+        pause.play();
+        
         refreshLivePanel();
     }
 
@@ -544,9 +597,29 @@ public class AuctionDetailController implements DataReceiver {
                 canBid = false; // Vô hiệu hóa đặt giá
             }
         }
+        
+        boolean canAutoBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
 
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
+        
+        if (openAutoBidModalButton != null) {
+            openAutoBidModalButton.setDisable(!canAutoBid);
+        }
+        
+        if (registerAutoBidButton != null) {
+            registerAutoBidButton.setDisable(!canAutoBid);
+            autoMaxBidField.setDisable(!canAutoBid);
+            autoIncrementField.setDisable(!canAutoBid);
+            
+            if (autoBidErrorLabel != null) {
+                String abCur = autoBidErrorLabel.getText();
+                if (abCur.contains("Đang gửi")) {
+                    autoBidErrorLabel.setText("");
+                    autoBidErrorLabel.setStyle("");
+                }
+            }
+        }
 
         if (isHighestBidder) {
             bidErrorLabel.setText("🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
@@ -679,6 +752,86 @@ public class AuctionDetailController implements DataReceiver {
         bidAmountField.setDisable(true);
         bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
         bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
+    }
+
+    @FXML
+    private void handleOpenAutoBidModal(ActionEvent event) {
+        if (autoBidModalOverlay != null) {
+            autoBidModalOverlay.setVisible(true);
+            autoBidModalOverlay.setManaged(true);
+            if (autoBidErrorLabel != null) autoBidErrorLabel.setText("");
+        }
+    }
+
+    @FXML
+    private void handleCloseAutoBidModal(ActionEvent event) {
+        if (autoBidModalOverlay != null) {
+            autoBidModalOverlay.setVisible(false);
+            autoBidModalOverlay.setManaged(false);
+            if (autoBidErrorLabel != null) autoBidErrorLabel.setText("");
+        }
+    }
+
+    @FXML
+    private void handleRegisterAutoBid(ActionEvent event) {
+        if (autoBidErrorLabel == null) return;
+        autoBidErrorLabel.setText("");
+        
+        String maxBidInput = autoMaxBidField.getText().trim();
+        String incInput = autoIncrementField.getText().trim();
+
+        if (maxBidInput.isEmpty() || incInput.isEmpty()) { 
+            autoBidErrorLabel.setText("Vui lòng nhập đầy đủ giá tối đa và bước giá."); 
+            return; 
+        }
+
+        double maxBid, increment;
+        try { 
+            maxBid = Double.parseDouble(maxBidInput.replace(",", ""));
+            increment = Double.parseDouble(incInput.replace(",", ""));
+        } catch (NumberFormatException e) { 
+            autoBidErrorLabel.setText("Số tiền không hợp lệ."); 
+            return; 
+        }
+
+        double minBid = currentAuction.getHighestBid();
+        if (maxBid <= minBid) {
+            autoBidErrorLabel.setText("Giá tối đa phải lớn hơn giá hiện tại.");
+            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+            if (mainScrollPane != null) mainScrollPane.setVvalue(1.0);
+            return;
+        }
+        if (increment <= 0) {
+            autoBidErrorLabel.setText("Bước giá phải lớn hơn 0.");
+            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+            return;
+        }
+
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (!(user instanceof Bidder bidder)) {
+            autoBidErrorLabel.setText("Chỉ Bidder mới có thể đăng ký Auto-Bid."); 
+            return;
+        }
+
+        if (!wsConnected || wsClient == null) {
+            autoBidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ.");
+            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+            return;
+        }
+
+        JsonObject req = new JsonObject();
+        req.addProperty("type", "REGISTER_AUTO_BID");
+        req.addProperty("auctionId", currentAuction.getId());
+        req.addProperty("bidderId", bidder.getId());
+        req.addProperty("maxBid", maxBid);
+        req.addProperty("increment", increment);
+        wsClient.send(req.toString());
+
+        registerAutoBidButton.setDisable(true);
+        autoMaxBidField.setDisable(true);
+        autoIncrementField.setDisable(true);
+        autoBidErrorLabel.setText("⏳ Đang gửi yêu cầu...");
+        autoBidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
     @FXML

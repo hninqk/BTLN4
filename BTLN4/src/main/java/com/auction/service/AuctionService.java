@@ -6,6 +6,7 @@ import com.auction.model.*;
 import com.auction.repository.JdbcAuctionRepository;
 import com.auction.repository.JdbcBidRepository;
 import com.auction.repository.JdbcUserRepository;
+import com.auction.repository.JdbcAutoBidRepository;
 import com.auction.util.SessionManager;
 
 import java.time.LocalDateTime;
@@ -45,6 +46,7 @@ public class AuctionService {
     private final JdbcAuctionRepository auctionRepo = new JdbcAuctionRepository();
     private final JdbcBidRepository bidRepo = new JdbcBidRepository();
     private final JdbcUserRepository userRepo = new JdbcUserRepository();
+    private final JdbcAutoBidRepository autoBidRepo = new JdbcAutoBidRepository();
 
     // In-memory cache for fast lookups
     private final Map<String, Auction> auctionCache = new ConcurrentHashMap<>();
@@ -385,6 +387,142 @@ public class AuctionService {
      */
     private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
     private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
+
+    // ── Auto-Bidding ──────────────────────────────────────────────────────────
+
+    public static class AutoBidResult {
+        public List<BidTransaction> newBids = new java.util.ArrayList<>();
+        public List<Bidder> unfrozenBidders = new java.util.ArrayList<>();
+        public List<String> virtualLogs = new java.util.ArrayList<>();
+    }
+
+    public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {
+        if (maxBid <= auction.getHighestBid()) {
+            throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
+        }
+        
+        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
+        
+        AutoBid ab = new AutoBid(
+            java.util.UUID.randomUUID().toString(),
+            auction.getId(),
+            bidder.getId(),
+            maxBid,
+            increment,
+            LocalDateTime.now()
+        );
+        autoBidRepo.save(ab);
+        
+        return resolveBiddingWar(auction);
+    }
+
+    public AutoBidResult resolveBiddingWar(Auction auction) {
+        AutoBidResult result = new AutoBidResult();
+        boolean resolved = false;
+
+        while (!resolved) {
+            List<AutoBid> activeBids = autoBidRepo.findByAuctionId(auction.getId());
+            double currentHighest = auction.getHighestBid();
+            String currentWinnerId = auction.getWinner() != null ? auction.getWinner().getBidder().getId() : null;
+
+            List<AutoBid> validBids = new java.util.ArrayList<>();
+            for (AutoBid ab : activeBids) {
+                if (ab.getMaxBid() > currentHighest) {
+                    validBids.add(ab);
+                }
+            }
+
+            if (validBids.isEmpty()) {
+                break; 
+            }
+
+            validBids.sort((a, b) -> {
+                int cmp = Double.compare(b.getMaxBid(), a.getMaxBid());
+                if (cmp == 0) {
+                    return a.getCreatedAt().compareTo(b.getCreatedAt());
+                }
+                return cmp;
+            });
+
+            AutoBid top1 = validBids.get(0);
+            Bidder top1Bidder = (Bidder) userRepo.findById(top1.getBidderId()).orElse(null);
+            if (top1Bidder == null) {
+                autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
+                continue;
+            }
+
+            if (validBids.size() == 1) {
+                if (top1.getBidderId().equals(currentWinnerId)) {
+                    resolved = true;
+                    break;
+                }
+                double nextPrice = Math.min(currentHighest + top1.getIncrement(), top1.getMaxBid());
+                try {
+                    BidTransaction b = placeBid(auction, top1Bidder, nextPrice);
+                    Bidder unfrozen = processOutbidUnfreeze();
+                    result.newBids.add(b);
+                    if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
+                    result.virtualLogs.add(String.format("Auto-Bid của %s đã tự động đặt giá %,.0f ₫", top1Bidder.getUsername(), nextPrice));
+                    resolved = true;
+                } catch (Exception e) {
+                    autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
+                }
+            } else {
+                AutoBid top2 = validBids.get(1);
+                Bidder top2Bidder = (Bidder) userRepo.findById(top2.getBidderId()).orElse(null);
+                if (top2Bidder == null) {
+                    autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
+                    continue;
+                }
+
+                double top2BidPrice;
+                double top1BidPrice;
+
+                if (top1.getMaxBid() > top2.getMaxBid()) {
+                    top2BidPrice = top2.getMaxBid();
+                    top1BidPrice = Math.min(top2.getMaxBid() + top1.getIncrement(), top1.getMaxBid());
+                } else { 
+                    top2BidPrice = top2.getMaxBid() - top2.getIncrement();
+                    if (top2BidPrice <= currentHighest) {
+                        top2BidPrice = currentHighest + 1000; 
+                    }
+                    top1BidPrice = top1.getMaxBid();
+                }
+
+                boolean top2Success = false;
+                if (!top2.getBidderId().equals(currentWinnerId) && top2BidPrice > currentHighest) {
+                    try {
+                        BidTransaction b = placeBid(auction, top2Bidder, top2BidPrice);
+                        Bidder unfrozen = processOutbidUnfreeze();
+                        result.newBids.add(b);
+                        if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
+                        result.virtualLogs.add(String.format("Auto-Bid của %s tự động nâng giá lên %,.0f ₫", top2Bidder.getUsername(), top2BidPrice));
+                        top2Success = true;
+                    } catch (Exception e) {
+                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
+                        continue; 
+                    }
+                } else {
+                    top2Success = true; 
+                }
+
+                if (top2Success) {
+                    try {
+                        BidTransaction b = placeBid(auction, top1Bidder, top1BidPrice);
+                        Bidder unfrozen = processOutbidUnfreeze();
+                        result.newBids.add(b);
+                        if (unfrozen != null) result.unfrozenBidders.add(unfrozen);
+                        result.virtualLogs.add(String.format("Auto-Bid của %s tự động chốt giá %,.0f ₫ (Thắng Bidding War)", top1Bidder.getUsername(), top1BidPrice));
+                        resolved = true;
+                    } catch (Exception e) {
+                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
+                        continue; 
+                    }
+                }
+            }
+        }
+        return result;
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
