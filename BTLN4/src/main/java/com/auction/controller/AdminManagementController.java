@@ -405,6 +405,24 @@ public class AdminManagementController {
         }
     }
 
+    @FXML private void handleQuickApprove(ActionEvent event) {
+        Auction sel = auctionList.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).findFirst().orElse(null);
+        if (sel == null) {
+            showAlert(Alert.AlertType.INFORMATION, "Không có", "Không có phiên đấu giá nào đang chờ duyệt.");
+            return;
+        }
+        sendAdminAction("approve", sel.getId());
+    }
+
+    @FXML private void handleQuickStart(ActionEvent event) {
+        Auction sel = auctionList.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).findFirst().orElse(null);
+        if (sel == null) {
+            showAlert(Alert.AlertType.INFORMATION, "Không có", "Không có phiên đấu giá nào đang chờ bắt đầu.");
+            return;
+        }
+        sendAdminAction("start", sel.getId());
+    }
+
     /** Send ADMIN_ACTION via WebSocket so server persists + broadcasts to all clients. */
     private void sendAdminAction(String action, String auctionId) {
         if (!wsConnected || wsClient == null) {

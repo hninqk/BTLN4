@@ -3,6 +3,7 @@ package com.auction.controller;
 import com.auction.client.AuctionClient;
 import com.auction.model.*;
 import com.auction.util.DataReceiver;
+import com.auction.util.HotItemCache;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
@@ -10,8 +11,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -58,7 +57,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label     endTimeLabel;
     @FXML private Label     descriptionLabel;
     @FXML private ImageView itemImageView;
-    @FXML private Label     categoryInfoLabel;
 
     // ── Live bid panel ────────────────────────────────────────────────────────
     @FXML private Label     currentPriceLabel;
@@ -66,10 +64,13 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label     timeRemainingLabel;
     @FXML private Label     lastUpdateLabel;
     @FXML private Label     minBidHint;
+    @FXML private Label     sellerWarningLabel;
     @FXML private Label     balanceLabel;
+    @FXML private Label     frozenLabel;
     @FXML private TextField bidAmountField;
     @FXML private Label     bidErrorLabel;
     @FXML private Button    placeBidButton;
+    @FXML private ScrollPane mainScrollPane;
 
     // ── Live feed ─────────────────────────────────────────────────────────────
     @FXML private ListView<String> liveFeedList;
@@ -82,11 +83,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private Label winnerLabel;
     @FXML private Label winnerPriceLabel;
 
-    // ── Bid history table ─────────────────────────────────────────────────────
-    @FXML private TableView<BidTransaction>           bidHistoryTable;
-    @FXML private TableColumn<BidTransaction, String> colBidder;
-    @FXML private TableColumn<BidTransaction, String> colAmount;
-    @FXML private TableColumn<BidTransaction, String> colBidTime;
 
     // ── Internal state ────────────────────────────────────────────────────────
     private String  auctionId;
@@ -132,6 +128,7 @@ public class AuctionDetailController implements DataReceiver {
             task.setOnSucceeded(e -> {
                 task.getValue().ifPresent(full -> {
                     this.currentAuction = full;
+                    populateStaticView();
                     preloadBidsIntoChartAndFeed();
                     refreshLivePanel();
                     connectWebSocket(); // Only connect WS after we have baseline bids
@@ -151,7 +148,6 @@ public class AuctionDetailController implements DataReceiver {
     @FXML
     public void initialize() {
         bidErrorLabel.setText("");
-        setupBidHistoryColumns();
         setupChart();
 
         UnaryOperator<TextFormatter.Change> numericFilter = change ->
@@ -213,6 +209,10 @@ public class AuctionDetailController implements DataReceiver {
 
             if (json.has("error")) {
                 bidErrorLabel.setText("⚠ " + json.get("error").getAsString());
+                bidErrorLabel.setStyle("-fx-text-fill: red;");
+                placeBidButton.setDisable(false);
+                bidAmountField.setDisable(false);
+                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
                 return;
             }
 
@@ -245,19 +245,29 @@ public class AuctionDetailController implements DataReceiver {
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
+        // O(1) cache update – runs on FX thread via Platform.runLater, which is fine
+        // because ConcurrentHashMap + AtomicInteger are thread-safe for the increment
+        if (aid != null) HotItemCache.getInstance().recordBid(aid);
+        else if (currentAuction != null) HotItemCache.getInstance().recordBid(currentAuction.getId());
+
+        LocalDateTime ts = LocalDateTime.parse(timeStr);
+        if (com.auction.util.ServerConfig.isRemote()) {
+            ts = ts.plusHours(7); // Convert UTC (Render) to Vietnam time (GMT+7)
+        }
+
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
             // Build a real bid entry for the UI
             Bidder dummy = new Bidder(bidderId, LocalDateTime.now(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.parse(timeStr),
+                    ts,
                     dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
 
         // Add to feed & chart immediately (don't wait for scheduler)
-        String timeDisplay = LocalDateTime.parse(timeStr).format(TIME_FMT);
+        String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
         addRawToChart(amount);
 
@@ -273,6 +283,8 @@ public class AuctionDetailController implements DataReceiver {
         String newStatusStr = json.get("newStatus").getAsString();
         double highestBid   = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
         String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
+
+        AuctionStatus previousStatus = currentAuction != null ? currentAuction.getStatus() : null;
 
         if (currentAuction != null) {
             // Patch in-memory object directly from WS data.
@@ -292,18 +304,28 @@ public class AuctionDetailController implements DataReceiver {
 
         refreshLivePanel();
         System.out.println("[AuctionDetail] Status → " + newStatusStr);
+
+        // Hiển thị thông báo người chiến thắng khi phiên CLOSED
+        if ("CLOSED".equals(newStatusStr) && !AuctionStatus.CLOSED.equals(previousStatus)) {
+            String winnerUsername = json.has("winnerUsername") ? json.get("winnerUsername").getAsString() : null;
+            double winnerBid      = json.has("winnerBid")      ? json.get("winnerBid").getAsDouble()      : -1;
+            showWinnerAnnouncement(winnerUsername, winnerBid);
+        }
     }
 
-    /** Server tells this client its bidder's balance was updated (after auction finish). */
+    /** Server thông báo số dư của bidder đã thay đổi (sau khi bid hoặc auction finish). */
     private void onBalanceUpdate(JsonObject json) {
         String bidderId  = json.get("bidderId").getAsString();
-        double newBalance= json.get("newBalance").getAsDouble();
+        double newBalance = json.get("newBalance").getAsDouble();
+        double frozen    = json.has("frozenBalance")    ? json.get("frozenBalance").getAsDouble()    : -1;
 
         User me = SessionManager.getInstance().getCurrentUser();
         if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
             myBidder.setAccountBalance(newBalance);
+            if (frozen >= 0) myBidder.setFrozenBalance(frozen);
             SessionManager.getInstance().setCurrentUser(myBidder);
-            System.out.printf("[AuctionDetail] Balance updated: %.0f ₫%n", newBalance);
+            System.out.printf("[AuctionDetail] Balance updated: total=%.0f ₫ frozen=%.0f ₫ available=%.0f ₫%n",
+                    newBalance, myBidder.getFrozenBalance(), myBidder.getAvailableBalance());
             refreshLivePanel(); // re-render balanceLabel
         }
     }
@@ -404,14 +426,6 @@ public class AuctionDetailController implements DataReceiver {
     // Setup
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void setupBidHistoryColumns() {
-        colBidder.setCellValueFactory(c ->
-                new SimpleStringProperty(c.getValue().getBidder().getUsername()));
-        colAmount.setCellValueFactory(c ->
-                new SimpleStringProperty(String.format("%,.0f ₫", c.getValue().getAmount())));
-        colBidTime.setCellValueFactory(c ->
-                new SimpleStringProperty(c.getValue().getTimestamp().format(FMT_SEC)));
-    }
 
     private void setupChart() {
         priceSeries = new XYChart.Series<>();
@@ -432,12 +446,12 @@ public class AuctionDetailController implements DataReceiver {
         auctionIdLabel.setText("ID: " + currentAuction.getId());
         nameLabel.setText(item.getName());
         categoryLabel.setText(item.getCategory());
-        sellerLabel.setText(currentAuction.getSeller().getUsername());
+        String shopName = currentAuction.getSeller().getShopName();
+        sellerLabel.setText((shopName != null && !shopName.trim().isEmpty()) ? shopName : currentAuction.getSeller().getUsername());
         startPriceLabel.setText(String.format("%,.0f ₫", item.getStartingPrice()));
         endTimeLabel.setText(currentAuction.getEndTime().format(FMT));
         descriptionLabel.setText(item.getDescription());
         itemImageView.setImage(ImageLoaderUtil.loadItemImage(item.getImageUrl(), 420, 250));
-        categoryInfoLabel.setText(item.getCategoryInfo());
     }
 
     private void preloadBidsIntoChartAndFeed() {
@@ -449,8 +463,6 @@ public class AuctionDetailController implements DataReceiver {
             addBidToFeed(bid);
         }
         knownBidCount = history.size();
-        // Populate bảng lịch sử ngay lập tức từ dữ liệu REST, không chờ WebSocket
-        bidHistoryTable.setItems(FXCollections.observableArrayList(history));
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -464,8 +476,7 @@ public class AuctionDetailController implements DataReceiver {
         currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));
         bidCountLabel.setText(currentAuction.getBidHistory().size() + " lượt đấu giá");
         minBidHint.setText("Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT)
-                + (wsConnected ? " 🟢 Server" : " 🔴 Offline"));
+        lastUpdateLabel.setText("Đồng bộ : " + LocalDateTime.now().format(TIME_FMT));
 
         // Status badge
         updateStatusBadge();
@@ -501,10 +512,6 @@ public class AuctionDetailController implements DataReceiver {
             knownBidCount = history.size();
         }
 
-        // Bid history table
-        bidHistoryTable.setItems(FXCollections.observableArrayList(
-                currentAuction.getBidHistory()));
-
         // Winner box
         if (status == AuctionStatus.CLOSED) {
             BidTransaction winner = currentAuction.getWinner();
@@ -519,15 +526,62 @@ public class AuctionDetailController implements DataReceiver {
 
         // Bid button & balance
         User user = SessionManager.getInstance().getCurrentUser();
-        boolean canBid = status == AuctionStatus.RUNNING && user instanceof Bidder && wsConnected;
+        boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
+        boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
+        
+        if (sellerWarningLabel != null) {
+            boolean isSeller = user instanceof Seller;
+            sellerWarningLabel.setVisible(isSeller);
+            sellerWarningLabel.setManaged(isSeller);
+        }
+
+        // Chặn đặt giá liên tiếp nếu đang giữ giá cao nhất
+        boolean isHighestBidder = false;
+        if (canBid && user != null) {
+            BidTransaction highestBid = currentAuction.getWinner();
+            if (highestBid != null && highestBid.getBidder().getUsername().equals(user.getUsername())) {
+                isHighestBidder = true;
+                canBid = false; // Vô hiệu hóa đặt giá
+            }
+        }
+
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
+
+        if (isHighestBidder) {
+            bidErrorLabel.setText("🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
+            bidErrorLabel.setStyle("-fx-text-fill: #e5a93c; -fx-font-weight: bold;");
+        } else {
+            // Reset về default nếu đang hiển thị thông báo highest-bidder hoặc pending
+            String cur = bidErrorLabel.getText();
+            if (cur.contains("giữ giá cao nhất") || cur.contains("Đang gửi")) {
+                bidErrorLabel.setText("");
+                bidErrorLabel.setStyle(""); // Reset màu về mặc định
+            }
+        }
         if (balanceLabel != null) {
             if (user instanceof Bidder bidder) {
-                balanceLabel.setText(String.format("Số dư: %,.0f ₫", bidder.getAccountBalance()));
+                double available = bidder.getAvailableBalance();
+                double frozen    = bidder.getFrozenBalance();
+                balanceLabel.setText(String.format("Khả dụng: %,.0f ₫", available));
                 balanceLabel.setVisible(true);
+                
+                if (frozenLabel != null) {
+                    if (frozen > 0) {
+                        frozenLabel.setText(String.format("Đóng băng: %,.0f ₫", frozen));
+                        frozenLabel.setVisible(true);
+                        frozenLabel.setManaged(true);
+                    } else {
+                        frozenLabel.setVisible(false);
+                        frozenLabel.setManaged(false);
+                    }
+                }
             } else {
                 balanceLabel.setVisible(false);
+                if (frozenLabel != null) {
+                    frozenLabel.setVisible(false);
+                    frozenLabel.setManaged(false);
+                }
             }
         }
     }
@@ -590,6 +644,14 @@ public class AuctionDetailController implements DataReceiver {
         try { amount = Double.parseDouble(input.replace(",", "")); }
         catch (NumberFormatException e) { bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
 
+        double minBid = currentAuction.getHighestBid();
+        if (amount <= minBid) {
+            bidErrorLabel.setText("Số tiền đặt giá phải lớn hơn hoặc bằng số tiền tối thiểu quy định.");
+            bidErrorLabel.setStyle("-fx-text-fill: red;");
+            if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
+            return;
+        }
+
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) {
             bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return;
@@ -610,6 +672,13 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("amount",         amount);
         wsClient.send(req.toString());
         bidAmountField.clear();
+
+        // Vô hiệu hóa ngay lập tức để tránh double-click trong khi chờ server phản hồi.
+        // refreshLivePanel() sẽ tự quản lý trạng thái sau khi nhận BID_UPDATE từ server.
+        placeBidButton.setDisable(true);
+        bidAmountField.setDisable(true);
+        bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
+        bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
     @FXML
@@ -619,5 +688,25 @@ public class AuctionDetailController implements DataReceiver {
             NavigationManager.getInstance().navigateTo(
                     NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
         } catch (IOException e) { e.printStackTrace(); }
+    }
+
+    /**
+     * Hiển thị thông báo người chiến thắng khi phiên đấu giá kết thúc.
+     * Gọi trên FX thread (từ Platform.runLater trong handleWsMessage).
+     */
+    private void showWinnerAnnouncement(String winnerUsername, double winnerBid) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("🏆 Phiên đấu giá kết thúc");
+        alert.setHeaderText("Phiên đấu giá: " + (currentAuction != null
+                ? currentAuction.getItem().getName() : ""));
+        if (winnerUsername != null && winnerBid > 0) {
+            alert.setContentText(String.format(
+                    "🎉 Người chiến thắng: %s%n💰 Giá chốt: %,.0f ₫%n%nSố dư của người thắng đã được trừ tự động.",
+                    winnerUsername, winnerBid));
+        } else {
+            alert.setContentText("Phiên đấu giá đã kết thúc.\nKhông có ai đặt giá trong phiên này.");
+        }
+        alert.showAndWait();
     }
 }

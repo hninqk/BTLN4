@@ -13,7 +13,7 @@
 
     <!-- Brand header -->
     <VBox styleClass="sidebar-header" spacing="2">
-        <Label text="🏷️ AuctionSys" styleClass="sidebar-title"/>
+        <Label text="AuctionSys" styleClass="sidebar-title"/>
         <Label text="Hệ thống Đấu giá" styleClass="sidebar-subtitle"/>
     </VBox>
 
@@ -27,33 +27,39 @@
     <!-- Navigation -->
     <Label text="CHÍNH" styleClass="sidebar-section-label"/>
 
-    <Button fx:id="btnDashboard"  text="📊  Tổng quan"
+    <Button fx:id="btnDashboard"  text="Tổng quan"
             onAction="#handleDashboard"  styleClass="nav-button" maxWidth="Infinity"/>
-    <Button fx:id="btnAuctionList" text="🔖  Danh sách đấu giá"
+    <Button fx:id="btnAuctionList" text="Danh sách đấu giá"
             onAction="#handleAuctionList" styleClass="nav-button" maxWidth="Infinity"/>
-    <Button fx:id="btnHistory"    text="📋  Lịch sử đấu giá"
+    <Button fx:id="btnHistory"    text="Lịch sử đấu giá"
             onAction="#handleHistory"    styleClass="nav-button" maxWidth="Infinity"/>
 
-    <Label text="QUẢN LÝ" styleClass="sidebar-section-label"/>
+    <Label fx:id="lblManagement" text="QUẢN LÝ" styleClass="sidebar-section-label"/>
 
-    <Button fx:id="btnSeller"  text="🏪  Quản lý sản phẩm"
+    <Button fx:id="btnSeller"  text="Quản lý sản phẩm"
             onAction="#handleSeller"  styleClass="nav-button" maxWidth="Infinity"/>
-    <Button fx:id="btnAdmin"   text="🛡️  Quản trị hệ thống"
+    <Button fx:id="btnAdmin"   text="Quản trị hệ thống"
             onAction="#handleAdmin"   styleClass="nav-button" maxWidth="Infinity"/>
 
     <Label text="TÀI KHOẢN" styleClass="sidebar-section-label"/>
 
-    <Button fx:id="btnProfile" text="👤  Hồ sơ cá nhân"
+    <Button fx:id="btnProfile" text="Hồ sơ cá nhân"
             onAction="#handleProfile" styleClass="nav-button" maxWidth="Infinity"/>
+    <Button fx:id="btnSettings" text=" Cài đặt"
+            onAction="#handleSettings" styleClass="nav-button" maxWidth="Infinity">
+        <graphic>
+            <javafx.scene.shape.SVGPath content="M19.4 13l-1.4-.4c-.2-.7-.5-1.3-.9-1.9l.9-1.3c.2-.2.2-.6 0-.8l-1.4-1.4c-.2-.2-.6-.2-.8 0l-1.3.9c-.6-.4-1.2-.7-1.9-.9l-.4-1.4c-.1-.3-.4-.5-.7-.5h-2c-.3 0-.6.2-.7.5l-.4 1.4c-.7.2-1.3.5-1.9.9l-1.3-.9c-.2-.2-.6-.2-.8 0l-1.4 1.4c-.2.2-.2.6 0 .8l.9 1.3c-.4.6-.7 1.2-.9 1.9l-1.4.4c-.3.1-.5.4-.5.7v2c0 .3.2.6.5.7l1.4.4c.2.7.5 1.3.9 1.9l-.9 1.3c-.2.2-.2.6 0 .8l1.4 1.4c.2.2.6.2.8 0l1.3-.9c.6.4 1.2.7 1.9.9l.4 1.4c.1.3.4.5.7.5h2c.3 0 .6-.2.7-.5l.4-1.4c.7-.2 1.3-.5 1.9-.9l1.3.9c.2.2.6.2.8 0l1.4-1.4c.2-.2.2-.6 0-.8l-.9-1.3c.4-.6.7-1.2.9-1.9l1.4-.4c.3-.1.5-.4.5-.7v-2c0-.3-.2-.6-.5-.7zM12 15.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z" fill="#CBD5E1" scaleX="0.8" scaleY="0.8"/>
+        </graphic>
+    </Button>
 
     <Region VBox.vgrow="ALWAYS"/>
 
     <!-- Logout -->
-    <Button text="🚪  Đăng xuất" onAction="#handleLogout"
-            styleClass="nav-button"
-            style="-fx-text-fill: #F87171;"
-            maxWidth="Infinity"/>
-
-    <Region prefHeight="8"/>
+    <VBox spacing="8" style="-fx-padding: 0 16 8 16;">
+        <Button text="Đăng xuất" onAction="#handleLogout"
+                styleClass="nav-button"
+                style="-fx-text-fill: #F87171;"
+                maxWidth="Infinity"/>
+    </VBox>
 
 </VBox>

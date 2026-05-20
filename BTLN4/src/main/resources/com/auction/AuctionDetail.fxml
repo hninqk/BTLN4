@@ -17,7 +17,15 @@
     </left>
 
     <center>
-        <ScrollPane fitToWidth="true" styleClass="scroll-pane">
+        <StackPane pickOnBounds="false">
+            <!-- Aesthetic Geometric Background -->
+            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+            </Pane>
+            
+            <ScrollPane fx:id="mainScrollPane" fitToWidth="true" styleClass="scroll-pane" style="-fx-background-color: transparent;">
             <VBox styleClass="content-area" spacing="16" fillWidth="true">
 
                 <!-- ── Header ──────────────────────────────────────────── -->
@@ -55,7 +63,7 @@
                                 <Label text="Danh mục:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                                 <Label fx:id="categoryLabel"   text=""                 GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-                                <Label text="Người bán:"      styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <Label text="Cửa hàng:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                                 <Label fx:id="sellerLabel"     text=""                 GridPane.columnIndex="1" GridPane.rowIndex="2"/>
 
                                 <Label text="Giá khởi điểm:"  styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
@@ -74,15 +82,9 @@
                             <Label text="Mô tả sản phẩm" styleClass="section-title"/>
                             <Separator/>
                             <Label fx:id="descriptionLabel" text="" wrapText="true"
-                                   style="-fx-text-fill: #374151; -fx-font-size: 13px;"/>
+                                   style="-fx-text-fill: -theme-text; -fx-font-size: 13px;"/>
                         </VBox>
 
-                        <!-- Category-specific info -->
-                        <VBox styleClass="card" spacing="8">
-                            <Label text="Thông tin thêm" styleClass="section-title"/>
-                            <Separator/>
-                            <Label fx:id="categoryInfoLabel" text="" styleClass="label-subtle" wrapText="true"/>
-                        </VBox>
 
                         <!-- Price chart (merged from LiveBidding) -->
                         <VBox styleClass="card" spacing="8">
@@ -121,8 +123,12 @@
                             <TextField fx:id="bidAmountField" promptText="Nhập số tiền..."
                                        styleClass="text-field"/>
                             <Label fx:id="minBidHint" text="Tối thiểu: --" styleClass="label-subtle"/>
+                            <Label fx:id="sellerWarningLabel" text="Bạn là seller, không được đấu giá!"
+                                   style="-fx-text-fill: red; -fx-font-weight: bold;" managed="false" visible="false"/>
                             <Label fx:id="balanceLabel" text="" styleClass="label-subtle"
-                                   style="-fx-text-fill: #059669; -fx-font-weight: bold;"/>
+                                   style="-fx-text-fill: -theme-success-text; -fx-font-weight: bold;"/>
+                            <Label fx:id="frozenLabel" text="" styleClass="label-subtle"
+                                   style="-fx-text-fill: skyblue; -fx-font-weight: bold;"/>
                             <Label fx:id="bidErrorLabel" text="" styleClass="label-error" wrapText="true"/>
                             <Button fx:id="placeBidButton" text="🔨 Đặt giá ngay"
                                     onAction="#handlePlaceBid"
@@ -131,13 +137,13 @@
 
                         <!-- Winner box (shown after CLOSED) -->
                         <VBox fx:id="winnerBox" styleClass="card" spacing="8"
-                              style="-fx-background-color:#F0FDF4; -fx-border-color:#86EFAC;"
+                              style="-fx-background-color: -theme-success-bg; -fx-border-color: -theme-success-border;"
                               visible="false" managed="false">
                             <Label text="🏆 Người thắng cuộc" styleClass="section-title"
-                                   style="-fx-text-fill:#15803D;"/>
+                                   style="-fx-text-fill: -theme-success-text;"/>
                             <Label fx:id="winnerLabel"      text="" styleClass="label-subtle"/>
                             <Label fx:id="winnerPriceLabel" text=""
-                                   style="-fx-font-weight:bold; -fx-text-fill:#15803D;"/>
+                                   style="-fx-font-weight:bold; -fx-text-fill: -theme-success-text;"/>
                         </VBox>
 
                         <!-- Live bid feed (merged from LiveBidding) -->
@@ -151,27 +157,10 @@
                     </VBox>
                 </HBox>
 
-                <!-- ── Full-width bid history table ────────────────────── -->
-                <VBox styleClass="card-no-padding" spacing="0">
-                    <HBox style="-fx-padding: 14 20 10 20;">
-                        <Label text="Lịch sử đặt giá" styleClass="section-title"/>
-                    </HBox>
-                    <Separator/>
-                    <TableView fx:id="bidHistoryTable" prefHeight="200"
-                               style="-fx-border-width:0; -fx-background-color:transparent;">
-                        <columns>
-                            <TableColumn fx:id="colBidder"  text="Người đấu giá"  prefWidth="200"/>
-                            <TableColumn fx:id="colAmount"  text="Số tiền"        prefWidth="170"/>
-                            <TableColumn fx:id="colBidTime" text="Thời gian"      prefWidth="220"/>
-                        </columns>
-                        <placeholder>
-                            <Label text="Chưa có lượt đặt giá nào." styleClass="label-subtle"/>
-                        </placeholder>
-                    </TableView>
-                </VBox>
-
             </VBox>
-        </ScrollPane>
+
+            </ScrollPane>
+        </StackPane>
     </center>
 
 </BorderPane>

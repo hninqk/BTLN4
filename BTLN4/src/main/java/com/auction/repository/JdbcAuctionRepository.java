@@ -277,7 +277,7 @@ public class JdbcAuctionRepository {
     private void loadBidHistory(Auction auction, String auctionId) {
         String sql = """
             SELECT bt.id, bt.bidder_id, bt.amount, bt.created_at,
-                   u.username, u.password, u.balance, u.created_at AS user_created
+                   u.username, u.password, u.balance, u.frozen_balance, u.created_at AS user_created
             FROM bid_transactions bt
             JOIN users u ON bt.bidder_id = u.id
             WHERE bt.auction_id = ?
@@ -316,7 +316,7 @@ public class JdbcAuctionRepository {
 
         String sql = """
             SELECT bt.id, bt.bidder_id, bt.auction_id, bt.amount, bt.created_at,
-                   u.username, u.password, u.balance, u.created_at AS user_created
+                   u.username, u.password, u.balance, u.frozen_balance, u.created_at AS user_created
             FROM bid_transactions bt
             JOIN users u ON bt.bidder_id = u.id
             WHERE bt.auction_id IN (""" + placeholders + """
@@ -350,12 +350,20 @@ public class JdbcAuctionRepository {
      * Map 1 row từ bid_transactions JOIN users thành BidTransaction.
      */
     private BidTransaction mapBid(ResultSet rs, Auction auction) throws SQLException {
+        double balance = rs.getDouble("balance");
+        double frozen;
+        try {
+            frozen = rs.getDouble("frozen_balance");
+        } catch (SQLException e) {
+            frozen = 0.0; // backward compat nếu cột chưa tồn tại
+        }
         Bidder bidder = new Bidder(
                 rs.getString("bidder_id"),
                 LocalDateTime.parse(rs.getString("user_created")),
                 rs.getString("username"),
                 rs.getString("password"),
-                rs.getDouble("balance")
+                balance,
+                frozen
         );
         return new BidTransaction(
                 rs.getString("id"),

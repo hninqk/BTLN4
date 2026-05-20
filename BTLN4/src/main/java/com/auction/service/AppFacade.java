@@ -163,7 +163,9 @@ public final class AppFacade {
     public void saveUser(User user) {
         try {
             JsonObject body = new JsonObject();
-            body.addProperty("password", user.getPassword());
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                body.addProperty("password", user.getPassword());
+            }
             if (user instanceof Seller seller) {
                 body.addProperty("shopName", seller.getShopName());
             }

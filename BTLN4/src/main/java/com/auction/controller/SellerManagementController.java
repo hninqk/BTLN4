@@ -88,7 +88,7 @@ public class SellerManagementController {
 
         for (int i = 0; i < 24; i++)
             hourCombo.getItems().add(String.format("%02d", i));
-        for (int i = 0; i < 60; i += 5)
+        for (int i = 0; i < 60; i++)
             minuteCombo.getItems().add(String.format("%02d", i));
         hourCombo.getSelectionModel().select("12");
         minuteCombo.getSelectionModel().select("00");
@@ -313,12 +313,46 @@ public class SellerManagementController {
     @FXML
     private void handleBrowseImage(ActionEvent event) {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Chọn ảnh sản phẩm");
+        chooser.setTitle("Đọi ảnh sản phẩm");
         chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
-        Window owner = itemImageField.getScene() != null ? itemImageField.getScene().getWindow() : null;
+                new FileChooser.ExtensionFilter("Image files",
+                        "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+        Window owner = itemImageField.getScene() != null
+                ? itemImageField.getScene().getWindow() : null;
         File selected = chooser.showOpenDialog(owner);
-        if (selected != null) itemImageField.setText(selected.getAbsolutePath());
+        if (selected == null) return;
+
+        // Show upload progress in the field while uploading
+        itemImageField.setText("Đang tải ảnh lên máy chủ...");
+        itemImageField.setDisable(true);
+        showFormSuccess("Đang tải ảnh lên hệ thống...");
+
+        // Upload on a background thread – never block the FX thread
+        javafx.concurrent.Task<String> uploadTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected String call() throws Exception {
+                return com.auction.util.CatboxUploader.upload(selected);
+            }
+        };
+
+        uploadTask.setOnSucceeded(e -> {
+            String publicUrl = uploadTask.getValue();
+            itemImageField.setText(publicUrl);
+            itemImageField.setDisable(false);
+            showFormSuccess("Ảnh đã được tải lên thành công!");
+            System.out.println("[SellerMgmt] Image uploaded: " + publicUrl);
+        });
+
+        uploadTask.setOnFailed(e -> {
+            itemImageField.setText("");
+            itemImageField.setDisable(false);
+            showFormError("Đăng tải ảnh thất bại: " + uploadTask.getException().getMessage());
+            System.err.println("[SellerMgmt] Image upload failed: " + uploadTask.getException().getMessage());
+        });
+
+        Thread t = new Thread(uploadTask, "cloud-upload");
+        t.setDaemon(true);
+        t.start();
     }
 
     @FXML
@@ -332,7 +366,10 @@ public class SellerManagementController {
         String name       = itemNameField.getText().trim();
         String category   = categoryCombo.getValue();
         String description= descriptionArea.getText().trim();
-        String imageUrl   = itemImageField.getText().trim();
+        String imageUrl = itemImageField.getText().trim();
+        // imageUrl is now always a public https:// URL from CatboxUploader
+        // (local path fallback removed – every client must be able to load it)
+
         String priceStr   = startPriceField.getText().trim();
         LocalDate selDate = endDatePicker.getValue();
         String hour       = hourCombo.getValue();

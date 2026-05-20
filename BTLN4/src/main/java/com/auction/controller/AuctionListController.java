@@ -1,6 +1,7 @@
 package com.auction.controller;
 
 import com.auction.model.Auction;
+import com.auction.model.Item;
 import com.auction.model.User;
 import com.auction.service.AppFacade;
 import com.auction.util.ImageLoaderUtil;
@@ -9,7 +10,6 @@ import com.auction.util.SessionManager;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -22,6 +22,10 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.control.TableRow;
+import javafx.animation.ScaleTransition;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -43,14 +47,11 @@ public class AuctionListController {
     @FXML private Label               statusLabel;
 
     @FXML private TableView<Auction>             auctionTable;
-    @FXML private TableColumn<Auction, String>   colImage;
-    @FXML private TableColumn<Auction, String>   colName;
-    @FXML private TableColumn<Auction, String>   colCategory;
-    @FXML private TableColumn<Auction, String>   colSeller;
-    @FXML private TableColumn<Auction, String>   colStatus;
-    @FXML private TableColumn<Auction, String>   colStartPrice;
-    @FXML private TableColumn<Auction, String>   colCurrentBid;
-    @FXML private TableColumn<Auction, String>   colEndTime;
+    @FXML private TableColumn<Auction, String> colTitle;
+    @FXML private TableColumn<Auction, String> colCategory;
+    @FXML private TableColumn<Auction, String> colStatus;
+    @FXML private TableColumn<Auction, String> colPrice;
+    @FXML private TableColumn<Auction, String> colEndTime;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -80,75 +81,90 @@ public class AuctionListController {
     }
 
     private void setupTableColumns() {
-        colImage.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getImageUrl()));
-        colImage.setCellFactory(col -> new TableCell<>() {
-            private final ImageView iv = new ImageView();
-            {
-                iv.setFitWidth(64); iv.setFitHeight(44); iv.setPreserveRatio(true);
-                setContentDisplay(javafx.scene.control.ContentDisplay.GRAPHIC_ONLY);
-            }
-            @Override protected void updateItem(String url, boolean empty) {
-                super.updateItem(url, empty);
-                if (empty || url == null) { setGraphic(null); return; }
-                setGraphic(iv);
-                // Load ảnh trên background thread để không block FX thread khi scroll
-                javafx.concurrent.Task<javafx.scene.image.Image> imgTask =
-                        new javafx.concurrent.Task<>() {
-                    @Override protected javafx.scene.image.Image call() {
-                        return ImageLoaderUtil.loadItemImage(url, 64, 44);
-                    }
-                    @Override protected void succeeded() {
-                        iv.setImage(getValue());
-                    }
-                };
-                Thread t = new Thread(imgTask, "img-load");
-                t.setDaemon(true);
-                t.start();
-            }
+        colTitle.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getName()));
+        colCategory.setCellValueFactory(c -> {
+            Item item = c.getValue().getItem();
+            String cat = "Khác";
+            if (item instanceof com.auction.model.Electronics) cat = "Điện tử";
+            else if (item instanceof com.auction.model.Art) cat = "Nghệ thuật";
+            else if (item instanceof com.auction.model.Vehicle) cat = "Xe cộ";
+            return new SimpleStringProperty(cat);
         });
-        colName.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getName()));
-        colCategory.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getItem().getCategory()));
-        colSeller.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getSeller().getUsername()));
         colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatusDisplay()));
-        colStartPrice.setCellValueFactory(c -> new SimpleStringProperty(
-                String.format("%,.0f ₫", c.getValue().getItem().getStartingPrice())));
-        colCurrentBid.setCellValueFactory(c -> new SimpleStringProperty(
+        colPrice.setCellValueFactory(c -> new SimpleStringProperty(
                 String.format("%,.0f ₫", c.getValue().getHighestBid())));
         colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getEndTime().format(FMT)));
+
+        // Add fluid row micro-interaction
+        auctionTable.setRowFactory(tv -> {
+            TableRow<Auction> row = new TableRow<>();
+            
+            ScaleTransition scaleUp = new ScaleTransition(Duration.millis(150), row);
+            scaleUp.setToX(1.015);
+            scaleUp.setToY(1.015);
+            
+            ScaleTransition scaleDown = new ScaleTransition(Duration.millis(150), row);
+            scaleDown.setToX(1.0);
+            scaleDown.setToY(1.0);
+            
+            row.setOnMouseEntered(event -> {
+                if (!row.isEmpty()) {
+                    row.toFront();
+                    scaleUp.playFromStart();
+                }
+            });
+            row.setOnMouseExited(event -> {
+                if (!row.isEmpty()) {
+                    scaleDown.playFromStart();
+                }
+            });
+            
+            return row;
+        });
     }
 
-    /**
-     * Async auction load — fetches from the server REST API in the background.
-     */
     private void loadAuctions() {
         statusLabel.setText("Đang tải dữ liệu từ server...");
         boolean admin = isAdmin();
 
+        // 1. Create a background task
         Task<List<Auction>> task = new Task<>() {
             @Override
-            protected List<Auction> call() {
+            protected List<Auction> call() throws Exception {
                 AppFacade app = AppFacade.getInstance();
-                return admin ? app.getAllAuctions() : app.getPublicAuctions();
+                if (admin) {
+                    return app.getAllAuctions();
+                } else {
+                    return app.getPublicAuctions();
+                }
             }
         };
 
+        // 2. On success, update UI on the FX Application Thread
         task.setOnSucceeded(e -> {
             List<Auction> source = task.getValue();
             auctionTable.setItems(FXCollections.observableArrayList(source));
             statusLabel.setText("Tổng: " + source.size() + " phiên đấu giá");
         });
 
-        task.setOnFailed(e -> Platform.runLater(() ->
-                statusLabel.setText("Lỗi tải dữ liệu: " + task.getException().getMessage())));
+        // 3. On failure, show error
+        task.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                statusLabel.setText("Lỗi tải dữ liệu: " + task.getException().getMessage());
+            });
+        });
 
-        new Thread(task, "fetch-auctions").start();
+        // 4. Start the background thread
+        Thread t = new Thread(task, "fetch-auctions-thread");
+        t.setDaemon(true); // Don't prevent JVM exit
+        t.start();
     }
 
     @FXML
     private void handleSearch(ActionEvent event) {
-        String keyword     = searchField.getText().trim().toLowerCase();
-        String statusSel   = statusFilter.getValue();
+        String keyword = searchField.getText().trim().toLowerCase();
+        String statusSel = statusFilter.getValue();
         String categorySel = categoryFilter.getValue();
 
         statusLabel.setText("Đang tìm kiếm...");
@@ -156,9 +172,10 @@ public class AuctionListController {
 
         Task<List<Auction>> task = new Task<>() {
             @Override
-            protected List<Auction> call() {
+            protected List<Auction> call() throws Exception {
                 AppFacade app = AppFacade.getInstance();
                 List<Auction> source = admin ? app.getAllAuctions() : app.getPublicAuctions();
+
                 return source.stream()
                         .filter(a -> {
                             boolean matchName = keyword.isEmpty()
@@ -179,10 +196,15 @@ public class AuctionListController {
             statusLabel.setText("Kết quả: " + filtered.size() + " phiên đấu giá");
         });
 
-        task.setOnFailed(e -> Platform.runLater(() ->
-                statusLabel.setText("Lỗi tìm kiếm: " + task.getException().getMessage())));
+        task.setOnFailed(e -> {
+            Platform.runLater(() -> {
+                statusLabel.setText("Lỗi tìm kiếm: " + task.getException().getMessage());
+            });
+        });
 
-        new Thread(task, "search-auctions").start();
+        Thread t = new Thread(task, "search-auctions-thread");
+        t.setDaemon(true);
+        t.start();
     }
 
     @FXML
@@ -201,7 +223,9 @@ public class AuctionListController {
                 try {
                     NavigationManager.getInstance().navigateTo(
                             NavigationManager.AUCTION_DETAIL, "Chi tiết đấu giá", selected);
-                } catch (IOException e) { e.printStackTrace(); }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

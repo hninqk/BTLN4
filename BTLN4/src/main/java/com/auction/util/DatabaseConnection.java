@@ -156,16 +156,25 @@ public class DatabaseConnection {
             String realType = isPostgres() ? "DOUBLE PRECISION" : "REAL";
 
             st.execute("CREATE TABLE IF NOT EXISTS users ("
-                    + "id           TEXT PRIMARY KEY, "
-                    + "username     TEXT NOT NULL UNIQUE, "
-                    + "password     TEXT NOT NULL, "
-                    + "role         TEXT NOT NULL, "
-                    + "balance      " + realType + " DEFAULT 0.0, "
-                    + "shop_name    TEXT, "
-                    + "rating       " + realType + " DEFAULT 0.0, "
-                    + "cntvoted     INTEGER DEFAULT 0, "
-                    + "access_level INTEGER DEFAULT 1, "
-                    + "created_at   TEXT NOT NULL)");
+                    + "id             TEXT PRIMARY KEY, "
+                    + "username       TEXT NOT NULL UNIQUE, "
+                    + "password       TEXT NOT NULL, "
+                    + "role           TEXT NOT NULL, "
+                    + "balance        " + realType + " DEFAULT 0.0, "
+                    + "frozen_balance " + realType + " DEFAULT 0.0, "
+                    + "shop_name      TEXT, "
+                    + "rating         " + realType + " DEFAULT 0.0, "
+                    + "cntvoted       INTEGER DEFAULT 0, "
+                    + "access_level   INTEGER DEFAULT 1, "
+                    + "created_at     TEXT NOT NULL)");
+
+            // Migration: thêm cột frozen_balance nếu DB cũ chưa có
+            try {
+                st.execute("ALTER TABLE users ADD COLUMN frozen_balance " + realType + " DEFAULT 0.0");
+                System.out.println("[DB] Migration: added frozen_balance column to users.");
+            } catch (Exception ignored) {
+                // Cột đã tồn tại – bỏ qua (SQLite/Postgres đều ném lỗi khi ADD COLUMN duplicate)
+            }
 
             st.execute("CREATE TABLE IF NOT EXISTS items ("
                     + "id              TEXT PRIMARY KEY, "
@@ -210,6 +219,7 @@ public class DatabaseConnection {
             st.execute("CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id)");
 
             System.out.println("[DB] Tables & indexes ready.");
+            System.out.println("[DB] Schema includes frozen_balance for fund-freezing support.");
         }
     }
 }

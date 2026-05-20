@@ -7,6 +7,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.Parent;
 
 import java.io.IOException;
 
@@ -33,6 +34,10 @@ public class SidebarController {
     private Button btnAdmin;
     @FXML
     private Button btnProfile;
+    @FXML
+    private Button btnSettings;
+    @FXML
+    private Label lblManagement;
 
     @FXML
     public void initialize() {
@@ -53,6 +58,13 @@ public class SidebarController {
             // ADMIN strictly sees Admin Management
             btnAdmin.setVisible(isAdmin);
             btnAdmin.setManaged(isAdmin);
+
+            // Hide Management label if Bidder
+            boolean showManagement = isSeller || isAdmin;
+            if (lblManagement != null) {
+                lblManagement.setVisible(showManagement);
+                lblManagement.setManaged(showManagement);
+            }
 
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
@@ -88,6 +100,11 @@ public class SidebarController {
     @FXML
     private void handleProfile(ActionEvent event) {
         navigate(NavigationManager.USER_PROFILE, "Hồ sơ cá nhân");
+    }
+
+    @FXML
+    private void handleSettings(ActionEvent event) {
+        navigate(NavigationManager.SETTINGS, "Cài đặt");
     }
 
     @FXML

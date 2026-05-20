@@ -13,15 +13,15 @@ import java.time.Duration;
  * ServerMain – Headless server entry point.
  *
  * Starts the SQLite database + Javalin server on port 7000, exposing:
- *   • WebSocket /auction         – real-time bidding (unchanged)
- *   • REST /api/**               – HTTP endpoints for login, auctions, users
+ * • WebSocket /auction – real-time bidding (unchanged)
+ * • REST /api/** – HTTP endpoints for login, auctions, users
  *
  * HOW TO RUN (operator only):
- *   ./run_server.sh
- *   (or: mvn exec:java -Pserver -Dcheckstyle.skip=true)
+ * ./run_server.sh
+ * (or: mvn exec:java -Pserver -Dcheckstyle.skip=true)
  *
  * Then expose via ngrok:
- *   ngrok http 7000
+ * ngrok http 7000
  *
  * When the ngrok URL changes, update DEFAULT_URL in ServerConfig.java,
  * rebuild the client JAR, and share the new JAR.
@@ -40,19 +40,19 @@ public class ServerMain {
 
         // 2. Build Javalin application
         AuctionService auctionService = AuctionService.getInstance();
-        UserService    userService    = UserService.getInstance();
+        UserService userService = UserService.getInstance();
 
-        AuctionWebSocketHandler wsHandler  = new AuctionWebSocketHandler(auctionService);
-        RestApiHandler          restHandler = new RestApiHandler(auctionService, userService);
+        AuctionWebSocketHandler wsHandler = new AuctionWebSocketHandler(auctionService);
+        RestApiHandler restHandler = new RestApiHandler(auctionService, userService);
 
-        Javalin server = Javalin.create(config ->
-                config.jetty.modifyWebSocketServletFactory(factory ->
-                        factory.setIdleTimeout(Duration.ofMinutes(10)))
-        ).start(7000);
+        Javalin server = Javalin
+                .create(config -> config.jetty
+                        .modifyWebSocketServletFactory(factory -> factory.setIdleTimeout(Duration.ofMinutes(10))))
+                .start(7000);
 
         // 3. Register routes
-        server.ws("/auction", wsHandler::register);  // WebSocket (unchanged)
-        restHandler.register(server);                // REST API (new)
+        server.ws("/auction", wsHandler::register); // WebSocket (unchanged)
+        restHandler.register(server); // REST API (new)
 
         System.out.println("[Server] WebSocket + REST server running on port 7000.");
         System.out.println("[Server] REST API base: http://localhost:7000/api");
