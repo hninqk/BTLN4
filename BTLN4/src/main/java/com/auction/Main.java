@@ -25,6 +25,9 @@ public class Main extends Application {
         Platform.setImplicitExit(false);
         createTrayIcon(stage);
         
+        // Fetch server time offset asynchronously
+        new Thread(() -> com.auction.util.TimeSyncManager.syncTimeWithServer(), "TimeSync-Thread").start();
+        
         NavigationManager nav = NavigationManager.getInstance();
         nav.setPrimaryStage(stage);
 

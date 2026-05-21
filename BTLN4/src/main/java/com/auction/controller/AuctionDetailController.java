@@ -7,6 +7,7 @@ import com.auction.util.HotItemCache;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import com.auction.util.TimeSyncManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -278,7 +279,7 @@ public class AuctionDetailController implements DataReceiver {
         double amount        = json.get("amount").getAsDouble();
         String bidderName    = json.get("bidderUsername").getAsString();
         String bidderId      = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";
-        String timeStr       = json.has("time")           ? json.get("time").getAsString()           : LocalDateTime.now().toString();
+        String timeStr       = json.has("time")           ? json.get("time").getAsString()           : TimeSyncManager.getNow().toString();
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
@@ -295,7 +296,7 @@ public class AuctionDetailController implements DataReceiver {
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
             // Build a real bid entry for the UI
-            Bidder dummy = new Bidder(bidderId, LocalDateTime.now(), bidderName, "", 0);
+            Bidder dummy = new Bidder(bidderId, TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
                     ts,
@@ -317,7 +318,7 @@ public class AuctionDetailController implements DataReceiver {
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
         String msg = json.get("message").getAsString();
-        String timeDisplay = LocalDateTime.now().format(TIME_FMT);
+        String timeDisplay = TimeSyncManager.getNow().format(TIME_FMT);
         appendToFeed(String.format("[%s] ⚡ %s", timeDisplay, msg));
     }
     
@@ -477,15 +478,15 @@ public class AuctionDetailController implements DataReceiver {
         String aid        = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         double amount     = json.get("amount").getAsDouble();
         String bidderName = json.get("bidder").getAsString();
-        String timeStr    = json.has("time") ? json.get("time").getAsString() : LocalDateTime.now().toString();
+        String timeStr    = json.has("time") ? json.get("time").getAsString() : TimeSyncManager.getNow().toString();
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
-            Bidder dummy = new Bidder("remote", LocalDateTime.now(), bidderName, "", 0);
+            Bidder dummy = new Bidder("remote", TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.now(), dummy, currentAuction, amount);
+                    TimeSyncManager.getNow(), dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
         refreshLivePanel();
@@ -579,7 +580,7 @@ public class AuctionDetailController implements DataReceiver {
         currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));
         bidCountLabel.setText(currentAuction.getBidHistory().size() + " lượt đấu giá");
         minBidHint.setText("Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Đồng bộ : " + LocalDateTime.now().format(TIME_FMT));
+        lastUpdateLabel.setText("Đồng bộ : " + TimeSyncManager.getNow().format(TIME_FMT));
 
         // Status badge
         updateStatusBadge();
@@ -598,7 +599,7 @@ public class AuctionDetailController implements DataReceiver {
                 if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
             }
             case RUNNING -> {
-                Duration remaining = Duration.between(LocalDateTime.now(), currentAuction.getEndTime());
+                Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
                 timeRemainingLabel.setText(remaining.isNegative() ? "Hết giờ" :
                         String.format("%02d:%02d:%02d",
                                 remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart()));
@@ -629,7 +630,7 @@ public class AuctionDetailController implements DataReceiver {
 
         // Bid button & balance
         User user = SessionManager.getInstance().getCurrentUser();
-        boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
+        boolean isExpired = currentAuction.getEndTime() != null && TimeSyncManager.getNow().isAfter(currentAuction.getEndTime());
         boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
         
         if (sellerWarningLabel != null) {

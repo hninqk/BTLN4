@@ -67,6 +67,9 @@ public class RestApiHandler {
         // Health check
         app.get("/api/health", ctx -> ctx.status(200).result("OK"));
 
+        // Server Time for Client Synchronization
+        app.get("/api/time/current", ctx -> ctx.status(200).contentType("application/json").result("{\"serverTime\":" + System.currentTimeMillis() + "}"));
+
         // ── Auth ──────────────────────────────────────────────────────────────
         app.post("/api/login",    this::handleLogin);
         app.post("/api/register", this::handleRegister);
