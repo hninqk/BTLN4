@@ -1,5 +1,5 @@
 # Use Maven to build the application
-FROM maven:3.9.6-eclipse-temurin-25-alpine AS build
+FROM maven:3.9.6-eclipse-temurin-17-alpine AS build
 WORKDIR /app
 
 # Copy pom.xml and source code
@@ -11,7 +11,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Run the application using a smaller JRE image
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Copy the shaded JAR from the build stage

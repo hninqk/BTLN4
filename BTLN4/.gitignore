@@ -3,3 +3,6 @@ target/
 *.dbtarget/
 db.auction
 CONTEXT.md
+db.auction-shm
+db.auction-wal
+.antigravitycli
