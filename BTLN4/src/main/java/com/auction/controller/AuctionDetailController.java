@@ -17,6 +17,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.chart.CategoryAxis;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
@@ -87,6 +88,7 @@ public class AuctionDetailController implements DataReceiver {
 
     // ── Price chart ───────────────────────────────────────────────────────────
     @FXML private LineChart<String, Number> priceChart;
+    @FXML private CategoryAxis timeAxis;
 
     // ── Winner box ────────────────────────────────────────────────────────────
     @FXML private VBox  winnerBox;
@@ -518,6 +520,11 @@ public class AuctionDetailController implements DataReceiver {
         priceChart.getData().add(priceSeries);
         priceChart.setCreateSymbols(true);
         priceChart.setAnimated(false);
+
+        // Ensure time axis will auto-range to incoming bid timestamps so nodes are visible
+        if (timeAxis != null) {
+            timeAxis.setAutoRanging(true);
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
