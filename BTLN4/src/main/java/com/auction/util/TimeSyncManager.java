@@ -12,7 +12,9 @@ import java.time.ZoneId;
  * Helps calculate time offset between local clock and server clock to prevent fraud.
  */
 public class TimeSyncManager {
-    private static long timeOffset = 0;
+    private static long syncServerTimeMillis = 0;
+    private static long syncNanoTime = 0;
+    private static boolean isSynced = false;
 
     /**
      * Call API to get server time and calculate offset.
@@ -27,12 +29,14 @@ public class TimeSyncManager {
                 long serverTime = json.get("serverTime").getAsLong();
                 long responseTime = System.currentTimeMillis();
                 
+                
                 // Account for network latency (round trip time / 2)
                 long rtt = responseTime - requestTime;
-                long estimatedServerTime = serverTime + (rtt / 2);
+                syncServerTimeMillis = serverTime + (rtt / 2);
+                syncNanoTime = System.nanoTime();
+                isSynced = true;
                 
-                timeOffset = estimatedServerTime - responseTime;
-                System.out.println("[TimeSync] Server time synchronized. Offset: " + timeOffset + "ms (RTT: " + rtt + "ms)");
+                System.out.println("[TimeSync] Server time synchronized. Base: " + syncServerTimeMillis + "ms (RTT: " + rtt + "ms)");
             }
         } catch (Exception e) {
             System.err.println("[TimeSync] Failed to sync time with server: " + e.getMessage());
@@ -43,7 +47,12 @@ public class TimeSyncManager {
      * Get the current time in milliseconds with server offset applied.
      */
     public static long getCurrentTimeMillis() {
-        return System.currentTimeMillis() + timeOffset;
+        if (!isSynced) {
+            // Fallback to local time if not yet synced
+            return System.currentTimeMillis();
+        }
+        long elapsedMillis = (System.nanoTime() - syncNanoTime) / 1_000_000L;
+        return syncServerTimeMillis + elapsedMillis;
     }
 
     /**

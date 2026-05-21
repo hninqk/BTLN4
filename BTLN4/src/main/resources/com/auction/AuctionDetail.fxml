@@ -44,37 +44,36 @@
                     <!-- LEFT: Item info -->
                     <VBox spacing="14" HBox.hgrow="ALWAYS">
 
-                        <!-- Item image -->
-                        <VBox styleClass="card" spacing="8" alignment="CENTER">
-                            <Label text="Ảnh sản phẩm" styleClass="section-title"/>
-                            <Separator/>
-                            <ImageView fx:id="itemImageView" fitWidth="420" fitHeight="240"
-                                       preserveRatio="true" smooth="true"/>
-                        </VBox>
-
                         <!-- Item details -->
                         <VBox styleClass="card" spacing="12">
                             <Label text="Thông tin sản phẩm" styleClass="section-title"/>
                             <Separator/>
-                            <GridPane hgap="14" vgap="10">
-                                <Label text="Tên sản phẩm:"   styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                                <Label fx:id="nameLabel"       text=""                 GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                            
+                            <HBox spacing="20" alignment="CENTER_LEFT">
+                                <GridPane hgap="14" vgap="10" HBox.hgrow="ALWAYS">
+                                    <Label text="Tên sản phẩm:"   styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                    <Label fx:id="nameLabel"       text=""                 GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
-                                <Label text="Danh mục:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                                <Label fx:id="categoryLabel"   text=""                 GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                    <Label text="Danh mục:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                    <Label fx:id="categoryLabel"   text=""                 GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
-                                <Label text="Cửa hàng:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                                <Label fx:id="sellerLabel"     text=""                 GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                                    <Label text="Cửa hàng:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                    <Label fx:id="sellerLabel"     text=""                 GridPane.columnIndex="1" GridPane.rowIndex="2"/>
 
-                                <Label text="Giá khởi điểm:"  styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-                                <Label fx:id="startPriceLabel" text=""                 GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                                    <Label text="Giá khởi điểm:"  styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                    <Label fx:id="startPriceLabel" text=""                 GridPane.columnIndex="1" GridPane.rowIndex="3"/>
 
-                                <Label text="Bắt đầu:"        styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-                                <Label fx:id="startTimeLabel"  text="Chưa bắt đầu"    GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                                    <Label text="Bắt đầu:"        styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                    <Label fx:id="startTimeLabel"  text="Chưa bắt đầu"    GridPane.columnIndex="1" GridPane.rowIndex="4"/>
 
-                                <Label text="Kết thúc:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-                                <Label fx:id="endTimeLabel"    text=""                 GridPane.columnIndex="1" GridPane.rowIndex="5"/>
-                            </GridPane>
+                                    <Label text="Kết thúc:"       styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                                    <Label fx:id="endTimeLabel"    text=""                 GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                                </GridPane>
+                                
+                                <ImageView fx:id="itemImageView" fitWidth="260" fitHeight="260"
+                                           preserveRatio="true" smooth="true" HBox.hgrow="NEVER"/>
+                            </HBox>
+
                             <Separator/>
                             <Label text="Mô tả sản phẩm:" styleClass="form-label"/>
                             <Label fx:id="descriptionLabel" text="" wrapText="true"
