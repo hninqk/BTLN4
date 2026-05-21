@@ -33,9 +33,13 @@ public class LoginController {
     public void initialize() {
         errorLabel.setText("");
         Platform.runLater(() -> {
-            if (loginButton != null && loginButton.getScene() != null && loginButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
-                com.auction.util.AnimationUtil.createWaveBackground(p);
-            }
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
+            pause.setOnFinished(e -> {
+                if (loginButton != null && loginButton.getScene() != null && loginButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                    com.auction.util.AnimationUtil.createWaveBackground(p);
+                }
+            });
+            pause.play();
         });
     }
 

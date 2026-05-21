@@ -40,9 +40,13 @@ public class RegisterController {
         successLabel.setText("");
         
         Platform.runLater(() -> {
-            if (registerButton != null && registerButton.getScene() != null && registerButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
-                com.auction.util.AnimationUtil.createWaveBackground(p);
-            }
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
+            pause.setOnFinished(e -> {
+                if (registerButton != null && registerButton.getScene() != null && registerButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                    com.auction.util.AnimationUtil.createWaveBackground(p);
+                }
+            });
+            pause.play();
         });
     }
 

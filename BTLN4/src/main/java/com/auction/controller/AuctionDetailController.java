@@ -17,11 +17,14 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.*;
+import javafx.util.StringConverter;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.HBox;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -46,7 +49,7 @@ import java.util.function.UnaryOperator;
  * Seller creates auctions → SellerManagementController sends CREATE_AUCTION via WS.
  * Admin actions          → AdminManagementController sends ADMIN_ACTION via WS.
  */
-public class AuctionDetailController implements DataReceiver {
+public class AuctionDetailController implements DataReceiver, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
     // ── Info panel ────────────────────────────────────────────────────────────
     @FXML private Label     itemNameLabel;
@@ -73,22 +76,26 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private TextField bidAmountField;
     @FXML private Label     bidErrorLabel;
     @FXML private Button    placeBidButton;
-    @FXML private ScrollPane mainScrollPane;
+    @FXML private Button    autoBidToggleButton;
+    // mainScrollPane removed – page now fits without scrolling
 
-    // ── Auto-Bid panel ────────────────────────────────────────────────────────
-    @FXML private VBox      autoBidDashboard;
+    // ── Auto-Bid popup panel ─────────────────────────────────────────────────
+    @FXML private VBox      autoBidPopup;     // floating popup panel
     @FXML private Label     autoBidStatusBadge;
     @FXML private TextField autoMaxBidField;
     @FXML private TextField autoIncrementField;
     @FXML private Label     autoBidErrorLabel;
     @FXML private Button    registerAutoBidButton;
 
+    // ── Chart tooltip ─────────────────────────────────────────────────────────
+    @FXML private StackPane rootStackPane;
+
     // ── Live feed ─────────────────────────────────────────────────────────────
     @FXML private ListView<String> liveFeedList;
 
     // ── Price chart ───────────────────────────────────────────────────────────
-    @FXML private LineChart<String, Number> priceChart;
-    @FXML private CategoryAxis timeAxis;
+    @FXML private LineChart<Number, Number> priceChart;
+    @FXML private NumberAxis timeAxis;
 
     // ── Winner box ────────────────────────────────────────────────────────────
     @FXML private VBox  winnerBox;
@@ -100,16 +107,11 @@ public class AuctionDetailController implements DataReceiver {
     private String  auctionId;
     private Auction currentAuction;
     private ScheduledExecutorService scheduler;
-    private XYChart.Series<String, Number> priceSeries;
-    private int chartTick     = 0;
-    private int knownBidCount = 0;
-    /** Debounce: timestamp of last full refreshLivePanel render (ms). */
-    private volatile long lastRefreshMs = 0;
-
-    // WebSocket
-    private AuctionClient wsClient;
+    private com.auction.util.AuctionChartHelper chartHelper;
+    private com.auction.service.AuctionWebSocketService wsService;
     private volatile boolean wsConnected = false;
-    private final Gson gson = new Gson();
+    private int knownBidCount = 0;
+    private volatile long lastRefreshMs = 0;
 
     // In-memory bid list (synced from server via WS)
     private final List<BidTransaction> wsKnownBids = new ArrayList<>();
@@ -160,22 +162,33 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    @FXML
     public void initialize() {
         bidErrorLabel.setText("");
-        setupChart();
+        chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
 
         UnaryOperator<TextFormatter.Change> numericFilter = change ->
                 change.getControlNewText().matches("[0-9,.]*") ? change : null;
         bidAmountField.setTextFormatter(new TextFormatter<>(numericFilter));
-        
+
         if (autoMaxBidField != null) autoMaxBidField.setTextFormatter(new TextFormatter<>(numericFilter));
         if (autoIncrementField != null) autoIncrementField.setTextFormatter(new TextFormatter<>(numericFilter));
+
+        // Close auto-bid popup when clicking outside it
+        if (rootStackPane != null) {
+            rootStackPane.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
+                if (autoBidPopup != null && autoBidPopup.isVisible()) {
+                    if (!autoBidPopup.getBoundsInParent().contains(evt.getX(), evt.getY())) {
+                        autoBidPopup.setVisible(false);
+                        autoBidPopup.setManaged(false);
+                    }
+                }
+            });
+        }
     }
 
     public void shutdown() {
         if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
-        if (wsClient  != null) wsClient.disconnect();
+        if (wsService != null) wsService.disconnect();
     }
 
     /** Called by NavigationManager when leaving this screen. */
@@ -186,97 +199,48 @@ public class AuctionDetailController implements DataReceiver {
     // ──────────────────────────────────────────────────────────────────────────
 
     private void connectWebSocket() {
-        wsClient = new AuctionClient();
-        Thread t = new Thread(() -> {
-            wsClient.connect(
-                    msg -> Platform.runLater(() -> handleWsMessage(msg)),
-                    err -> Platform.runLater(() -> {
-                        wsConnected = false;
-                        placeBidButton.setDisable(true);
-                        bidAmountField.setDisable(true);
-                        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
-                        refreshLivePanel();
-                    }),
-                    // onOpen: request full sync from server
-                    () -> {
-                        wsConnected = true;
-                        sendRequestSync();
-                        Platform.runLater(this::refreshLivePanel);
-                    }
-            );
-        }, "AuctionDetail-WS");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    /** Send REQUEST_SYNC to get up-to-date auction list from server. */
-    private void sendRequestSync() {
-        if (wsClient == null || !wsClient.isConnected()) return;
-        JsonObject req = new JsonObject();
-        req.addProperty("type", "REQUEST_SYNC");
-        wsClient.send(req.toString());
-        
-        User user = SessionManager.getInstance().getCurrentUser();
-        if (user instanceof Bidder bidder && currentAuction != null) {
-            JsonObject abReq = new JsonObject();
-            abReq.addProperty("type", "CHECK_AUTO_BID");
-            abReq.addProperty("auctionId", currentAuction.getId());
-            abReq.addProperty("bidderId", bidder.getId());
-            wsClient.send(abReq.toString());
-        }
+        wsService = new com.auction.service.AuctionWebSocketService(currentAuction != null ? currentAuction.getId() : null, this);
+        wsService.connect();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // WS Message Handling
+    // WebSocket Listener Implementation
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void handleWsMessage(String msg) {
-        try {
-            com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
-            if (!element.isJsonObject()) return;
-            JsonObject json = element.getAsJsonObject();
+    @Override
+    public void onWsConnected() {
+        wsConnected = true;
+        Platform.runLater(this::refreshLivePanel);
+    }
 
-            if (json.has("error")) {
-                String errMsg = "⚠ " + json.get("error").getAsString();
-                if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
-                    autoBidErrorLabel.setText(errMsg);
-                    autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-                    if (registerAutoBidButton != null) registerAutoBidButton.setDisable(false);
-                    if (autoMaxBidField != null) autoMaxBidField.setDisable(false);
-                    if (autoIncrementField != null) autoIncrementField.setDisable(false);
-                }
-                bidErrorLabel.setText(errMsg);
-                bidErrorLabel.setStyle("-fx-text-fill: red;");
-                placeBidButton.setDisable(false);
-                bidAmountField.setDisable(false);
-                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
-                return;
-            }
+    @Override
+    public void onWsDisconnected(String error) {
+        wsConnected = false;
+        placeBidButton.setDisable(true);
+        bidAmountField.setDisable(true);
+        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
+        refreshLivePanel();
+    }
 
-            String type = json.has("type") ? json.get("type").getAsString() : "";
-
-            switch (type) {
-                case "BID_UPDATE"             -> onBidUpdate(json);
-                case "AUCTION_STATUS_CHANGED" -> onStatusChanged(json);
-                case "BALANCE_UPDATE"         -> onBalanceUpdate(json);
-                case "FULL_SYNC"              -> onFullSync(json);
-                case "AUTO_BID_LOG"           -> onAutoBidLog(json);
-                case "AUTO_BID_ACK"           -> onAutoBidAck(json);
-                case "AUTO_BID_STATUS"        -> onAutoBidStatus(json);
-                // Legacy: bare bid response without "type" field
-                default -> {
-                    if (json.has("amount") && json.has("bidder")) {
-                        onLegacyBidUpdate(json);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("[AuctionDetail] WS parse error: " + e.getMessage());
+    @Override
+    public void onWsError(String errorMsg) {
+        String errMsg = "⚠ " + errorMsg;
+        if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
+            autoBidErrorLabel.setText(errMsg);
+            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+            if (registerAutoBidButton != null) registerAutoBidButton.setDisable(false);
+            if (autoMaxBidField != null) autoMaxBidField.setDisable(false);
+            if (autoIncrementField != null) autoIncrementField.setDisable(false);
         }
+        bidErrorLabel.setText(errMsg);
+        bidErrorLabel.setStyle("-fx-text-fill: red;");
+        placeBidButton.setDisable(false);
+        bidAmountField.setDisable(false);
     }
 
     /** New bid placed on server – update price, feed, chart. */
-    private void onBidUpdate(JsonObject json) {
+    @Override
+    public void onBidUpdate(JsonObject json) {
         String aid           = json.has("auctionId")      ? json.get("auctionId").getAsString()      : null;
         double amount        = json.get("amount").getAsDouble();
         String bidderName    = json.get("bidderUsername").getAsString();
@@ -285,8 +249,7 @@ public class AuctionDetailController implements DataReceiver {
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
-        // O(1) cache update – runs on FX thread via Platform.runLater, which is fine
-        // because ConcurrentHashMap + AtomicInteger are thread-safe for the increment
+        // O(1) cache update
         if (aid != null) HotItemCache.getInstance().recordBid(aid);
         else if (currentAuction != null) HotItemCache.getInstance().recordBid(currentAuction.getId());
 
@@ -297,25 +260,23 @@ public class AuctionDetailController implements DataReceiver {
 
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
-            // Build a real bid entry for the UI
             Bidder dummy = new Bidder(bidderId, TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    ts,
-                    dummy, currentAuction, amount);
+                    ts, dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
 
-        // Add to feed & chart immediately (don't wait for scheduler)
         String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
-        addRawToChart(amount);
+        chartHelper.addRawBid(amount, ts);
 
         bidErrorLabel.setText("");
         refreshLivePanel();
     }
 
-    private void onAutoBidLog(JsonObject json) {
+    @Override
+    public void onAutoBidLog(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
@@ -324,7 +285,8 @@ public class AuctionDetailController implements DataReceiver {
         appendToFeed(String.format("[%s] ⚡ %s", timeDisplay, msg));
     }
     
-    private void onAutoBidAck(JsonObject json) {
+    @Override
+    public void onAutoBidAck(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
@@ -344,7 +306,8 @@ public class AuctionDetailController implements DataReceiver {
         refreshLivePanel();
     }
 
-    private void onAutoBidStatus(JsonObject json) {
+    @Override
+    public void onAutoBidStatus(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
@@ -362,8 +325,8 @@ public class AuctionDetailController implements DataReceiver {
         });
     }
 
-    /** Auction status changed by admin (approve/start/finish/cancel). */
-    private void onStatusChanged(JsonObject json) {
+    @Override
+    public void onStatusChanged(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
@@ -400,8 +363,8 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    /** Server thông báo số dư của bidder đã thay đổi (sau khi bid hoặc auction finish). */
-    private void onBalanceUpdate(JsonObject json) {
+    @Override
+    public void onBalanceUpdate(JsonObject json) {
         String bidderId  = json.get("bidderId").getAsString();
         double newBalance = json.get("newBalance").getAsDouble();
         double frozen    = json.has("frozenBalance")    ? json.get("frozenBalance").getAsDouble()    : -1;
@@ -417,8 +380,8 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    /** Full state snapshot sent by server on REQUEST_SYNC. */
-    private void onFullSync(JsonObject json) {
+    @Override
+    public void onFullSync(JsonObject json) {
         if (!json.has("auctions") || currentAuction == null) return;
         JsonArray auctions = json.get("auctions").getAsJsonArray();
         for (int i = 0; i < auctions.size(); i++) {
@@ -461,22 +424,18 @@ public class AuctionDetailController implements DataReceiver {
         rebuildChartAndFeed();
     }
 
-    /** Rebuild chart and feed from current bid history (called after FULL_SYNC). */
     private void rebuildChartAndFeed() {
-        priceSeries.getData().clear();
+        chartHelper.clear();
         liveFeedList.getItems().clear();
-        chartTick     = 0;
-        knownBidCount = 0;
         List<BidTransaction> history = currentAuction.getBidHistory();
         for (BidTransaction bt : history) {
-            addBidToChart(bt);
+            chartHelper.addBid(bt);
             addBidToFeed(bt);
         }
-        knownBidCount = history.size();
     }
 
-    /** Legacy: server sent bare {amount, bidder, time} without type field. */
-    private void onLegacyBidUpdate(JsonObject json) {
+    @Override
+    public void onLegacyBidUpdate(JsonObject json) {
         String aid        = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         double amount     = json.get("amount").getAsDouble();
         String bidderName = json.get("bidder").getAsString();
@@ -514,18 +473,7 @@ public class AuctionDetailController implements DataReceiver {
     // ──────────────────────────────────────────────────────────────────────────
 
 
-    private void setupChart() {
-        priceSeries = new XYChart.Series<>();
-        priceSeries.setName("Giá đấu");
-        priceChart.getData().add(priceSeries);
-        priceChart.setCreateSymbols(true);
-        priceChart.setAnimated(false);
-
-        // Ensure time axis will auto-range to incoming bid timestamps so nodes are visible
-        if (timeAxis != null) {
-            timeAxis.setAutoRanging(true);
-        }
-    }
+    // Setup removed; delegated to AuctionChartHelper
 
     // ──────────────────────────────────────────────────────────────────────────
     // Static info (once on load)
@@ -562,10 +510,9 @@ public class AuctionDetailController implements DataReceiver {
         List<BidTransaction> history = currentAuction.getBidHistory();
         System.out.println("[AuctionDetail] REST data: " + history.size() + " bids for auction " + currentAuction.getId());
         for (BidTransaction bid : history) {
-            addBidToChart(bid);
+            chartHelper.addBid(bid);
             addBidToFeed(bid);
         }
-        knownBidCount = history.size();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -660,17 +607,19 @@ public class AuctionDetailController implements DataReceiver {
 
         placeBidButton.setDisable(!canBid);
         bidAmountField.setDisable(!canBid);
-        
-        if (autoBidDashboard != null) {
-            autoBidDashboard.setVisible(canAutoBid);
-            autoBidDashboard.setManaged(canAutoBid);
+
+        // Auto-bid toggle button: show only when bidder can auto-bid
+        if (autoBidToggleButton != null) {
+            autoBidToggleButton.setDisable(!canAutoBid);
+            autoBidToggleButton.setVisible(canAutoBid || (autoBidPopup != null && autoBidPopup.isVisible()));
+            autoBidToggleButton.setManaged(true);
         }
-        
+
         if (registerAutoBidButton != null) {
             registerAutoBidButton.setDisable(!canAutoBid);
-            autoMaxBidField.setDisable(!canAutoBid);
-            autoIncrementField.setDisable(!canAutoBid);
-            
+            if (autoMaxBidField != null) autoMaxBidField.setDisable(!canAutoBid);
+            if (autoIncrementField != null) autoIncrementField.setDisable(!canAutoBid);
+
             if (autoBidErrorLabel != null) {
                 String abCur = autoBidErrorLabel.getText();
                 if (abCur.contains("Đang gửi")) {
@@ -737,15 +686,6 @@ public class AuctionDetailController implements DataReceiver {
     // Chart / Feed helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void addBidToChart(BidTransaction bid) {
-        chartTick++;
-        priceSeries.getData().add(new XYChart.Data<>("#" + chartTick, bid.getAmount()));
-    }
-
-    private void addRawToChart(double amount) {
-        chartTick++;
-        priceSeries.getData().add(new XYChart.Data<>("#" + chartTick, amount));
-    }
 
     private void addBidToFeed(BidTransaction bid) {
         String entry = String.format("[%s]  %s  →  %,.0f ₫",
@@ -780,7 +720,6 @@ public class AuctionDetailController implements DataReceiver {
         if (amount <= minBid) {
             bidErrorLabel.setText("Số tiền đặt giá phải lớn hơn hoặc bằng số tiền tối thiểu quy định.");
             bidErrorLabel.setStyle("-fx-text-fill: red;");
-            if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
             return;
         }
 
@@ -789,7 +728,7 @@ public class AuctionDetailController implements DataReceiver {
             bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return;
         }
 
-        if (!wsConnected || wsClient == null) {
+        if (!wsConnected || wsService == null) {
             bidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ server hoạt động.");
             return;
         }
@@ -802,15 +741,29 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("bidderUsername", bidder.getUsername());
         req.addProperty("bidderBalance",  bidder.getAccountBalance());
         req.addProperty("amount",         amount);
-        wsClient.send(req.toString());
+        wsService.send(req.toString());
         bidAmountField.clear();
 
-        // Vô hiệu hóa ngay lập tức để tránh double-click trong khi chờ server phản hồi.
-        // refreshLivePanel() sẽ tự quản lý trạng thái sau khi nhận BID_UPDATE từ server.
+        // Disable immediately to prevent double-click while waiting for server
         placeBidButton.setDisable(true);
         bidAmountField.setDisable(true);
         bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
         bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
+    }
+
+    /** Toggle the floating auto-bid popup panel. */
+    @FXML
+    private void handleToggleAutoBid(ActionEvent event) {
+        if (autoBidPopup == null) return;
+        boolean nowVisible = !autoBidPopup.isVisible();
+        autoBidPopup.setVisible(nowVisible);
+        autoBidPopup.setManaged(nowVisible);
+        // Position popup in the center of the StackPane
+        if (nowVisible) {
+            autoBidPopup.setTranslateX(0);
+            autoBidPopup.setTranslateY(0);
+            StackPane.setAlignment(autoBidPopup, javafx.geometry.Pos.CENTER);
+        }
     }
 
 
@@ -841,7 +794,6 @@ public class AuctionDetailController implements DataReceiver {
         if (maxBid <= minBid) {
             autoBidErrorLabel.setText("Giá tối đa phải lớn hơn giá hiện tại.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-            if (mainScrollPane != null) mainScrollPane.setVvalue(1.0);
             return;
         }
         if (increment <= 0) {
@@ -856,7 +808,7 @@ public class AuctionDetailController implements DataReceiver {
             return;
         }
 
-        if (!wsConnected || wsClient == null) {
+        if (!wsConnected || wsService == null) {
             autoBidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
             return;
@@ -868,7 +820,7 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("bidderId", bidder.getId());
         req.addProperty("maxBid", maxBid);
         req.addProperty("increment", increment);
-        wsClient.send(req.toString());
+        wsService.send(req.toString());
 
         registerAutoBidButton.setDisable(true);
         autoMaxBidField.setDisable(true);
