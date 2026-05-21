@@ -27,8 +27,11 @@
                 <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
             </Pane>
 
-            <!-- Main content – NO ScrollPane, fits in window -->
-            <VBox styleClass="content-area" spacing="12" fillWidth="true">
+            <!-- ScrollPane wrapper for responsive layout -->
+            <ScrollPane fitToWidth="true" fitToHeight="false"
+                        style="-fx-background-color: transparent; -fx-background: transparent;"
+                        styleClass="scroll-pane">
+                <VBox styleClass="content-area" spacing="12" fillWidth="true">
 
                 <!-- ── Header ──────────────────────────────────────────── -->
                 <HBox alignment="CENTER_LEFT" spacing="10">
@@ -162,6 +165,7 @@
                 </HBox>
 
             </VBox>
+            </ScrollPane>
 
             <!-- ── Auto-Bid Popup Panel (floats, hidden by default) ── -->
             <VBox fx:id="autoBidPopup"

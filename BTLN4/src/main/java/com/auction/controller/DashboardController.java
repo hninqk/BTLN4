@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
 import javafx.geometry.Pos;
@@ -84,8 +83,8 @@ public class DashboardController {
         if (newsLabel == null)
             return;
         newsTimeline = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(Duration.seconds(5), event -> {
-                    javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(Duration.millis(300),
+                new javafx.animation.KeyFrame(Duration.seconds(8), event -> {
+                    javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(Duration.millis(400),
                             newsLabel);
                     fadeOut.setFromValue(1.0);
                     fadeOut.setToValue(0.0);
@@ -93,7 +92,7 @@ public class DashboardController {
                         currentNewsIndex = (currentNewsIndex + 1) % newsHeadlines.length;
                         newsLabel.setText(newsHeadlines[currentNewsIndex]);
                         javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(
-                                Duration.millis(300), newsLabel);
+                                Duration.millis(400), newsLabel);
                         fadeIn.setFromValue(0.0);
                         fadeIn.setToValue(1.0);
                         fadeIn.play();
@@ -230,13 +229,13 @@ public class DashboardController {
     }
 
     /**
-     * Schedules a lightweight hot-item re-sort every 5 seconds on a background thread.
+     * Schedules a lightweight hot-item re-sort every 30 seconds on a background thread.
      * No DB query – purely reads the in-memory HotItemCache and existing auction list.
      */
     private void startHotItemRefresh() {
-        // 15 s interval – reduced from 5 s to cut DB load.
+        // 30 s interval – reduced from 15 s to cut DB load and CPU usage.
         // isRefreshing guard ensures only one background query runs at a time.
-        hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(15), e -> {
+        hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
             if (isRefreshing) return; // skip if previous query still in progress
             isRefreshing = true;
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
@@ -312,17 +311,6 @@ public class DashboardController {
                 auction.getStatus() == AuctionStatus.RUNNING ? "badge-running" : "badge-open");
 
         card.getChildren().addAll(iv, title, price, status);
-
-        // Hover scale animation
-        ScaleTransition scaleUp = new ScaleTransition(Duration.millis(200), card);
-        scaleUp.setToX(1.05);
-        scaleUp.setToY(1.05);
-        ScaleTransition scaleDown = new ScaleTransition(Duration.millis(200), card);
-        scaleDown.setToX(1.0);
-        scaleDown.setToY(1.0);
-
-        card.setOnMouseEntered(e -> scaleUp.playFromStart());
-        card.setOnMouseExited(e -> scaleDown.playFromStart());
 
         card.setOnMouseClicked(e -> {
             try {
