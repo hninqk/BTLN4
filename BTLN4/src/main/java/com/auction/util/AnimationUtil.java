@@ -100,6 +100,13 @@ public final class AnimationUtil {
             }
         };
         timer.start();
+        
+        // Stop timer when canvas is removed from scene
+        canvas.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene == null) {
+                timer.stop();
+            }
+        });
     }
     
     private static void drawWave(javafx.scene.canvas.GraphicsContext gc, double w, double h, double time, 

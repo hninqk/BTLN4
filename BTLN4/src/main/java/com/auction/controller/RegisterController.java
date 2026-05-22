@@ -38,6 +38,16 @@ public class RegisterController {
         roleCombo.getSelectionModel().selectFirst();
         errorLabel.setText("");
         successLabel.setText("");
+        
+        Platform.runLater(() -> {
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
+            pause.setOnFinished(e -> {
+                if (registerButton != null && registerButton.getScene() != null && registerButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
+                    com.auction.util.AnimationUtil.createWaveBackground(p);
+                }
+            });
+            pause.play();
+        });
     }
 
     @FXML

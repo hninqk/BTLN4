@@ -24,8 +24,6 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.control.TableRow;
-import javafx.animation.ScaleTransition;
-import javafx.util.Duration;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -95,33 +93,6 @@ public class AuctionListController {
                 String.format("%,.0f ₫", c.getValue().getHighestBid())));
         colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getEndTime().format(FMT)));
-
-        // Add fluid row micro-interaction
-        auctionTable.setRowFactory(tv -> {
-            TableRow<Auction> row = new TableRow<>();
-            
-            ScaleTransition scaleUp = new ScaleTransition(Duration.millis(150), row);
-            scaleUp.setToX(1.015);
-            scaleUp.setToY(1.015);
-            
-            ScaleTransition scaleDown = new ScaleTransition(Duration.millis(150), row);
-            scaleDown.setToX(1.0);
-            scaleDown.setToY(1.0);
-            
-            row.setOnMouseEntered(event -> {
-                if (!row.isEmpty()) {
-                    row.toFront();
-                    scaleUp.playFromStart();
-                }
-            });
-            row.setOnMouseExited(event -> {
-                if (!row.isEmpty()) {
-                    scaleDown.playFromStart();
-                }
-            });
-            
-            return row;
-        });
     }
 
     private void loadAuctions() {

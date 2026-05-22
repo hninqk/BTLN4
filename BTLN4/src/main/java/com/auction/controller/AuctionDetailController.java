@@ -7,6 +7,7 @@ import com.auction.util.HotItemCache;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import com.auction.util.TimeSyncManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -14,12 +15,17 @@ import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.control.*;
+import javafx.util.StringConverter;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.HBox;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -27,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -43,8 +50,21 @@ import java.util.function.UnaryOperator;
  *
  * Seller creates auctions → SellerManagementController sends CREATE_AUCTION via WS.
  * Admin actions          → AdminManagementController sends ADMIN_ACTION via WS.
+ *
+ * ─── PERFORMANCE ARCHITECTURE ───────────────────────────────────────────────
+ * The monolithic refreshLivePanel() was split into 6 targeted refresh methods.
+ * Each event source (scheduler, WS bid, WS balance, WS status, reconnect) now
+ * calls ONLY the refresh methods for the UI subset it affects, avoiding
+ * redundant JavaFX property invalidations, layout recalculations, and CSS
+ * re-applications on unchanged nodes.
+ *
+ * Guard helpers (setTextIfChanged, setVisibleIfChanged, setManagedIfChanged)
+ * prevent JavaFX StringProperty / BooleanProperty invalidation when the value
+ * hasn't actually changed — each invalidation triggers a full layout pass up
+ * to the Scene root and a CSS re-application pass down from the node.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
-public class AuctionDetailController implements DataReceiver {
+public class AuctionDetailController implements DataReceiver, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
     // ── Info panel ────────────────────────────────────────────────────────────
     @FXML private Label     itemNameLabel;
@@ -71,21 +91,26 @@ public class AuctionDetailController implements DataReceiver {
     @FXML private TextField bidAmountField;
     @FXML private Label     bidErrorLabel;
     @FXML private Button    placeBidButton;
-    @FXML private ScrollPane mainScrollPane;
+    @FXML private Button    autoBidToggleButton;
+    // mainScrollPane removed – page now fits without scrolling
 
-    // ── Auto-Bid panel ────────────────────────────────────────────────────────
-    @FXML private VBox      autoBidDashboard;
+    // ── Auto-Bid popup panel ─────────────────────────────────────────────────
+    @FXML private VBox      autoBidPopup;     // floating popup panel
     @FXML private Label     autoBidStatusBadge;
     @FXML private TextField autoMaxBidField;
     @FXML private TextField autoIncrementField;
     @FXML private Label     autoBidErrorLabel;
     @FXML private Button    registerAutoBidButton;
 
+    // ── Chart tooltip ─────────────────────────────────────────────────────────
+    @FXML private StackPane rootStackPane;
+
     // ── Live feed ─────────────────────────────────────────────────────────────
     @FXML private ListView<String> liveFeedList;
 
     // ── Price chart ───────────────────────────────────────────────────────────
-    @FXML private LineChart<String, Number> priceChart;
+    @FXML private LineChart<Number, Number> priceChart;
+    @FXML private NumberAxis timeAxis;
 
     // ── Winner box ────────────────────────────────────────────────────────────
     @FXML private VBox  winnerBox;
@@ -97,14 +122,18 @@ public class AuctionDetailController implements DataReceiver {
     private String  auctionId;
     private Auction currentAuction;
     private ScheduledExecutorService scheduler;
-    private XYChart.Series<String, Number> priceSeries;
-    private int chartTick     = 0;
+    private com.auction.util.AuctionChartHelper chartHelper;
+    private com.auction.service.AuctionWebSocketService wsService;
+    private volatile boolean wsConnected = false;
     private int knownBidCount = 0;
 
-    // WebSocket
-    private AuctionClient wsClient;
-    private volatile boolean wsConnected = false;
-    private final Gson gson = new Gson();
+    /**
+     * Tracks the last CSS class applied to statusBadge so we can skip
+     * redundant removeAll()/add() calls.
+     * PERF: Each styleClass mutation triggers CSS re-resolution for the node
+     * and all its descendants, even if the resulting class list is identical.
+     */
+    private String currentStatusBadgeClass = "";
 
     // In-memory bid list (synced from server via WS)
     private final List<BidTransaction> wsKnownBids = new ArrayList<>();
@@ -112,6 +141,65 @@ public class AuctionDetailController implements DataReceiver {
     private static final DateTimeFormatter FMT      = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_SEC  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // JavaFX UPDATE GUARDS
+    // ══════════════════════════════════════════════════════════════════════════
+    //
+    // PERF: Every call to Label.setText() fires a StringProperty invalidation,
+    // which marks the node's layout as dirty, schedules a layout pass on the
+    // parent chain up to the Scene root, and queues a CSS re-application pass.
+    // If the text hasn't actually changed, all of that work is wasted.
+    //
+    // Similarly, setVisible()/setManaged() each trigger property invalidations
+    // and layout recalculations even when the boolean value is already correct.
+    //
+    // These guards eliminate the wasted invalidation cycles.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Sets label text only if it differs from the current value.
+     * PERF: Avoids StringProperty invalidation → layout pass → CSS pass
+     * when the text is already the desired value.
+     */
+    private static void setTextIfChanged(Labeled node, String newText) {
+        if (node != null && !Objects.equals(node.getText(), newText)) {
+            node.setText(newText);
+        }
+    }
+
+    /**
+     * Sets node visibility only if it differs from the current value.
+     * PERF: Avoids BooleanProperty invalidation → parent layout recalculation
+     * when visibility hasn't actually changed.
+     */
+    private static void setVisibleIfChanged(Node node, boolean visible) {
+        if (node != null && node.isVisible() != visible) {
+            node.setVisible(visible);
+        }
+    }
+
+    /**
+     * Sets node managed state only if it differs from the current value.
+     * PERF: When managed changes, the parent must recompute its preferred size
+     * and re-layout all children. Skipping no-ops avoids this entirely.
+     */
+    private static void setManagedIfChanged(Node node, boolean managed) {
+        if (node != null && node.isManaged() != managed) {
+            node.setManaged(managed);
+        }
+    }
+
+    /**
+     * Sets the disable state only if it differs from the current value.
+     * PERF: Node.setDisable() triggers a pseudo-class state change (:disabled)
+     * which forces CSS re-resolution on the node and its children.
+     */
+    private static void setDisableIfChanged(Node node, boolean disable) {
+        if (node != null && node.isDisable() != disable) {
+            node.setDisable(disable);
+        }
+    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // DataReceiver
@@ -125,7 +213,8 @@ public class AuctionDetailController implements DataReceiver {
 
             // 1. Show basic info immediately
             populateStaticView();
-            refreshLivePanel();
+            // Full refresh on initial load – all sections need populating
+            refreshAll();
 
             // 2. Fetch full details (including bids) in background
             javafx.concurrent.Task<java.util.Optional<Auction>> task = new javafx.concurrent.Task<>() {
@@ -139,7 +228,8 @@ public class AuctionDetailController implements DataReceiver {
                     this.currentAuction = full;
                     populateStaticView();
                     preloadBidsIntoChartAndFeed();
-                    refreshLivePanel();
+                    // Full refresh after REST data arrives with complete bid history
+                    refreshAll();
                     loadAutoBidState();
                     connectWebSocket(); // Only connect WS after we have baseline bids
                 });
@@ -155,22 +245,33 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    @FXML
     public void initialize() {
         bidErrorLabel.setText("");
-        setupChart();
+        chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
 
         UnaryOperator<TextFormatter.Change> numericFilter = change ->
                 change.getControlNewText().matches("[0-9,.]*") ? change : null;
         bidAmountField.setTextFormatter(new TextFormatter<>(numericFilter));
-        
+
         if (autoMaxBidField != null) autoMaxBidField.setTextFormatter(new TextFormatter<>(numericFilter));
         if (autoIncrementField != null) autoIncrementField.setTextFormatter(new TextFormatter<>(numericFilter));
+
+        // Close auto-bid popup when clicking outside it
+        if (rootStackPane != null) {
+            rootStackPane.addEventFilter(MouseEvent.MOUSE_PRESSED, evt -> {
+                if (autoBidPopup != null && autoBidPopup.isVisible()) {
+                    if (!autoBidPopup.getBoundsInParent().contains(evt.getX(), evt.getY())) {
+                        autoBidPopup.setVisible(false);
+                        autoBidPopup.setManaged(false);
+                    }
+                }
+            });
+        }
     }
 
     public void shutdown() {
         if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
-        if (wsClient  != null) wsClient.disconnect();
+        if (wsService != null) wsService.disconnect();
     }
 
     /** Called by NavigationManager when leaving this screen. */
@@ -181,97 +282,68 @@ public class AuctionDetailController implements DataReceiver {
     // ──────────────────────────────────────────────────────────────────────────
 
     private void connectWebSocket() {
-        wsClient = new AuctionClient();
-        Thread t = new Thread(() -> {
-            wsClient.connect(
-                    msg -> Platform.runLater(() -> handleWsMessage(msg)),
-                    err -> Platform.runLater(() -> {
-                        wsConnected = false;
-                        placeBidButton.setDisable(true);
-                        bidAmountField.setDisable(true);
-                        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
-                        refreshLivePanel();
-                    }),
-                    // onOpen: request full sync from server
-                    () -> {
-                        wsConnected = true;
-                        sendRequestSync();
-                        Platform.runLater(this::refreshLivePanel);
-                    }
-            );
-        }, "AuctionDetail-WS");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    /** Send REQUEST_SYNC to get up-to-date auction list from server. */
-    private void sendRequestSync() {
-        if (wsClient == null || !wsClient.isConnected()) return;
-        JsonObject req = new JsonObject();
-        req.addProperty("type", "REQUEST_SYNC");
-        wsClient.send(req.toString());
+        wsService = new com.auction.service.AuctionWebSocketService(currentAuction != null ? currentAuction.getId() : null, this);
+        wsService.connect();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // WS Message Handling
+    // WebSocket Listener Implementation
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void handleWsMessage(String msg) {
-        try {
-            com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
-            if (!element.isJsonObject()) return;
-            JsonObject json = element.getAsJsonObject();
+    @Override
+    public void onWsConnected() {
+        wsConnected = true;
+        // PERF: On reconnect, only refresh status (to re-enable bid controls)
+        // and balance (session balance may have changed while disconnected).
+        // No need to refresh countdown (scheduler handles it) or bid section
+        // (server will send FULL_SYNC for any missed bids).
+        Platform.runLater(() -> {
+            refreshStatusSection();
+            refreshBalanceSection();
+            refreshControls();
+        });
+    }
 
-            if (json.has("error")) {
-                String errMsg = "⚠ " + json.get("error").getAsString();
-                if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
-                    autoBidErrorLabel.setText(errMsg);
-                    autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-                    if (registerAutoBidButton != null) registerAutoBidButton.setDisable(false);
-                    if (autoMaxBidField != null) autoMaxBidField.setDisable(false);
-                    if (autoIncrementField != null) autoIncrementField.setDisable(false);
-                }
-                bidErrorLabel.setText(errMsg);
-                bidErrorLabel.setStyle("-fx-text-fill: red;");
-                placeBidButton.setDisable(false);
-                bidAmountField.setDisable(false);
-                if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
-                return;
-            }
+    @Override
+    public void onWsDisconnected(String error) {
+        wsConnected = false;
+        // PERF: Only disable the bid controls and show error – no need to
+        // re-render countdown, price, balance, or winner sections.
+        setDisableIfChanged(placeBidButton, true);
+        setDisableIfChanged(bidAmountField, true);
+        setTextIfChanged(bidErrorLabel, "🔴 Mất kết nối server – không thể đặt giá.");
+        // Refresh controls to reflect the disconnected state for auto-bid UI
+        refreshControls();
+    }
 
-            String type = json.has("type") ? json.get("type").getAsString() : "";
-
-            switch (type) {
-                case "BID_UPDATE"             -> onBidUpdate(json);
-                case "AUCTION_STATUS_CHANGED" -> onStatusChanged(json);
-                case "BALANCE_UPDATE"         -> onBalanceUpdate(json);
-                case "FULL_SYNC"              -> onFullSync(json);
-                case "AUTO_BID_LOG"           -> onAutoBidLog(json);
-                case "AUTO_BID_ACK"           -> onAutoBidAck(json);
-                // Legacy: bare bid response without "type" field
-                default -> {
-                    if (json.has("amount") && json.has("bidder")) {
-                        onLegacyBidUpdate(json);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("[AuctionDetail] WS parse error: " + e.getMessage());
+    @Override
+    public void onWsError(String errorMsg) {
+        String errMsg = "⚠ " + errorMsg;
+        if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
+            setTextIfChanged(autoBidErrorLabel, errMsg);
+            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
+            setDisableIfChanged(registerAutoBidButton, false);
+            setDisableIfChanged(autoMaxBidField, false);
+            setDisableIfChanged(autoIncrementField, false);
         }
+        setTextIfChanged(bidErrorLabel, errMsg);
+        bidErrorLabel.setStyle("-fx-text-fill: red;");
+        setDisableIfChanged(placeBidButton, false);
+        setDisableIfChanged(bidAmountField, false);
     }
 
     /** New bid placed on server – update price, feed, chart. */
-    private void onBidUpdate(JsonObject json) {
+    @Override
+    public void onBidUpdate(JsonObject json) {
         String aid           = json.has("auctionId")      ? json.get("auctionId").getAsString()      : null;
         double amount        = json.get("amount").getAsDouble();
         String bidderName    = json.get("bidderUsername").getAsString();
         String bidderId      = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";
-        String timeStr       = json.has("time")           ? json.get("time").getAsString()           : LocalDateTime.now().toString();
+        String timeStr       = json.has("time")           ? json.get("time").getAsString()           : TimeSyncManager.getNow().toString();
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
-        // O(1) cache update – runs on FX thread via Platform.runLater, which is fine
-        // because ConcurrentHashMap + AtomicInteger are thread-safe for the increment
+        // O(1) cache update
         if (aid != null) HotItemCache.getInstance().recordBid(aid);
         else if (currentAuction != null) HotItemCache.getInstance().recordBid(currentAuction.getId());
 
@@ -282,55 +354,80 @@ public class AuctionDetailController implements DataReceiver {
 
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
-            // Build a real bid entry for the UI
-            Bidder dummy = new Bidder(bidderId, LocalDateTime.now(), bidderName, "", 0);
+            Bidder dummy = new Bidder(bidderId, TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    ts,
-                    dummy, currentAuction, amount);
+                    ts, dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
 
-        // Add to feed & chart immediately (don't wait for scheduler)
         String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
-        addRawToChart(amount);
+        chartHelper.addRawBid(amount, ts);
 
-        bidErrorLabel.setText("");
-        refreshLivePanel();
+        setTextIfChanged(bidErrorLabel, "");
+
+        // PERF: A new bid only affects the price/count/hint labels and the
+        // bid controls (e.g. highest-bidder detection). No need to touch
+        // countdown, balance, status badge, or winner section.
+        refreshBidSection();
+        refreshControls();
     }
 
-    private void onAutoBidLog(JsonObject json) {
+    @Override
+    public void onAutoBidLog(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
         String msg = json.get("message").getAsString();
-        String timeDisplay = LocalDateTime.now().format(TIME_FMT);
+        String timeDisplay = TimeSyncManager.getNow().format(TIME_FMT);
         appendToFeed(String.format("[%s] ⚡ %s", timeDisplay, msg));
     }
     
-    private void onAutoBidAck(JsonObject json) {
+    @Override
+    public void onAutoBidAck(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
         if (autoBidErrorLabel != null) {
-            autoBidErrorLabel.setText("✅ Đăng ký thành công.");
+            setTextIfChanged(autoBidErrorLabel, "✅ Đăng ký thành công.");
             autoBidErrorLabel.setStyle("-fx-text-fill: #81c784;");
         }
         if (autoMaxBidField != null) autoMaxBidField.clear();
         if (autoIncrementField != null) autoIncrementField.clear();
         
         if (autoBidStatusBadge != null) {
-            autoBidStatusBadge.setText("Đang Hoạt Động");
+            setTextIfChanged(autoBidStatusBadge, "Đang Hoạt Động");
             autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
-            registerAutoBidButton.setText("Cập nhật Auto-Bid");
+            setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
         }
         
-        refreshLivePanel();
+        // PERF: Auto-bid acknowledgement only needs to refresh controls
+        // (to re-enable the auto-bid form). Other sections are unaffected.
+        refreshControls();
     }
 
-    /** Auction status changed by admin (approve/start/finish/cancel). */
-    private void onStatusChanged(JsonObject json) {
+    @Override
+    public void onAutoBidStatus(JsonObject json) {
+        String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+        if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+        
+        double maxBid = json.get("maxBid").getAsDouble();
+        double increment = json.get("increment").getAsDouble();
+        
+        Platform.runLater(() -> {
+            if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", maxBid));
+            if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", increment));
+            if (autoBidStatusBadge != null) {
+                setTextIfChanged(autoBidStatusBadge, "Đang Hoạt Động");
+                autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+                if (registerAutoBidButton != null) setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
+            }
+        });
+    }
+
+    @Override
+    public void onStatusChanged(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
 
@@ -356,7 +453,17 @@ public class AuctionDetailController implements DataReceiver {
             }
         }
 
-        refreshLivePanel();
+        // PERF: Status change affects the badge, controls (enable/disable bid
+        // based on new status), and winner section (if CLOSED). The countdown
+        // will pick up the new status on its next scheduler tick. Balance is
+        // unaffected by status changes. Bid section is refreshed only if the
+        // status payload included a highestBid update.
+        refreshStatusSection();
+        refreshWinnerSection();
+        refreshControls();
+        if (highestBid >= 0) {
+            refreshBidSection();
+        }
         System.out.println("[AuctionDetail] Status → " + newStatusStr);
 
         // Hiển thị thông báo người chiến thắng khi phiên CLOSED
@@ -367,8 +474,8 @@ public class AuctionDetailController implements DataReceiver {
         }
     }
 
-    /** Server thông báo số dư của bidder đã thay đổi (sau khi bid hoặc auction finish). */
-    private void onBalanceUpdate(JsonObject json) {
+    @Override
+    public void onBalanceUpdate(JsonObject json) {
         String bidderId  = json.get("bidderId").getAsString();
         double newBalance = json.get("newBalance").getAsDouble();
         double frozen    = json.has("frozenBalance")    ? json.get("frozenBalance").getAsDouble()    : -1;
@@ -380,12 +487,14 @@ public class AuctionDetailController implements DataReceiver {
             SessionManager.getInstance().setCurrentUser(myBidder);
             System.out.printf("[AuctionDetail] Balance updated: total=%.0f ₫ frozen=%.0f ₫ available=%.0f ₫%n",
                     newBalance, myBidder.getFrozenBalance(), myBidder.getAvailableBalance());
-            refreshLivePanel(); // re-render balanceLabel
+            // PERF: Balance update only affects the balance/frozen labels.
+            // No need to re-render countdown, price, status, winner, or controls.
+            refreshBalanceSection();
         }
     }
 
-    /** Full state snapshot sent by server on REQUEST_SYNC. */
-    private void onFullSync(JsonObject json) {
+    @Override
+    public void onFullSync(JsonObject json) {
         if (!json.has("auctions") || currentAuction == null) return;
         JsonArray auctions = json.get("auctions").getAsJsonArray();
         for (int i = 0; i < auctions.size(); i++) {
@@ -423,42 +532,41 @@ public class AuctionDetailController implements DataReceiver {
             }
         }
 
-        refreshLivePanel();
+        // FULL_SYNC is a complete server state snapshot – refresh everything.
+        refreshAll();
         // Rebuild chart/feed fully after sync
         rebuildChartAndFeed();
     }
 
-    /** Rebuild chart and feed from current bid history (called after FULL_SYNC). */
     private void rebuildChartAndFeed() {
-        priceSeries.getData().clear();
+        chartHelper.clear();
         liveFeedList.getItems().clear();
-        chartTick     = 0;
-        knownBidCount = 0;
         List<BidTransaction> history = currentAuction.getBidHistory();
         for (BidTransaction bt : history) {
-            addBidToChart(bt);
+            chartHelper.addBid(bt);
             addBidToFeed(bt);
         }
-        knownBidCount = history.size();
     }
 
-    /** Legacy: server sent bare {amount, bidder, time} without type field. */
-    private void onLegacyBidUpdate(JsonObject json) {
+    @Override
+    public void onLegacyBidUpdate(JsonObject json) {
         String aid        = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         double amount     = json.get("amount").getAsDouble();
         String bidderName = json.get("bidder").getAsString();
-        String timeStr    = json.has("time") ? json.get("time").getAsString() : LocalDateTime.now().toString();
+        String timeStr    = json.has("time") ? json.get("time").getAsString() : TimeSyncManager.getNow().toString();
 
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
-            Bidder dummy = new Bidder("remote", LocalDateTime.now(), bidderName, "", 0);
+            Bidder dummy = new Bidder("remote", TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.now(), dummy, currentAuction, amount);
+                    TimeSyncManager.getNow(), dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
         }
-        refreshLivePanel();
+        // PERF: Legacy bid update – same targeted refresh as modern onBidUpdate.
+        refreshBidSection();
+        refreshControls();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -471,9 +579,22 @@ public class AuctionDetailController implements DataReceiver {
             t.setDaemon(true);
             return t;
         });
-        // Every second: update countdown timer and status badge only
+        // PERF: The scheduler now calls ONLY refreshCountdown() instead of the
+        // old refreshLivePanel(). This is the single most impactful optimization:
+        //
+        // Before: Every 2 seconds, the scheduler updated ~20 UI properties
+        //         (price, bid count, badge, balance, controls, winner box, etc.)
+        //         even though only the countdown timer text actually changes.
+        //
+        // After:  Every 2 seconds, the scheduler updates at most 2 labels
+        //         (timeRemainingLabel, lastUpdateLabel) via setTextIfChanged,
+        //         meaning zero JavaFX invalidations if the text happens to be
+        //         the same (e.g. "Hết giờ" stays stable after auction ends).
+        //
+        // This reduces the FX Application Thread work per tick from ~20 property
+        // sets + layout + CSS to at most 2 property sets + minimal layout.
         scheduler.scheduleAtFixedRate(
-                () -> Platform.runLater(this::refreshLivePanel), 0, 1, TimeUnit.SECONDS);
+                () -> Platform.runLater(this::refreshCountdown), 0, 2, TimeUnit.SECONDS);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -481,13 +602,7 @@ public class AuctionDetailController implements DataReceiver {
     // ──────────────────────────────────────────────────────────────────────────
 
 
-    private void setupChart() {
-        priceSeries = new XYChart.Series<>();
-        priceSeries.setName("Giá đấu");
-        priceChart.getData().add(priceSeries);
-        priceChart.setCreateSymbols(true);
-        priceChart.setAnimated(false);
-    }
+    // Setup removed; delegated to AuctionChartHelper
 
     // ──────────────────────────────────────────────────────────────────────────
     // Static info (once on load)
@@ -505,7 +620,18 @@ public class AuctionDetailController implements DataReceiver {
         startPriceLabel.setText(String.format("%,.0f ₫", item.getStartingPrice()));
         endTimeLabel.setText(currentAuction.getEndTime().format(FMT));
         descriptionLabel.setText(item.getDescription());
-        itemImageView.setImage(ImageLoaderUtil.loadItemImage(item.getImageUrl(), 420, 250));
+        // Check image cache first (splash preloads 420×250) – set immediately, no thread needed
+        String imgUrl = item.getImageUrl();
+        if (imgUrl != null && !imgUrl.isEmpty()) {
+            String cacheKey = (imgUrl.startsWith("data:image/") && imgUrl.contains(";base64,")
+                    ? Integer.toHexString(imgUrl.hashCode()) : imgUrl) + "_420_250";
+            javafx.scene.image.Image cachedImg = com.auction.util.CacheManager.getInstance().getImage(cacheKey);
+            if (cachedImg != null) {
+                itemImageView.setImage(cachedImg);
+            } else {
+                itemImageView.setImage(ImageLoaderUtil.loadItemImage(imgUrl, 420, 250));
+            }
+        }
     }
 
     private void preloadBidsIntoChartAndFeed() {
@@ -513,99 +639,196 @@ public class AuctionDetailController implements DataReceiver {
         List<BidTransaction> history = currentAuction.getBidHistory();
         System.out.println("[AuctionDetail] REST data: " + history.size() + " bids for auction " + currentAuction.getId());
         for (BidTransaction bid : history) {
-            addBidToChart(bid);
+            chartHelper.addBid(bid);
             addBidToFeed(bid);
         }
-        knownBidCount = history.size();
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Live panel (updated every second and on each WS event)
-    // ──────────────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // TARGETED REFRESH METHODS
+    // ══════════════════════════════════════════════════════════════════════════
+    //
+    // These replace the old monolithic refreshLivePanel(). Each method updates
+    // only the minimal set of JavaFX nodes relevant to a specific concern.
+    //
+    // PERF RATIONALE:
+    // JavaFX uses an invalidation-based rendering pipeline. Each property
+    // change (setText, setVisible, setManaged, setDisable, styleClass mutation)
+    // marks the node's layout as dirty and schedules a pulse. During the pulse,
+    // JavaFX walks the dirty-node tree to recompute sizes and positions.
+    //
+    // By splitting into targeted methods, each event source only dirties the
+    // nodes it actually affects, dramatically reducing the dirty-node set and
+    // the work done per pulse.
+    // ══════════════════════════════════════════════════════════════════════════
 
     private void loadAutoBidState() {
+        // Will now be loaded asynchronously via WS on connection
+    }
+
+    /**
+     * Refreshes ONLY the countdown timer and sync timestamp.
+     * Called by: scheduler (every 2 seconds).
+     *
+     * PERF: This is the highest-frequency caller (every 2s). By restricting it
+     * to just 2 labels, we reduce the per-tick FX thread work from ~20 property
+     * mutations to at most 2. The setTextIfChanged guard further eliminates
+     * invalidations when the text hasn't changed (e.g. stable "Hết giờ" or
+     * "⏳ Chờ Admin duyệt" states).
+     */
+    private void refreshCountdown() {
+        if (currentAuction == null) return;
+
+        // Sync timestamp
+        setTextIfChanged(lastUpdateLabel, "Đồng bộ : " + TimeSyncManager.getNow().format(TIME_FMT));
+
+        // Countdown timer – compute the display string based on current status
+        AuctionStatus status = currentAuction.getStatus();
+        String countdownText = switch (status) {
+            case PENDING  -> "⏳ Chờ Admin duyệt";
+            case OPEN     -> "🟢 Chờ Admin bắt đầu";
+            case CLOSED, CANCELED -> {
+                // Shut down the scheduler – no more countdown updates needed
+                if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
+                yield "Đã kết thúc";
+            }
+            case RUNNING -> {
+                Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
+                yield remaining.isNegative() ? "Hết giờ" :
+                        String.format("%02d:%02d:%02d",
+                                remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart());
+            }
+        };
+        setTextIfChanged(timeRemainingLabel, countdownText);
+    }
+
+    /**
+     * Refreshes ONLY the bid-related labels: current price, bid count, min bid hint.
+     * Called by: onBidUpdate, onLegacyBidUpdate, onFullSync, onStatusChanged (with price update).
+     *
+     * PERF: These 3 labels change only when a new bid arrives. The scheduler
+     * no longer touches them, eliminating ~3 wasted setText() calls per 2-second
+     * tick (= ~3 layout invalidations avoided per tick).
+     */
+    private void refreshBidSection() {
+        if (currentAuction == null) return;
+
+        setTextIfChanged(currentPriceLabel, String.format("%,.0f ₫", currentAuction.getHighestBid()));
+        setTextIfChanged(bidCountLabel, currentAuction.getBidHistory().size() + " lượt đấu giá");
+        setTextIfChanged(minBidHint, "Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
+
+        // Track known bid count for chart/feed dedup
+        List<BidTransaction> history = currentAuction.getBidHistory();
+        if (history.size() > knownBidCount) {
+            knownBidCount = history.size();
+        }
+    }
+
+    /**
+     * Refreshes ONLY the balance and frozen-balance labels.
+     * Called by: onBalanceUpdate, onWsConnected.
+     *
+     * PERF: Balance changes are infrequent (only after a bid is placed or
+     * refunded). By isolating this, the frequent scheduler ticks no longer
+     * re-render balance labels, saving ~4 property mutations per tick.
+     */
+    private void refreshBalanceSection() {
+        if (currentAuction == null) return;
+        if (balanceLabel == null) return;
+
         User user = SessionManager.getInstance().getCurrentUser();
-        if (user instanceof Bidder bidder && currentAuction != null) {
-            AutoBid activeBid = new com.auction.repository.JdbcAutoBidRepository()
-                    .findByAuctionIdAndBidderId(currentAuction.getId(), bidder.getId());
-            if (activeBid != null) {
-                Platform.runLater(() -> {
-                    if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", activeBid.getMaxBid()));
-                    if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", activeBid.getIncrement()));
-                    if (autoBidStatusBadge != null) {
-                        autoBidStatusBadge.setText("Đang Hoạt Động");
-                        autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
-                        if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
-                    }
-                });
+        if (user instanceof Bidder bidder) {
+            double available = bidder.getAvailableBalance();
+            double frozen    = bidder.getFrozenBalance();
+            setTextIfChanged(balanceLabel, String.format("Khả dụng: %,.0f ₫", available));
+            setVisibleIfChanged(balanceLabel, true);
+
+            if (frozenLabel != null) {
+                if (frozen > 0) {
+                    setTextIfChanged(frozenLabel, String.format("Đóng băng: %,.0f ₫", frozen));
+                    setVisibleIfChanged(frozenLabel, true);
+                    setManagedIfChanged(frozenLabel, true);
+                } else {
+                    setVisibleIfChanged(frozenLabel, false);
+                    setManagedIfChanged(frozenLabel, false);
+                }
+            }
+        } else {
+            setVisibleIfChanged(balanceLabel, false);
+            if (frozenLabel != null) {
+                setVisibleIfChanged(frozenLabel, false);
+                setManagedIfChanged(frozenLabel, false);
             }
         }
     }
 
-    private void refreshLivePanel() {
+    /**
+     * Refreshes ONLY the status badge and start time label.
+     * Called by: onStatusChanged, onWsConnected.
+     *
+     * PERF: Status changes are rare (typically 3-4 times per auction lifecycle).
+     * The badge CSS class guard prevents removeAll()/add() when the status
+     * hasn't changed, avoiding a full CSS re-resolution pass on the badge node.
+     */
+    private void refreshStatusSection() {
         if (currentAuction == null) return;
 
-        // Price + bid count
-        currentPriceLabel.setText(String.format("%,.0f ₫", currentAuction.getHighestBid()));
-        bidCountLabel.setText(currentAuction.getBidHistory().size() + " lượt đấu giá");
-        minBidHint.setText("Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Đồng bộ : " + LocalDateTime.now().format(TIME_FMT));
-
-        // Status badge
+        // Status badge (with CSS class guard)
         updateStatusBadge();
 
         // Start time
         LocalDateTime st = currentAuction.getStartTime();
-        startTimeLabel.setText(st != null ? st.format(FMT) : "Chưa bắt đầu");
+        setTextIfChanged(startTimeLabel, st != null ? st.format(FMT) : "Chưa bắt đầu");
+    }
 
-        // Countdown timer
+    /**
+     * Refreshes ONLY the winner box visibility and labels.
+     * Called by: onStatusChanged.
+     *
+     * PERF: Winner box is relevant only in CLOSED state. By isolating it,
+     * bid updates and scheduler ticks don't waste time evaluating winner
+     * visibility on every cycle.
+     */
+    private void refreshWinnerSection() {
+        if (currentAuction == null) return;
+
         AuctionStatus status = currentAuction.getStatus();
-        switch (status) {
-            case PENDING  -> timeRemainingLabel.setText("⏳ Chờ Admin duyệt");
-            case OPEN     -> timeRemainingLabel.setText("🟢 Chờ Admin bắt đầu");
-            case CLOSED, CANCELED -> {
-                timeRemainingLabel.setText("Đã kết thúc");
-                if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
-            }
-            case RUNNING -> {
-                Duration remaining = Duration.between(LocalDateTime.now(), currentAuction.getEndTime());
-                timeRemainingLabel.setText(remaining.isNegative() ? "Hết giờ" :
-                        String.format("%02d:%02d:%02d",
-                                remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart()));
-            }
-        }
-
-        // New bids → chart + feed (from injected WS bids not yet rendered)
-        List<BidTransaction> history = currentAuction.getBidHistory();
-        if (history.size() > knownBidCount) {
-            for (int i = knownBidCount; i < history.size(); i++) {
-                // Only add to chart/feed if not already added via onBidUpdate()
-                // onBidUpdate adds to chart immediately; scheduler skips those
-            }
-            knownBidCount = history.size();
-        }
-
-        // Winner box
         if (status == AuctionStatus.CLOSED) {
             BidTransaction winner = currentAuction.getWinner();
             if (winner != null) {
-                winnerBox.setVisible(true); winnerBox.setManaged(true);
-                winnerLabel.setText("Người thắng: " + winner.getBidder().getUsername());
-                winnerPriceLabel.setText(String.format("Giá chốt: %,.0f ₫", winner.getAmount()));
+                setVisibleIfChanged(winnerBox, true);
+                setManagedIfChanged(winnerBox, true);
+                setTextIfChanged(winnerLabel, "Người thắng: " + winner.getBidder().getUsername());
+                setTextIfChanged(winnerPriceLabel, String.format("Giá chốt: %,.0f ₫", winner.getAmount()));
             }
         } else {
-            winnerBox.setVisible(false); winnerBox.setManaged(false);
+            setVisibleIfChanged(winnerBox, false);
+            setManagedIfChanged(winnerBox, false);
         }
+    }
 
-        // Bid button & balance
+    /**
+     * Refreshes ONLY the bid controls: place-bid button, bid input field,
+     * auto-bid toggle, auto-bid form, seller warning, and highest-bidder message.
+     * Called by: onBidUpdate, onStatusChanged, onWsConnected, onAutoBidAck.
+     *
+     * PERF: Control state depends on multiple inputs (status, user role, WS
+     * connection, highest-bidder check). This method is called from several
+     * event sources, but each invocation is lightweight – it only sets boolean
+     * disable/visible properties, and the guards skip no-ops.
+     */
+    private void refreshControls() {
+        if (currentAuction == null) return;
+
+        AuctionStatus status = currentAuction.getStatus();
         User user = SessionManager.getInstance().getCurrentUser();
-        boolean isExpired = currentAuction.getEndTime() != null && LocalDateTime.now().isAfter(currentAuction.getEndTime());
+        boolean isExpired = currentAuction.getEndTime() != null && TimeSyncManager.getNow().isAfter(currentAuction.getEndTime());
         boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
-        
+
         if (sellerWarningLabel != null) {
             boolean isSeller = user instanceof Seller;
-            sellerWarningLabel.setVisible(isSeller);
-            sellerWarningLabel.setManaged(isSeller);
+            setVisibleIfChanged(sellerWarningLabel, isSeller);
+            setManagedIfChanged(sellerWarningLabel, isSeller);
         }
 
         // Chặn đặt giá liên tiếp nếu đang giữ giá cao nhất
@@ -620,71 +843,79 @@ public class AuctionDetailController implements DataReceiver {
         
         boolean canAutoBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
 
-        placeBidButton.setDisable(!canBid);
-        bidAmountField.setDisable(!canBid);
-        
-        if (autoBidDashboard != null) {
-            autoBidDashboard.setVisible(canAutoBid);
-            autoBidDashboard.setManaged(canAutoBid);
+        setDisableIfChanged(placeBidButton, !canBid);
+        setDisableIfChanged(bidAmountField, !canBid);
+
+        // Auto-bid toggle button: show only when bidder can auto-bid
+        if (autoBidToggleButton != null) {
+            setDisableIfChanged(autoBidToggleButton, !canAutoBid);
+            boolean showToggle = canAutoBid || (autoBidPopup != null && autoBidPopup.isVisible());
+            setVisibleIfChanged(autoBidToggleButton, showToggle);
+            setManagedIfChanged(autoBidToggleButton, true);
         }
-        
+
         if (registerAutoBidButton != null) {
-            registerAutoBidButton.setDisable(!canAutoBid);
-            autoMaxBidField.setDisable(!canAutoBid);
-            autoIncrementField.setDisable(!canAutoBid);
-            
+            setDisableIfChanged(registerAutoBidButton, !canAutoBid);
+            setDisableIfChanged(autoMaxBidField, !canAutoBid);
+            setDisableIfChanged(autoIncrementField, !canAutoBid);
+
             if (autoBidErrorLabel != null) {
                 String abCur = autoBidErrorLabel.getText();
                 if (abCur.contains("Đang gửi")) {
-                    autoBidErrorLabel.setText("");
+                    setTextIfChanged(autoBidErrorLabel, "");
                     autoBidErrorLabel.setStyle("");
                 }
             }
         }
 
         if (isHighestBidder) {
-            bidErrorLabel.setText("🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
+            setTextIfChanged(bidErrorLabel, "🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
             bidErrorLabel.setStyle("-fx-text-fill: #e5a93c; -fx-font-weight: bold;");
         } else {
             // Reset về default nếu đang hiển thị thông báo highest-bidder hoặc pending
             String cur = bidErrorLabel.getText();
             if (cur.contains("giữ giá cao nhất") || cur.contains("Đang gửi")) {
-                bidErrorLabel.setText("");
+                setTextIfChanged(bidErrorLabel, "");
                 bidErrorLabel.setStyle(""); // Reset màu về mặc định
-            }
-        }
-        if (balanceLabel != null) {
-            if (user instanceof Bidder bidder) {
-                double available = bidder.getAvailableBalance();
-                double frozen    = bidder.getFrozenBalance();
-                balanceLabel.setText(String.format("Khả dụng: %,.0f ₫", available));
-                balanceLabel.setVisible(true);
-                
-                if (frozenLabel != null) {
-                    if (frozen > 0) {
-                        frozenLabel.setText(String.format("Đóng băng: %,.0f ₫", frozen));
-                        frozenLabel.setVisible(true);
-                        frozenLabel.setManaged(true);
-                    } else {
-                        frozenLabel.setVisible(false);
-                        frozenLabel.setManaged(false);
-                    }
-                }
-            } else {
-                balanceLabel.setVisible(false);
-                if (frozenLabel != null) {
-                    frozenLabel.setVisible(false);
-                    frozenLabel.setManaged(false);
-                }
             }
         }
     }
 
+    /**
+     * Full refresh – calls all 6 targeted methods.
+     * Used ONLY on initial data load and FULL_SYNC, where every UI section
+     * needs to be populated from scratch.
+     *
+     * PERF: Even in the full-refresh case, the setTextIfChanged/setVisibleIfChanged
+     * guards still protect against redundant invalidations when the underlying
+     * data hasn't changed (e.g. a FULL_SYNC that confirms the current state).
+     */
+    private void refreshAll() {
+        if (currentAuction == null) return;
+        refreshCountdown();
+        refreshBidSection();
+        refreshBalanceSection();
+        refreshStatusSection();
+        refreshWinnerSection();
+        refreshControls();
+    }
+
+    /**
+     * Updates the status badge text and CSS class.
+     *
+     * PERF: The old code unconditionally called removeAll() + add() on every
+     * refresh, which triggers CSS re-resolution even if the status hasn't
+     * changed. This version tracks the current class and skips the mutation
+     * when it's already correct.
+     *
+     * ObservableList.removeAll() on styleClass creates a new backing array,
+     * fires ListChangeListener events, and forces the CSS subsystem to
+     * re-resolve all matching selectors for this node. By guarding with
+     * currentStatusBadgeClass, we avoid this entirely for the common case.
+     */
     private void updateStatusBadge() {
         AuctionStatus status = currentAuction.getStatus();
-        statusBadge.setText(currentAuction.getStatusDisplay());
-        statusBadge.getStyleClass().removeAll(
-                "badge-pending", "badge-open", "badge-running", "badge-closed", "badge-canceled");
+        setTextIfChanged(statusBadge, currentAuction.getStatusDisplay());
         String cls = switch (status) {
             case PENDING  -> "badge-pending";
             case OPEN     -> "badge-open";
@@ -692,22 +923,20 @@ public class AuctionDetailController implements DataReceiver {
             case CLOSED   -> "badge-closed";
             case CANCELED -> "badge-canceled";
         };
-        statusBadge.getStyleClass().add(cls);
+        // PERF: Only mutate the styleClass list if the badge class actually changed.
+        // Each removeAll()/add() triggers CSS re-resolution for this node.
+        if (!cls.equals(currentStatusBadgeClass)) {
+            statusBadge.getStyleClass().removeAll(
+                    "badge-pending", "badge-open", "badge-running", "badge-closed", "badge-canceled");
+            statusBadge.getStyleClass().add(cls);
+            currentStatusBadgeClass = cls;
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
     // Chart / Feed helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private void addBidToChart(BidTransaction bid) {
-        chartTick++;
-        priceSeries.getData().add(new XYChart.Data<>("#" + chartTick, bid.getAmount()));
-    }
-
-    private void addRawToChart(double amount) {
-        chartTick++;
-        priceSeries.getData().add(new XYChart.Data<>("#" + chartTick, amount));
-    }
 
     private void addBidToFeed(BidTransaction bid) {
         String entry = String.format("[%s]  %s  →  %,.0f ₫",
@@ -742,7 +971,6 @@ public class AuctionDetailController implements DataReceiver {
         if (amount <= minBid) {
             bidErrorLabel.setText("Số tiền đặt giá phải lớn hơn hoặc bằng số tiền tối thiểu quy định.");
             bidErrorLabel.setStyle("-fx-text-fill: red;");
-            if (mainScrollPane != null) mainScrollPane.setVvalue(0.0);
             return;
         }
 
@@ -751,7 +979,7 @@ public class AuctionDetailController implements DataReceiver {
             bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return;
         }
 
-        if (!wsConnected || wsClient == null) {
+        if (!wsConnected || wsService == null) {
             bidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ server hoạt động.");
             return;
         }
@@ -764,15 +992,29 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("bidderUsername", bidder.getUsername());
         req.addProperty("bidderBalance",  bidder.getAccountBalance());
         req.addProperty("amount",         amount);
-        wsClient.send(req.toString());
+        wsService.send(req.toString());
         bidAmountField.clear();
 
-        // Vô hiệu hóa ngay lập tức để tránh double-click trong khi chờ server phản hồi.
-        // refreshLivePanel() sẽ tự quản lý trạng thái sau khi nhận BID_UPDATE từ server.
+        // Disable immediately to prevent double-click while waiting for server
         placeBidButton.setDisable(true);
         bidAmountField.setDisable(true);
         bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
         bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
+    }
+
+    /** Toggle the floating auto-bid popup panel. */
+    @FXML
+    private void handleToggleAutoBid(ActionEvent event) {
+        if (autoBidPopup == null) return;
+        boolean nowVisible = !autoBidPopup.isVisible();
+        autoBidPopup.setVisible(nowVisible);
+        autoBidPopup.setManaged(nowVisible);
+        // Position popup in the center of the StackPane
+        if (nowVisible) {
+            autoBidPopup.setTranslateX(0);
+            autoBidPopup.setTranslateY(0);
+            StackPane.setAlignment(autoBidPopup, javafx.geometry.Pos.CENTER);
+        }
     }
 
 
@@ -803,7 +1045,6 @@ public class AuctionDetailController implements DataReceiver {
         if (maxBid <= minBid) {
             autoBidErrorLabel.setText("Giá tối đa phải lớn hơn giá hiện tại.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-            if (mainScrollPane != null) mainScrollPane.setVvalue(1.0);
             return;
         }
         if (increment <= 0) {
@@ -818,7 +1059,7 @@ public class AuctionDetailController implements DataReceiver {
             return;
         }
 
-        if (!wsConnected || wsClient == null) {
+        if (!wsConnected || wsService == null) {
             autoBidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
             return;
@@ -830,7 +1071,7 @@ public class AuctionDetailController implements DataReceiver {
         req.addProperty("bidderId", bidder.getId());
         req.addProperty("maxBid", maxBid);
         req.addProperty("increment", increment);
-        wsClient.send(req.toString());
+        wsService.send(req.toString());
 
         registerAutoBidButton.setDisable(true);
         autoMaxBidField.setDisable(true);

@@ -51,7 +51,7 @@ public class SplashController {
             protected Void call() throws Exception {
                 // Step 1: Connecting
                 updateProgress(0.1, 1.0);
-                updateMessage("Đang kết nối tới Máy Chủ...");
+                updateMessage("Đang tải dữ liệu...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang kết nối API..."));
                 
                 boolean connected = false;
@@ -64,15 +64,13 @@ public class SplashController {
                             Thread.sleep(1000);
                         }
                     } catch (Exception e) {
-                        updateMessage("Đang chờ máy chủ (khởi động lạnh)...");
-                        Platform.runLater(() -> logStreamLabel.setText("[CẢNH BÁO] Không thể kết nối, đang thử lại..."));
+                        Platform.runLater(() -> logStreamLabel.setText("Đang chờ máy chủ..."));
                         Thread.sleep(1500);
                     }
                 }
 
                 // Step 2: Init DB
                 updateProgress(0.4, 1.0);
-                updateMessage("Đang khởi tạo cấu trúc Dữ liệu...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang thiết lập connection pool..."));
                 Thread.sleep(400); // Simulate/Wait for pool init
                 
@@ -82,13 +80,11 @@ public class SplashController {
 
                 // Step 3: Fetch Configs
                 updateProgress(0.7, 1.0);
-                updateMessage("Đang nạp Cấu hình Người dùng...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải cấu hình Auto-Bid..."));
                 Thread.sleep(300);
 
                 // Step 4: Cache Assets
                 updateProgress(0.9, 1.0);
-                updateMessage("Đang lưu Cache Tài nguyên...");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải chi tiết đấu giá để lưu Cache..."));
                 
                 try {
@@ -101,19 +97,23 @@ public class SplashController {
                     UserProfileController.preloadCache(fullAuctions);
                     BidHistoryController.preloadCache(fullAuctions);
 
-                    // Preload images for first 10 active auctions
+                    // Preload images at every size actually used in the UI so that
+                    // CacheManager hits occur on all screens (keys include dimensions).
+                    // Dashboard card  → 200×120
+                    // AuctionDetail   → 420×250
+                    // AuctionList row → 120×80
                     int preloadedImages = 0;
                     for (com.auction.model.Auction a : fullAuctions) {
-                        if (a.getStatus() == com.auction.model.AuctionStatus.RUNNING || a.getStatus() == com.auction.model.AuctionStatus.PENDING) {
-                            if (a.getItem() != null && a.getItem().getImageUrl() != null && !a.getItem().getImageUrl().isEmpty()) {
-                                // Load standard sizes used in Dashboard and AuctionList (e.g. 250x200 or 80x80)
-                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 250, 200);
-                                com.auction.util.ImageLoaderUtil.loadItemImageSync(a.getItem().getImageUrl(), 80, 80);
-                                preloadedImages++;
-                                if (preloadedImages >= 10) break;
-                            }
+                        String imgUrl = a.getItem() != null ? a.getItem().getImageUrl() : null;
+                        if (imgUrl != null && !imgUrl.isEmpty()) {
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 200, 120);
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 420, 250);
+                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 120, 80);
+                            preloadedImages++;
+                            if (preloadedImages >= 20) break;
                         }
                     }
+                    System.out.printf("[Splash] Pre-cached images for %d auctions at 3 sizes.%n", preloadedImages);
                 } catch (Exception e) {
                     System.err.println("Cache preload error: " + e.getMessage());
                 }

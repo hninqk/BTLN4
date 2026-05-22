@@ -56,6 +56,14 @@ public class AuctionService {
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
+    /**
+     * Lock per-auction để tránh race condition khi 2+ user đăng ký auto-bid
+     * cùng lúc trên cùng 1 phiên đấu giá.
+     */
+    private final ConcurrentHashMap<String, ReentrantLock> auctionLocks = new ConcurrentHashMap<>();
+
+    private final ProxyBiddingEngine proxyBiddingEngine;
+
     private AuctionService() {
         ensureSeeded();
     }
@@ -385,6 +393,59 @@ public class AuctionService {
      */
     private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
     private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
+    private final ThreadLocal<String> pendingUnfreezeAuctionId = new ThreadLocal<>();
+
+    // ── Auto-Bidding ──────────────────────────────────────────────────────────
+
+    public static class AutoBidResult {
+        public List<BidTransaction> newBids = new java.util.ArrayList<>();
+        public List<Bidder> unfrozenBidders = new java.util.ArrayList<>();
+        public List<String> virtualLogs = new java.util.ArrayList<>();
+    }
+
+    public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {
+        if (maxBid <= auction.getHighestBid()) {
+            throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
+        }
+        if (bidder.getAvailableBalance() < maxBid) {
+            throw new InvalidBidException("Số dư không đủ. Cần " + String.format("%,.0f ₫", maxBid) + " để đặt Auto-Bid.");
+        }
+        
+        // Remove existing autobid if any, and unfreeze its old maxBid
+        AutoBid existing = autoBidRepo.findByAuctionId(auction.getId()).stream()
+                .filter(ab -> ab.getBidderId().equals(bidder.getId())).findFirst().orElse(null);
+        if (existing != null) {
+            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
+            bidder.unfreezeFunds(existing.getMaxBid());
+            userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
+        }
+        
+        // Freeze new maxBid immediately (Dong Bang)
+        bidder.freezeFunds(maxBid);
+        userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
+        
+        AutoBid ab = new AutoBid(
+            java.util.UUID.randomUUID().toString(),
+            auction.getId(),
+            bidder.getId(),
+            maxBid,
+            increment,
+            LocalDateTime.now()
+        );
+        autoBidRepo.save(ab);
+        
+        return resolveBiddingWar(auction);
+    }
+
+    public AutoBidResult resolveBiddingWar(Auction auction) {
+        ReentrantLock lock = getAuctionLock(auction.getId());
+        lock.lock();
+        try {
+            return proxyBiddingEngine.resolveBiddingWar(auction);
+        } finally {
+            lock.unlock();
+        }
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -394,6 +455,10 @@ public class AuctionService {
      */
     private ReentrantLock getUserLock(String userId) {
         return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true));
+    }
+
+    private ReentrantLock getAuctionLock(String auctionId) {
+        return auctionLocks.computeIfAbsent(auctionId, id -> new ReentrantLock(true));
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────

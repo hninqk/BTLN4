@@ -4,6 +4,7 @@ import com.auction.client.AuctionClient;
 import com.auction.model.*;
 import com.auction.service.AppFacade;
 import com.auction.util.SessionManager;
+import com.auction.util.TimeSyncManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
@@ -393,7 +394,7 @@ public class SellerManagementController {
         try {
             LocalTime time = LocalTime.of(Integer.parseInt(hour), Integer.parseInt(minute));
             endTime = LocalDateTime.of(selDate, time);
-            if (endTime.isBefore(LocalDateTime.now())) throw new Exception("past");
+            if (endTime.isBefore(TimeSyncManager.getNow())) throw new Exception("past");
         } catch (Exception e) {
             showFormError("Thời gian kết thúc không hợp lệ hoặc đã qua."); return;
         }
@@ -441,7 +442,7 @@ public class SellerManagementController {
             String endTimeStr = json.get("endTime").getAsString();
             double highestBid = json.get("highestBid").getAsDouble();
             String statusStr  = json.get("status").getAsString();
-            String createdStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString() : LocalDateTime.now().toString();
+            String createdStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString() : TimeSyncManager.getNow().toString();
             double startPrice = json.has("startPrice") ? json.get("startPrice").getAsDouble() : highestBid;
             String category   = json.has("itemCategory") ? json.get("itemCategory").getAsString() : "Điện tử";
             String desc       = json.has("itemDesc")     ? json.get("itemDesc").getAsString()     : "";
