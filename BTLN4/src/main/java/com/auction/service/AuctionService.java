@@ -382,7 +382,7 @@ public class AuctionService {
             auction.placeBid(bid);
 
             // --- Anti-Sniping (Bid Extension) ---
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
             LocalDateTime endTime = auction.getEndTime();
             if (endTime != null && java.time.Duration.between(now, endTime).getSeconds() <= 60) {
                 auction.setEndTime(endTime.plusMinutes(3));
@@ -505,7 +505,7 @@ public class AuctionService {
             bidder.getId(),
             maxBid,
             increment,
-            LocalDateTime.now()
+            com.auction.util.TimeSyncManager.getNow()
         );
         autoBidRepo.save(ab);
         

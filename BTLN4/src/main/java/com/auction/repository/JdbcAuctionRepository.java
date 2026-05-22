@@ -123,10 +123,7 @@ public class JdbcAuctionRepository {
             System.err.println("[AuctionRepo] findAll error: " + e.getMessage());
         }
 
-        // Batch load bid history cho tất cả auctions trong 1 query
-        if (!list.isEmpty()) {
-            loadBidHistoryBatch(list);
-        }
+        // Note: Intentionally omitting loadBidHistoryBatch to implement lazy-loading (performance optimization).
         return list;
     }
 
@@ -141,7 +138,13 @@ public class JdbcAuctionRepository {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Optional<Auction> auctionOpt = buildAuction(rs);
-                    auctionOpt.ifPresent(a -> loadBidHistory(a, id));
+                    auctionOpt.ifPresent(a -> {
+                        loadBidHistory(a, id);
+                        List<AutoBid> autoBids = new com.auction.repository.JdbcAutoBidRepository().findByAuctionId(id);
+                        for (AutoBid ab : autoBids) {
+                            a.injectAutoBid(ab);
+                        }
+                    });
                     return auctionOpt;
                 }
             }
@@ -168,9 +171,7 @@ public class JdbcAuctionRepository {
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] findBySellerId error: " + e.getMessage());
         }
-        if (!list.isEmpty()) {
-            loadBidHistoryBatch(list);
-        }
+        // Note: Intentionally omitting loadBidHistoryBatch to implement lazy-loading (performance optimization).
         return list;
     }
 

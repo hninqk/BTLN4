@@ -14,6 +14,7 @@ public class Auction extends Entity implements Subject {
     private LocalDateTime endTime;
     private double highestBid;
     private List<BidTransaction> bidHistory = new CopyOnWriteArrayList<>();
+    private List<AutoBid> autoBids = new CopyOnWriteArrayList<>();
     private List<Observer> observers = new CopyOnWriteArrayList<>();
 
     /** Seller creates a new auction — starts in PENDING, awaiting Admin approval. */
@@ -66,14 +67,14 @@ public class Auction extends Entity implements Subject {
     public void startAuction() throws InvalidStatusException {
         if (this.status != AuctionStatus.OPEN)
             throw new InvalidStatusException("Chỉ có thể bắt đầu phiên đã được duyệt. Trạng thái hiện tại: " + status);
-        this.startTime = LocalDateTime.now();
+        this.startTime = com.auction.util.TimeSyncManager.getNow();
         status = AuctionStatus.RUNNING;
     }
 
     public synchronized void placeBid(BidTransaction newBid) throws InvalidBidException, InvalidStatusException {
         if (this.status != AuctionStatus.RUNNING)
             throw new InvalidStatusException("Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.");
-        if (this.endTime != null && LocalDateTime.now().isAfter(this.endTime))
+        if (this.endTime != null && com.auction.util.TimeSyncManager.getNow().isAfter(this.endTime))
             throw new InvalidStatusException("Phiên đấu giá đã kết thúc.");
         double newBidAmount = newBid.getAmount();
         if (newBidAmount <= this.highestBid)
@@ -131,6 +132,14 @@ public class Auction extends Entity implements Subject {
      */
     public void injectBid(BidTransaction bid) {
         bidHistory.add(bid);
+    }
+
+    public void injectAutoBid(AutoBid autoBid) {
+        autoBids.add(autoBid);
+    }
+
+    public List<AutoBid> getAutoBids() {
+        return new java.util.ArrayList<>(autoBids);
     }
 
     public BidTransaction getWinner() {

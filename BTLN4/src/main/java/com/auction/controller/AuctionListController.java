@@ -256,12 +256,28 @@ public class AuctionListController {
         if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
             Auction selected = auctionTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                try {
-                    NavigationManager.getInstance().navigateTo(
-                            NavigationManager.AUCTION_DETAIL, "Chi tiết đấu giá", selected);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                statusLabel.setText("Đang tải chi tiết phiên đấu giá...");
+                Task<Auction> fetchTask = new Task<>() {
+                    @Override
+                    protected Auction call() throws Exception {
+                        return AppFacade.getInstance().findAuctionById(selected.getId()).orElse(selected);
+                    }
+                };
+                fetchTask.setOnSucceeded(ev -> {
+                    statusLabel.setText("Tải thành công.");
+                    try {
+                        NavigationManager.getInstance().navigateTo(
+                                NavigationManager.AUCTION_DETAIL, "Chi tiết đấu giá", fetchTask.getValue());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+                fetchTask.setOnFailed(ev -> {
+                    statusLabel.setText("Lỗi tải chi tiết: " + fetchTask.getException().getMessage());
+                });
+                Thread t = new Thread(fetchTask, "fetch-detail-" + selected.getId());
+                t.setDaemon(true);
+                t.start();
             }
         }
     }

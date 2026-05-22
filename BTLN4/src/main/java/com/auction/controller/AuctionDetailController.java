@@ -713,7 +713,29 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     // ══════════════════════════════════════════════════════════════════════════
 
     private void loadAutoBidState() {
-        // Will now be loaded asynchronously via WS on connection
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder && currentAuction != null) {
+            com.auction.model.AutoBid myAutoBid = currentAuction.getAutoBids().stream()
+                .filter(ab -> ab.getBidderId().equals(bidder.getId()))
+                .findFirst().orElse(null);
+            
+            if (myAutoBid != null) {
+                Platform.runLater(() -> {
+                    if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", myAutoBid.getMaxBid()));
+                    if (autoIncrementField != null) autoIncrementField.setText(String.format("%.0f", myAutoBid.getIncrement()));
+                    if (autoBidStatusBadge != null) {
+                        setTextIfChanged(autoBidStatusBadge, "Đang Hoạt Động");
+                        autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+                        if (registerAutoBidButton != null) setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
+                    }
+                    if (currentAutoBidLabel != null) {
+                        currentAutoBidLabel.setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", myAutoBid.getMaxBid(), myAutoBid.getIncrement()));
+                        currentAutoBidLabel.setVisible(true);
+                        currentAutoBidLabel.setManaged(true);
+                    }
+                });
+            }
+        }
     }
 
     /**

@@ -61,6 +61,19 @@ public final class AuctionSerializer {
                 bids.add(bid);
             }
             o.add("bidHistory", bids);
+
+            JsonArray autoBidsJson = new JsonArray();
+            for (com.auction.model.AutoBid ab : a.getAutoBids()) {
+                JsonObject abJson = new JsonObject();
+                abJson.addProperty("id", ab.getId());
+                abJson.addProperty("auctionId", ab.getAuctionId());
+                abJson.addProperty("bidderId", ab.getBidderId());
+                abJson.addProperty("maxBid", ab.getMaxBid());
+                abJson.addProperty("increment", ab.getIncrement());
+                abJson.addProperty("createdAt", ab.getCreatedAt().toString());
+                autoBidsJson.add(abJson);
+            }
+            o.add("autoBids", autoBidsJson);
         }
         return o;
     }
@@ -209,6 +222,24 @@ public final class AuctionSerializer {
                     a.injectBid(new BidTransaction(bidId, ts, dummy, a, amt));
                 }
             }
+
+            if (json.has("autoBids")) {
+                JsonArray autoBids = json.get("autoBids").getAsJsonArray();
+                for (int i = 0; i < autoBids.size(); i++) {
+                    JsonObject abJson = autoBids.get(i).getAsJsonObject();
+                    String abId = abJson.get("id").getAsString();
+                    String abAuctionId = abJson.get("auctionId").getAsString();
+                    String abBidderId = abJson.get("bidderId").getAsString();
+                    double maxBid = abJson.get("maxBid").getAsDouble();
+                    double increment = abJson.get("increment").getAsDouble();
+                    LocalDateTime ts = LocalDateTime.parse(abJson.get("createdAt").getAsString());
+                    if (com.auction.util.ServerConfig.isRemote()) {
+                        ts = ts.plusHours(7);
+                    }
+                    a.injectAutoBid(new com.auction.model.AutoBid(abId, abAuctionId, abBidderId, maxBid, increment, ts));
+                }
+            }
+
             return a;
         } catch (Exception e) {
             System.err.println("[AuctionSerializer] auctionFromJson error: " + e.getMessage());

@@ -176,12 +176,11 @@ public class DashboardController {
                                 || a.getStatus() == AuctionStatus.OPEN))
                     .toList();
         } else {
-            // Fallback: sort by bid-history size
+            // Fallback: sort by name
             hotList = all.stream()
                     .filter(a -> a.getStatus() == AuctionStatus.OPEN
                             || a.getStatus() == AuctionStatus.RUNNING)
-                    .sorted((a1, a2) -> Integer.compare(
-                            a2.getBidHistory().size(), a1.getBidHistory().size()))
+                    .sorted((a1, a2) -> a1.getItem().getName().compareTo(a2.getItem().getName()))
                     .limit(5).toList();
         }
 
@@ -313,11 +312,23 @@ public class DashboardController {
         card.getChildren().addAll(iv, title, price, status);
 
         card.setOnMouseClicked(e -> {
-            try {
-                NavigationManager.getInstance().navigateTo(NavigationManager.AUCTION_DETAIL, "Chi tiết", auction);
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+            // Fetch full details asynchronously
+            javafx.concurrent.Task<Auction> fetchTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Auction call() throws Exception {
+                    return AppFacade.getInstance().findAuctionById(auction.getId()).orElse(auction);
+                }
+            };
+            fetchTask.setOnSucceeded(ev -> {
+                try {
+                    NavigationManager.getInstance().navigateTo(NavigationManager.AUCTION_DETAIL, "Chi tiết", fetchTask.getValue());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+            Thread t = new Thread(fetchTask, "fetch-detail-" + auction.getId());
+            t.setDaemon(true);
+            t.start();
         });
 
         return card;
