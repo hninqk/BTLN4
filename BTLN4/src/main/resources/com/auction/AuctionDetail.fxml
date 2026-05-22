@@ -134,11 +134,12 @@
                             <HBox spacing="8">
                                 <Button fx:id="placeBidButton" text="🔨 Đặt giá ngay"
                                         onAction="#handlePlaceBid"
-                                        styleClass="btn-success" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                                        style="-fx-background-color: #16A34A; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
+                                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                                 <Button fx:id="autoBidToggleButton" text="⚡ Auto"
                                         onAction="#handleToggleAutoBid"
-                                        style="-fx-background-color: -theme-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;"
-                                        prefWidth="72"/>
+                                        style="-fx-background-color: -theme-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
+                                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                             </HBox>
                         </VBox>
 
@@ -171,20 +172,30 @@
             <VBox fx:id="autoBidPopup"
                   visible="false" managed="false"
                   style="-fx-background-color: -theme-surface; -fx-background-radius: 12; -fx-border-color: -theme-primary; -fx-border-radius: 12; -fx-border-width: 2;"
-                  spacing="4" maxWidth="280" minWidth="260" maxHeight="-Infinity"
+                  spacing="6" minWidth="320" prefWidth="340" maxWidth="360" maxHeight="-Infinity"
                   StackPane.alignment="CENTER">
-                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
 
+                <!-- Header: title + status badge + close button -->
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <Label text="⚡ Cấu hình Auto-Bid"
-                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -theme-primary;"/>
-                    <Region HBox.hgrow="ALWAYS"/>
+                           style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -theme-primary;"
+                           HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                     <Label fx:id="autoBidStatusBadge" text="Chưa kích hoạt" styleClass="badge"
-                           style="-fx-background-color: -theme-border; -fx-text-fill: -theme-text-muted; -fx-padding: 2 6;"/>
+                           style="-fx-background-color: -theme-border; -fx-text-fill: -theme-text-muted; -fx-padding: 2 8;"/>
+                    <Button text="X" onAction="#handleCloseAutoBidPopup"
+                            style="-fx-background-color: #DC2626; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 2 7 2 7; -fx-background-radius: 4;"
+                            minWidth="28" minHeight="22"/>
                 </HBox>
+
                 <Separator/>
 
-                <GridPane hgap="8" vgap="4">
+
+                <GridPane hgap="8" vgap="6">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="100" prefWidth="110" halignment="LEFT"/>
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="80"/>
+                    </columnConstraints>
                     <Label text="Giá tối đa (₫):" styleClass="form-label"
                            GridPane.columnIndex="0" GridPane.rowIndex="0"/>
                     <TextField fx:id="autoMaxBidField" promptText="Ví dụ: 50,000,000"

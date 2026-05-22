@@ -78,12 +78,12 @@
                     <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
                 </columnResizePolicy>
                 <columns>
-                        <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="210"/>
-                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="120"/>
-                        <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="130"/>
-                        <TableColumn fx:id="colFinalBid"  text="Giá chốt"      prefWidth="130"/>
-                        <TableColumn fx:id="colResult"    text="Kết quả"        prefWidth="100"/>
-                        <TableColumn fx:id="colStatus"    text="Trạng thái"    prefWidth="110"/>
+                        <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="200"/>
+                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="110"/>
+                        <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="125"/>
+                        <TableColumn fx:id="colFinalBid"  text="Giá chốt"      prefWidth="125"/>
+                        <TableColumn fx:id="colResult"    text="Kết quả"        prefWidth="125"/>
+                        <TableColumn fx:id="colStatus"    text="Trạng thái"    prefWidth="115"/>
                         <TableColumn fx:id="colBidTime"   text="Thời gian đặt" prefWidth="160"/>
                     </columns>
                     <placeholder>

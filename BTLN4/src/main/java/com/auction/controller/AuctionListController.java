@@ -93,7 +93,72 @@ public class AuctionListController {
                 String.format("%,.0f ₫", c.getValue().getHighestBid())));
         colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getEndTime().format(FMT)));
+
+        // ── Badge cell factory: Status ────────────────────────────────────────
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            private final Label badge = new Label();
+            {
+                badge.setMaxWidth(Double.MAX_VALUE);
+                badge.setAlignment(javafx.geometry.Pos.CENTER);
+            }
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || value == null || value.isBlank()) {
+                    setGraphic(null);
+                    return;
+                }
+                badge.setText(value);
+                badge.getStyleClass().setAll("table-badge", statusBadgeClass(value));
+                setGraphic(badge);
+                setAlignment(javafx.geometry.Pos.CENTER);
+            }
+        });
+
+        // ── Badge cell factory: Category ──────────────────────────────────────
+        colCategory.setCellFactory(col -> new TableCell<>() {
+            private final Label badge = new Label();
+            {
+                badge.setMaxWidth(Double.MAX_VALUE);
+                badge.setAlignment(javafx.geometry.Pos.CENTER);
+            }
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || value == null || value.isBlank()) {
+                    setGraphic(null);
+                    return;
+                }
+                badge.setText(value);
+                badge.getStyleClass().setAll("table-badge", categoryBadgeClass(value));
+                setGraphic(badge);
+                setAlignment(javafx.geometry.Pos.CENTER);
+            }
+        });
     }
+
+    /** Maps a Vietnamese status display string to a CSS style class. */
+    private static String statusBadgeClass(String status) {
+        return switch (status) {
+            case "Đang diễn ra" -> "badge-status-running";
+            case "Đã đóng"      -> "badge-status-closed";
+            case "Chờ duyệt"    -> "badge-status-pending";
+            case "Chờ bắt đầu"  -> "badge-status-open";
+            case "Đã huỷ"       -> "badge-status-canceled";
+            default              -> "badge-status-other";
+        };
+    }
+
+    /** Maps a Vietnamese category string to a CSS style class. */
+    private static String categoryBadgeClass(String category) {
+        return switch (category) {
+            case "Nghệ thuật" -> "badge-cat-art";
+            case "Xe cộ"      -> "badge-cat-vehicle";
+            case "Điện tử"    -> "badge-cat-electronics";
+            default            -> "badge-cat-other";
+        };
+    }
+
 
     private void loadAuctions() {
         statusLabel.setText("Đang tải dữ liệu từ server...");

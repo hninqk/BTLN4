@@ -846,12 +846,16 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         setDisableIfChanged(placeBidButton, !canBid);
         setDisableIfChanged(bidAmountField, !canBid);
 
-        // Auto-bid toggle button: show only when bidder can auto-bid
+        // Auto-bid toggle button: always visible for layout stability; disabled when not eligible
         if (autoBidToggleButton != null) {
             setDisableIfChanged(autoBidToggleButton, !canAutoBid);
-            boolean showToggle = canAutoBid || (autoBidPopup != null && autoBidPopup.isVisible());
-            setVisibleIfChanged(autoBidToggleButton, showToggle);
+            setVisibleIfChanged(autoBidToggleButton, true);   // always visible – keeps HBox layout stable
             setManagedIfChanged(autoBidToggleButton, true);
+            // Close the popup if auto-bid is no longer available (e.g. auction closed)
+            if (!canAutoBid && autoBidPopup != null && autoBidPopup.isVisible()) {
+                autoBidPopup.setVisible(false);
+                autoBidPopup.setManaged(false);
+            }
         }
 
         if (registerAutoBidButton != null) {
@@ -1015,6 +1019,14 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             autoBidPopup.setTranslateY(0);
             StackPane.setAlignment(autoBidPopup, javafx.geometry.Pos.CENTER);
         }
+    }
+
+    /** Close the auto-bid popup via the ✕ button in its header. */
+    @FXML
+    private void handleCloseAutoBidPopup(ActionEvent event) {
+        if (autoBidPopup == null) return;
+        autoBidPopup.setVisible(false);
+        autoBidPopup.setManaged(false);
     }
 
 

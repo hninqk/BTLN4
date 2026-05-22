@@ -150,7 +150,66 @@ public class BidHistoryController {
         colResult.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().result()));
         colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().auction().getStatusDisplay()));
         colBidTime.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().myBid().getTimestamp().format(FMT)));
+
+        // ── Badge cell factory: Kết quả ──────────────────────────────────────
+        colResult.setCellFactory(col -> new TableCell<>() {
+            private final Label badge = new Label();
+            {
+                badge.setMaxWidth(Double.MAX_VALUE);
+                badge.setAlignment(javafx.geometry.Pos.CENTER);
+                badge.setTextOverrun(javafx.scene.control.OverrunStyle.CLIP);
+            }
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || value == null || value.isBlank()) { setGraphic(null); return; }
+                badge.setText(value);
+                badge.getStyleClass().setAll("table-badge", resultBadgeClass(value));
+                setGraphic(badge);
+                setAlignment(javafx.geometry.Pos.CENTER);
+            }
+        });
+
+        // ── Badge cell factory: Trạng thái ───────────────────────────────────
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            private final Label badge = new Label();
+            {
+                badge.setMaxWidth(Double.MAX_VALUE);
+                badge.setAlignment(javafx.geometry.Pos.CENTER);
+                badge.setTextOverrun(javafx.scene.control.OverrunStyle.CLIP);
+            }
+            @Override
+            protected void updateItem(String value, boolean empty) {
+                super.updateItem(value, empty);
+                if (empty || value == null || value.isBlank()) { setGraphic(null); return; }
+                badge.setText(value);
+                badge.getStyleClass().setAll("table-badge", statusBadgeClass(value));
+                setGraphic(badge);
+                setAlignment(javafx.geometry.Pos.CENTER);
+            }
+        });
     }
+
+    /** Maps result text to a CSS class. */
+    private static String resultBadgeClass(String result) {
+        if (result.contains("Thắng"))       return "badge-result-won";
+        if (result.equals("Thua"))          return "badge-result-lost";
+        if (result.equals("Đang tham gia")) return "badge-result-active";
+        return "badge-status-other";
+    }
+
+    /** Maps Vietnamese status display text to a CSS class (shared with AuctionList). */
+    private static String statusBadgeClass(String status) {
+        return switch (status) {
+            case "Đang diễn ra" -> "badge-status-running";
+            case "Đã đóng"      -> "badge-status-closed";
+            case "Chờ duyệt"    -> "badge-status-pending";
+            case "Chờ bắt đầu"  -> "badge-status-open";
+            case "Đã huỷ"       -> "badge-status-canceled";
+            default              -> "badge-status-other";
+        };
+    }
+
 
     private void loadHistory() {
         User user = SessionManager.getInstance().getCurrentUser();

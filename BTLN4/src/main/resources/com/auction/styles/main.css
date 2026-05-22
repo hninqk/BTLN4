@@ -14,18 +14,18 @@
     -theme-text-muted: #64748B;
     -theme-border: #E2E8F0;
     -theme-primary: #2563EB;
-    
+
     /* Table Glassmorphism (Light Mode) */
     -theme-table-row: rgba(255, 255, 255, 0.5);
     -theme-table-row-odd: rgba(248, 250, 252, 0.55);
     -theme-table-text: #1E293B;
     -theme-table-row-selected: rgba(219, 234, 254, 0.85);
     -theme-table-row-hover: rgba(239, 246, 255, 0.7);
-    
+
     /* Bid Panel Glassmorphism */
     -theme-bid-panel: #EFF6FF;
     -theme-bid-border: #BFDBFE;
-    
+
     /* Success Card / Winner Banner Theme (Light Mode) */
     -theme-success-bg: #F0FDF4;
     -theme-success-border: #86EFAC;
@@ -39,18 +39,18 @@
     -theme-text-muted: #94A3B8;
     -theme-border: #334155;
     -theme-primary: #3B82F6;
-    
+
     /* Table Glassmorphism (Dark Mode) */
     -theme-table-row: rgba(30, 41, 59, 0.5);
     -theme-table-row-odd: rgba(15, 23, 42, 0.55);
     -theme-table-text: #F8FAFC;
     -theme-table-row-selected: rgba(59, 130, 246, 0.5);
     -theme-table-row-hover: rgba(30, 41, 59, 0.75);
-    
+
     /* Bid Panel Glassmorphism */
     -theme-bid-panel: rgba(59, 130, 246, 0.15);
     -theme-bid-border: rgba(59, 130, 246, 0.3);
-    
+
     /* Success Card / Winner Banner Theme (Dark Mode) */
     -theme-success-bg: rgba(22, 163, 74, 0.15);
     -theme-success-border: rgba(22, 163, 74, 0.3);
@@ -301,7 +301,31 @@
     -fx-underline: true;
 }
 
-/* ---------- Form Fields ---------- */
+/* ---------- Disabled Button States ---------- */
+/* JavaFX applies :disabled when setDisable(true) is called.
+   These rules ensure disabled buttons are clearly grayed-out
+   regardless of which btn-* class or inline style they use. */
+.button:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+}
+
+.btn-primary:disabled,
+.btn-success:disabled,
+.btn-danger:disabled,
+.btn-warning:disabled,
+.btn-secondary:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+}
+
+.text-field:disabled,
+.password-field:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+
 .form-label {
     -fx-font-size: 13px;
     -fx-font-weight: bold;
@@ -340,13 +364,15 @@
 
 /* ---------- Aesthetic Geometric Backgrounds ---------- */
 .geo-shape-1 {
-    -fx-fill: linear-gradient(to bottom right, rgba(37,99,235,0.06), rgba(124,58,237,0.06));
+    -fx-fill: linear-gradient(to bottom right, rgba(37, 99, 235, 0.06), rgba(124, 58, 237, 0.06));
 }
+
 .geo-shape-2 {
-    -fx-fill: linear-gradient(to top left, rgba(59,130,246,0.06), rgba(16,185,129,0.06));
+    -fx-fill: linear-gradient(to top left, rgba(59, 130, 246, 0.06), rgba(16, 185, 129, 0.06));
 }
+
 .geo-shape-3 {
-    -fx-fill: linear-gradient(to right, rgba(236,72,153,0.05), rgba(239,68,68,0.05));
+    -fx-fill: linear-gradient(to right, rgba(236, 72, 153, 0.05), rgba(239, 68, 68, 0.05));
 }
 
 /* ---------- TableView ---------- */
@@ -361,7 +387,8 @@
     -fx-background-radius: 12 12 0 0;
 }
 
-.table-view .column-header, .table-view .filler {
+.table-view .column-header,
+.table-view .filler {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-border-width: 0;
@@ -463,7 +490,8 @@
 
 /* ---------- Login / Auth Screens ---------- */
 .auth-container {
-    -fx-background-color: transparent; /* Let the animated wave background show through */
+    -fx-background-color: transparent;
+    /* Let the animated wave background show through */
 }
 
 .auth-card {
@@ -692,7 +720,7 @@
     -fx-background-radius: 6;
 }
 
-.date-picker > .text-field {
+.date-picker>.text-field {
     -fx-background-color: transparent;
     -fx-border-width: 0;
 }
@@ -728,12 +756,14 @@
 .dark-mode .date-picker-popup .week-number-cell {
     -fx-text-fill: -theme-text-muted;
 }
+
 /* Dynamic GUI Effects */
 .progress-bar {
     -fx-accent: linear-gradient(to right, #00f2fe, #4facfe);
     -fx-control-inner-background: #1e1e1e;
     -fx-background-radius: 15px;
 }
+
 .progress-bar .bar {
     -fx-background-radius: 15px;
     -fx-padding: 0.5em;
@@ -746,4 +776,93 @@
 
 .flash-green {
     -fx-background-color: #00ff00 !important;
+}
+
+/* ── Table Badge (Status & Category cells) ──────────────────────────────── */
+.table-badge {
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 10;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER;
+}
+
+/* Status: Đang diễn ra – light green, black text */
+.badge-status-running {
+    -fx-background-color: #DCFCE7;
+    -fx-text-fill: #14532D;
+}
+
+/* Status: Đã đóng – neutral gray */
+.badge-status-closed {
+    -fx-background-color: #E2E8F0;
+    -fx-text-fill: #475569;
+}
+
+/* Status: Chờ duyệt – warm amber */
+.badge-status-pending {
+    -fx-background-color: #FEF3C7;
+    -fx-text-fill: #78350F;
+}
+
+/* Status: Chờ bắt đầu – soft blue */
+.badge-status-open {
+    -fx-background-color: #DBEAFE;
+    -fx-text-fill: #1E3A8A;
+}
+
+/* Status: Đã huỷ – light red */
+.badge-status-canceled {
+    -fx-background-color: #FEE2E2;
+    -fx-text-fill: #7F1D1D;
+}
+
+/* Status: other/fallback */
+.badge-status-other {
+    -fx-background-color: #F1F5F9;
+    -fx-text-fill: #64748B;
+}
+
+/* Category: Nghệ thuật – cool purple/indigo */
+.badge-cat-art {
+    -fx-background-color: #EDE9FE;
+    -fx-text-fill: #4C1D95;
+}
+
+/* Category: Xe cộ – warm amber/orange */
+.badge-cat-vehicle {
+    -fx-background-color: #FFEDD5;
+    -fx-text-fill: #7C2D12;
+}
+
+/* Category: Điện tử – cyan/teal (tech feel) */
+.badge-cat-electronics {
+    -fx-background-color: #CFFAFE;
+    -fx-text-fill: #164E63;
+}
+
+/* Category: other/fallback */
+.badge-cat-other {
+    -fx-background-color: #F1F5F9;
+    -fx-text-fill: #64748B;
+}
+
+/* ── Result Badges (BidHistory: Kết quả column) ─────────────────────────── */
+
+/* Thắng – gold-green, celebratory */
+.badge-result-won {
+    -fx-background-color: #DCFCE7;
+    -fx-text-fill: #14532D;
+}
+
+/* Thua – soft red/rose */
+.badge-result-lost {
+    -fx-background-color: #FEE2E2;
+    -fx-text-fill: #7F1D1D;
+}
+
+/* Đang tham gia – soft blue (in progress) */
+.badge-result-active {
+    -fx-background-color: #DBEAFE;
+    -fx-text-fill: #1E3A8A;
 }
