@@ -29,6 +29,7 @@ import java.time.Duration;
 public class ServerMain {
 
     public static void main(String[] args) {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         System.out.println("╔══════════════════════════════════════════════════╗");
         System.out.println("║   Auction Server v2.0  (WebSocket + REST API)    ║");
         System.out.println("╚══════════════════════════════════════════════════╝");

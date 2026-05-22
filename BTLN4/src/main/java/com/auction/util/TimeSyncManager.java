@@ -59,6 +59,6 @@ public class TimeSyncManager {
      * Get current synchronized LocalDateTime.
      */
     public static LocalDateTime getNow() {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(getCurrentTimeMillis()), ZoneId.systemDefault());
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(getCurrentTimeMillis()), ZoneId.of("Asia/Ho_Chi_Minh"));
     }
 }

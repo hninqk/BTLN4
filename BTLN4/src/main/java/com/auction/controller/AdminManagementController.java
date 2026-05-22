@@ -218,6 +218,11 @@ public class AdminManagementController {
         for (Auction a : auctionList) {
             if (a.getId().equals(auctionId)) {
                 a.setHighestBid(amount);
+                if (json.has("endTime")) {
+                    try {
+                        a.setEndTime(LocalDateTime.parse(json.get("endTime").getAsString()));
+                    } catch (Exception ignored) {}
+                }
                 // Inject a bid entry so bid count updates
                 String bidderName = json.has("bidderUsername") ? json.get("bidderUsername").getAsString() : "?";
                 String bidderId   = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";

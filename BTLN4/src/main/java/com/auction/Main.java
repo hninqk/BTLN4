@@ -97,6 +97,7 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
         launch();
     }
 }

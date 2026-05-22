@@ -384,10 +384,19 @@ public class AuctionService {
             // --- Anti-Sniping (Bid Extension) ---
             LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
             LocalDateTime endTime = auction.getEndTime();
-            if (endTime != null && java.time.Duration.between(now, endTime).getSeconds() <= 60) {
-                auction.setEndTime(endTime.plusMinutes(3));
-                auctionRepo.updateEndTime(auction.getId(), auction.getEndTime());
-                System.out.printf("[AuctionService] Anti-Sniping activated for auction %s: Extended end time by 3 minutes.%n", auction.getId());
+            System.out.println("DEBUG");
+            System.out.println("Thoi gian hien tai" + now);
+            System.out.println("Thoi gian ket thuc" + endTime);
+            if (endTime != null) {
+                long diffSeconds = java.time.Duration.between(now, endTime).getSeconds();
+                System.out.println("Thoi gian chenh lech" + diffSeconds);
+                System.out.println("Dieu kien diff <= 60 co thoa man?" + diffSeconds);
+                System.out.println("Dieu kien diff > 0 co thoa man?" + diffSeconds);
+                if (diffSeconds <= 60) {
+                    auction.setEndTime(endTime.plusMinutes(3));
+                    auctionRepo.updateEndTime(auction.getId(), auction.getEndTime());
+                    System.out.printf("[AuctionService] Anti-Sniping activated for auction %s: Extended end time by 3 minutes.%n", auction.getId());
+                }
             }
 
             // Cập nhật cache

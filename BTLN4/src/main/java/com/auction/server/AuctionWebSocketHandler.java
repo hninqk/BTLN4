@@ -235,6 +235,9 @@ public class AuctionWebSocketHandler {
             bidUpdate.addProperty("bidderId",       bidder.getId());
             bidUpdate.addProperty("bidderUsername", bidder.getUsername());
             bidUpdate.addProperty("time",           createdBid.getTimestamp().toString());
+            if (auction.getEndTime() != null) {
+                bidUpdate.addProperty("endTime",    auction.getEndTime().toString());
+            }
             broadcastAll(bidUpdate.toString());
 
             // ── Broadcast BALANCE_UPDATE cho bidder vừa đặt giá (frozen tăng → available giảm) ──
@@ -340,6 +343,12 @@ public class AuctionWebSocketHandler {
             broadcastAll(logObj.toString());
         }
         
+        String endTimeStr = null;
+        java.util.Optional<Auction> auctionOpt = auctionService.findById(auctionId);
+        if (auctionOpt.isPresent() && auctionOpt.get().getEndTime() != null) {
+            endTimeStr = auctionOpt.get().getEndTime().toString();
+        }
+
         for (BidTransaction b : abResult.newBids) {
             JsonObject bidUpdate = new JsonObject();
             bidUpdate.addProperty("type", "BID_UPDATE");
@@ -348,6 +357,9 @@ public class AuctionWebSocketHandler {
             bidUpdate.addProperty("bidderId", b.getBidder().getId());
             bidUpdate.addProperty("bidderUsername", b.getBidder().getUsername());
             bidUpdate.addProperty("time", b.getTimestamp().toString());
+            if (endTimeStr != null) {
+                bidUpdate.addProperty("endTime", endTimeStr);
+            }
             broadcastAll(bidUpdate.toString());
         }
         

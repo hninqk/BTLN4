@@ -41,7 +41,7 @@ public class AuctionChartHelper {
                 @Override
                 public String toString(Number object) {
                     long epochMillis = object.longValue();
-                    return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.systemDefault()).format(axisFmt);
+                    return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh")).format(axisFmt);
                 }
                 @Override
                 public Number fromString(String string) {
@@ -53,13 +53,13 @@ public class AuctionChartHelper {
 
     /** Adds a fully-formed BidTransaction to the chart. */
     public void addBid(BidTransaction bid) {
-        long epochMillis = bid.getTimestamp().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long epochMillis = bid.getTimestamp().atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         priceSeries.getData().add(new XYChart.Data<>(epochMillis, bid.getAmount()));
     }
 
     /** Adds raw amount and timestamp to the chart. */
     public void addRawBid(double amount, LocalDateTime ts) {
-        long epochMillis = ts.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long epochMillis = ts.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         priceSeries.getData().add(new XYChart.Data<>(epochMillis, amount));
     }
 

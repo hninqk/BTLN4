@@ -215,9 +215,6 @@ public final class AuctionSerializer {
                     String bName = b.get("bidderUsername").getAsString();
                     String bId   = b.get("bidderId").getAsString();
                     LocalDateTime ts = LocalDateTime.parse(b.get("time").getAsString());
-                    if (com.auction.util.ServerConfig.isRemote()) {
-                        ts = ts.plusHours(7);
-                    }
                     Bidder dummy = new Bidder(bId, ts, bName, "", 0);
                     a.injectBid(new BidTransaction(bidId, ts, dummy, a, amt));
                 }
@@ -233,9 +230,6 @@ public final class AuctionSerializer {
                     double maxBid = abJson.get("maxBid").getAsDouble();
                     double increment = abJson.get("increment").getAsDouble();
                     LocalDateTime ts = LocalDateTime.parse(abJson.get("createdAt").getAsString());
-                    if (com.auction.util.ServerConfig.isRemote()) {
-                        ts = ts.plusHours(7);
-                    }
                     a.injectAutoBid(new com.auction.model.AutoBid(abId, abAuctionId, abBidderId, maxBid, increment, ts));
                 }
             }

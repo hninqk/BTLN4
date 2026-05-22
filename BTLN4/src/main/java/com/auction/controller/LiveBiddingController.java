@@ -9,6 +9,7 @@ import com.auction.util.DataReceiver;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import com.auction.util.TimeSyncManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
@@ -279,10 +280,10 @@ public class LiveBiddingController implements DataReceiver {
         bidCountLabel.setText(String.valueOf(currentAuction.getBidHistory().size()));
         minBidHint.setText("Giá tối thiểu: "
                 + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
-        lastUpdateLabel.setText("Cập nhật: " + LocalDateTime.now().format(TIME_FMT)
+        lastUpdateLabel.setText("Cập nhật: " + TimeSyncManager.getNow().format(TIME_FMT)
                 + (wsConnected ? " 🟢 Server" : " 🔴 Offline – chỉ xem, không đặt giá"));
 
-        Duration remaining = Duration.between(LocalDateTime.now(), currentAuction.getEndTime());
+        Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
         if (remaining.isNegative()) {
             liveTimerLabel.setText("Đã kết thúc");
             if (scheduler != null && !scheduler.isShutdown())

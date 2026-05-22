@@ -356,12 +356,14 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         else if (currentAuction != null) HotItemCache.getInstance().recordBid(currentAuction.getId());
 
         LocalDateTime ts = LocalDateTime.parse(timeStr);
-        if (com.auction.util.ServerConfig.isRemote()) {
-            ts = ts.plusHours(7); // Convert UTC (Render) to Vietnam time (GMT+7)
-        }
 
         if (currentAuction != null) {
             currentAuction.setHighestBid(amount);
+            if (json.has("endTime")) {
+                try {
+                    currentAuction.setEndTime(LocalDateTime.parse(json.get("endTime").getAsString()));
+                } catch (Exception ignored) {}
+            }
             Bidder dummy = new Bidder(bidderId, TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
