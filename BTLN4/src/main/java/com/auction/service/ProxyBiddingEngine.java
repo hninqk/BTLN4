@@ -89,8 +89,10 @@ public class ProxyBiddingEngine {
 
             AutoBid top1 = validBids.get(0);
 
-            // ── 3. KEY FIX: top1 is already current winner → war resolved ────
-            if (top1.getBidderId().equals(currentWinnerId)) break;
+            // ── 3. KEY FIX: top1 is already current winner AND no one can challenge ────
+            if (validBids.size() == 1 && top1.getBidderId().equals(currentWinnerId)) {
+                break;
+            }
 
             Bidder top1Bidder = (Bidder) userRepo.findById(top1.getBidderId()).orElse(null);
             if (top1Bidder == null) {
@@ -116,6 +118,27 @@ public class ProxyBiddingEngine {
                     autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                     activeBids.remove(top2);
                     continue;
+                }
+
+                if (top2.getMaxBid() > currentHighest && !top2.getBidderId().equals(currentWinnerId)) {
+                    // Let top2 place its max bid to defend/challenge and create history
+                    try {
+                        BidTransaction b2 = auctionService.placeBid(auction, top2Bidder, top2.getMaxBid());
+                        Bidder unfrozen2 = auctionService.processOutbidUnfreeze();
+                        result.newBids.add(b2);
+                        if (unfrozen2 != null) unfrozenMap.put(unfrozen2.getId(), unfrozen2);
+                        result.virtualLogs.add(String.format("[Auto-Bid] %s tự động đẩy giá lên %,.0f ₫", 
+                                top2Bidder.getUsername(), top2.getMaxBid()));
+                        currentHighest = top2.getMaxBid(); // Update for top1's logic
+                    } catch (Exception e) {
+                        // If it fails (e.g. balance issues), remove top2 and let loop continue
+                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
+                        activeBids.remove(top2);
+                        top2Bidder.unfreezeFunds(top2.getMaxBid());
+                        userRepo.updateFrozenBalance(top2Bidder.getId(), top2Bidder.getFrozenBalance());
+                        unfrozenMap.put(top2Bidder.getId(), top2Bidder);
+                        continue;
+                    }
                 }
 
                 if (Double.compare(top1.getMaxBid(), top2.getMaxBid()) == 0) {

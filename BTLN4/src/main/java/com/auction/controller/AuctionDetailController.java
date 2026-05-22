@@ -1018,6 +1018,16 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             autoBidPopup.setTranslateX(0);
             autoBidPopup.setTranslateY(0);
             StackPane.setAlignment(autoBidPopup, javafx.geometry.Pos.CENTER);
+
+            // Fetch current auto-bid status
+            User user = SessionManager.getInstance().getCurrentUser();
+            if (user instanceof Bidder bidder && wsConnected && wsService != null) {
+                JsonObject req = new JsonObject();
+                req.addProperty("type", "CHECK_AUTO_BID");
+                req.addProperty("auctionId", currentAuction.getId());
+                req.addProperty("bidderId", bidder.getId());
+                wsService.send(req.toString());
+            }
         }
     }
 
