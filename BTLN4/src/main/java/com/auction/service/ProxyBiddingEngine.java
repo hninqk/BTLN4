@@ -98,6 +98,7 @@ public class ProxyBiddingEngine {
             if (top1Bidder == null) {
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
                 continue;
             }
 
@@ -117,6 +118,7 @@ public class ProxyBiddingEngine {
                 if (top2Bidder == null) {
                     autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                     activeBids.remove(top2);
+                    result.deactivatedBidderIds.add(top2.getBidderId());
                     continue;
                 }
 
@@ -134,6 +136,7 @@ public class ProxyBiddingEngine {
                         // If it fails (e.g. balance issues), remove top2 and let loop continue
                         autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                         activeBids.remove(top2);
+                        result.deactivatedBidderIds.add(top2.getBidderId());
                         top2Bidder.unfreezeFunds(top2.getMaxBid());
                         userRepo.updateFrozenBalance(top2Bidder.getId(), top2Bidder.getFrozenBalance());
                         unfrozenMap.put(top2Bidder.getId(), top2Bidder);
@@ -153,6 +156,7 @@ public class ProxyBiddingEngine {
                 if (targetBid >= top2.getMaxBid()) {
                     autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                     activeBids.remove(top2);
+                    result.deactivatedBidderIds.add(top2.getBidderId());
                     top2Bidder.unfreezeFunds(top2.getMaxBid());
                     userRepo.updateFrozenBalance(top2Bidder.getId(), top2Bidder.getFrozenBalance());
                     unfrozenMap.put(top2Bidder.getId(), top2Bidder);
@@ -180,6 +184,7 @@ public class ProxyBiddingEngine {
                 // Real error (e.g., insufficient funds): invalidate top1's auto-bid
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
                 top1Bidder.unfreezeFunds(top1.getMaxBid());
                 userRepo.updateFrozenBalance(top1Bidder.getId(), top1Bidder.getFrozenBalance());
                 unfrozenMap.put(top1Bidder.getId(), top1Bidder);
@@ -189,6 +194,7 @@ public class ProxyBiddingEngine {
                 System.err.println("[ProxyBiddingEngine] Unexpected error: " + e.getMessage());
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
             }
         }
 

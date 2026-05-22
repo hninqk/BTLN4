@@ -23,6 +23,7 @@ public class AuctionWebSocketService {
         void onAutoBidLog(JsonObject json);
         void onAutoBidAck(JsonObject json);
         void onAutoBidStatus(JsonObject json);
+        void onAutoBidDeactivated(JsonObject json);
         void onStatusChanged(JsonObject json);
         void onBalanceUpdate(JsonObject json);
         void onFullSync(JsonObject json);
@@ -109,6 +110,7 @@ public class AuctionWebSocketService {
                 case "AUTO_BID_LOG"           -> listener.onAutoBidLog(json);
                 case "AUTO_BID_ACK"           -> listener.onAutoBidAck(json);
                 case "AUTO_BID_STATUS"        -> listener.onAutoBidStatus(json);
+                case "AUTO_BID_DEACTIVATED"   -> listener.onAutoBidDeactivated(json);
                 // Legacy: bare bid response without "type" field
                 default -> {
                     if (json.has("amount") && json.has("bidder")) {

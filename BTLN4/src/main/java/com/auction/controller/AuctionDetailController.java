@@ -97,6 +97,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     // ── Auto-Bid popup panel ─────────────────────────────────────────────────
     @FXML private VBox      autoBidPopup;     // floating popup panel
     @FXML private Label     autoBidStatusBadge;
+    @FXML private Label     currentAutoBidLabel;
     @FXML private TextField autoMaxBidField;
     @FXML private TextField autoIncrementField;
     @FXML private Label     autoBidErrorLabel;
@@ -302,6 +303,16 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             refreshBalanceSection();
             refreshControls();
         });
+        
+        // Fetch auto-bid status so the label displays immediately
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder && currentAuction != null) {
+            JsonObject req = new JsonObject();
+            req.addProperty("type", "CHECK_AUTO_BID");
+            req.addProperty("auctionId", currentAuction.getId());
+            req.addProperty("bidderId", bidder.getId());
+            wsService.send(req.toString());
+        }
     }
 
     @Override
@@ -402,6 +413,16 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
         }
         
+        // Fetch new status to update the label and fields
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder && wsConnected && wsService != null) {
+            JsonObject req = new JsonObject();
+            req.addProperty("type", "CHECK_AUTO_BID");
+            req.addProperty("auctionId", aid != null ? aid : currentAuction.getId());
+            req.addProperty("bidderId", bidder.getId());
+            wsService.send(req.toString());
+        }
+        
         // PERF: Auto-bid acknowledgement only needs to refresh controls
         // (to re-enable the auto-bid form). Other sections are unaffected.
         refreshControls();
@@ -423,7 +444,39 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
                 autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
                 if (registerAutoBidButton != null) setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
             }
+            if (currentAutoBidLabel != null) {
+                currentAutoBidLabel.setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", maxBid, increment));
+                currentAutoBidLabel.setVisible(true);
+                currentAutoBidLabel.setManaged(true);
+            }
         });
+    }
+    
+    @Override
+    public void onAutoBidDeactivated(JsonObject json) {
+        String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
+        if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
+        
+        String bidderId = json.has("bidderId") ? json.get("bidderId").getAsString() : null;
+        User user = SessionManager.getInstance().getCurrentUser();
+        
+        // Only update UI if the deactivated auto-bid belongs to the current user
+        if (user != null && user.getId().equals(bidderId)) {
+            Platform.runLater(() -> {
+                if (autoBidStatusBadge != null) {
+                    setTextIfChanged(autoBidStatusBadge, "Đã Dừng");
+                    autoBidStatusBadge.setStyle("-fx-background-color: #FEE2E2; -fx-text-fill: #DC2626;");
+                }
+                if (autoBidErrorLabel != null) {
+                    setTextIfChanged(autoBidErrorLabel, "⚠️ Auto-Bid đã dừng: Có người đặt giá cao hơn giới hạn tối đa của bạn.");
+                    autoBidErrorLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-weight: bold;");
+                }
+                if (currentAutoBidLabel != null) {
+                    currentAutoBidLabel.setVisible(false);
+                    currentAutoBidLabel.setManaged(false);
+                }
+            });
+        }
     }
 
     @Override

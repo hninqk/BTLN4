@@ -360,6 +360,14 @@ public class AuctionWebSocketHandler {
             balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
             broadcastAll(balUpdate.toString());
         }
+        
+        for (String bidderId : abResult.deactivatedBidderIds) {
+            JsonObject deactivated = new JsonObject();
+            deactivated.addProperty("type", "AUTO_BID_DEACTIVATED");
+            deactivated.addProperty("auctionId", auctionId);
+            deactivated.addProperty("bidderId", bidderId);
+            broadcastAll(deactivated.toString());
+        }
     }
 
     // =========================================================================

@@ -475,6 +475,7 @@ public class AuctionService {
         public List<BidTransaction> newBids = new java.util.ArrayList<>();
         public List<Bidder> unfrozenBidders = new java.util.ArrayList<>();
         public List<String> virtualLogs = new java.util.ArrayList<>();
+        public List<String> deactivatedBidderIds = new java.util.ArrayList<>();
     }
 
     public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {

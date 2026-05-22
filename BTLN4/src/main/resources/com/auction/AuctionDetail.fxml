@@ -141,6 +141,10 @@
                                         style="-fx-background-color: -theme-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
                                         HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                             </HBox>
+                            
+                            <Label fx:id="currentAutoBidLabel" text="" styleClass="label-subtle"
+                                   style="-fx-text-fill: -theme-primary; -fx-font-weight: bold;"
+                                   managed="false" visible="false"/>
                         </VBox>
 
                         <!-- Winner box (shown after CLOSED) -->
