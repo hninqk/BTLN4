@@ -250,12 +250,9 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         bidErrorLabel.setText("");
         chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
 
-        UnaryOperator<TextFormatter.Change> numericFilter = change ->
-                change.getControlNewText().matches("[0-9,.]*") ? change : null;
-        bidAmountField.setTextFormatter(new TextFormatter<>(numericFilter));
-
-        if (autoMaxBidField != null) autoMaxBidField.setTextFormatter(new TextFormatter<>(numericFilter));
-        if (autoIncrementField != null) autoIncrementField.setTextFormatter(new TextFormatter<>(numericFilter));
+        com.auction.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
+        if (autoMaxBidField != null) com.auction.util.CurrencyUtil.setupCurrencyTextField(autoMaxBidField);
+        if (autoIncrementField != null) com.auction.util.CurrencyUtil.setupCurrencyTextField(autoIncrementField);
 
         // Close auto-bid popup when clicking outside it
         if (rootStackPane != null) {
@@ -1021,7 +1018,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         if (input.isEmpty()) { bidErrorLabel.setText("Vui lòng nhập số tiền đặt giá."); return; }
 
         double amount;
-        try { amount = Double.parseDouble(input.replace(",", "")); }
+        try { amount = com.auction.util.CurrencyUtil.parseCurrency(input); }
         catch (NumberFormatException e) { bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
 
         double minBid = currentAuction.getHighestBid();
@@ -1109,8 +1106,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         double maxBid, increment;
         try { 
-            maxBid = Double.parseDouble(maxBidInput.replace(",", ""));
-            increment = Double.parseDouble(incInput.replace(",", ""));
+            maxBid = com.auction.util.CurrencyUtil.parseCurrency(maxBidInput);
+            increment = com.auction.util.CurrencyUtil.parseCurrency(incInput);
         } catch (NumberFormatException e) { 
             autoBidErrorLabel.setText("Số tiền không hợp lệ."); 
             return; 
