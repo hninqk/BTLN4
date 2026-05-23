@@ -637,7 +637,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         //         (price, bid count, badge, balance, controls, winner box, etc.)
         //         even though only the countdown timer text actually changes.
         //
-        // After:  Every 2 seconds, the scheduler updates at most 2 labels
+        // After:  Every 1 second, the scheduler updates at most 2 labels
         //         (timeRemainingLabel, lastUpdateLabel) via setTextIfChanged,
         //         meaning zero JavaFX invalidations if the text happens to be
         //         the same (e.g. "Hết giờ" stays stable after auction ends).
@@ -645,7 +645,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         // This reduces the FX Application Thread work per tick from ~20 property
         // sets + layout + CSS to at most 2 property sets + minimal layout.
         scheduler.scheduleAtFixedRate(
-                () -> Platform.runLater(this::refreshCountdown), 0, 2, TimeUnit.SECONDS);
+                () -> Platform.runLater(this::refreshCountdown), 0, 1, TimeUnit.SECONDS);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -741,9 +741,9 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
     /**
      * Refreshes ONLY the countdown timer and sync timestamp.
-     * Called by: scheduler (every 2 seconds).
+     * Called by: scheduler (every 1 second).
      *
-     * PERF: This is the highest-frequency caller (every 2s). By restricting it
+     * PERF: This is the highest-frequency caller (every 1s). By restricting it
      * to just 2 labels, we reduce the per-tick FX thread work from ~20 property
      * mutations to at most 2. The setTextIfChanged guard further eliminates
      * invalidations when the text hasn't changed (e.g. stable "Hết giờ" or
@@ -780,7 +780,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
      * Called by: onBidUpdate, onLegacyBidUpdate, onFullSync, onStatusChanged (with price update).
      *
      * PERF: These 3 labels change only when a new bid arrives. The scheduler
-     * no longer touches them, eliminating ~3 wasted setText() calls per 2-second
+     * no longer touches them, eliminating ~3 wasted setText() calls per 1-second
      * tick (= ~3 layout invalidations avoided per tick).
      */
     private void refreshBidSection() {
