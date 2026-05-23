@@ -2,6 +2,7 @@ package com.auction.service;
 
 import com.auction.model.*;
 import com.auction.repository.JdbcUserRepository;
+import com.auction.security.PasswordHashService;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,17 +31,34 @@ public class UserService {
     // ------- Authentication -------
 
     public Optional<User> login(String username, String password) {
-        return userRepo.findByUsername(username)
-                .filter(u -> u.getPassword().equals(password));
+        Optional<User> user = userRepo.findByUsername(username);
+        if (user.isEmpty()) {
+            return Optional.empty();
+        }
+
+        User found = user.get();
+        String storedPassword = found.getPassword();
+        if (PasswordHashService.isArgon2idHash(storedPassword)) {
+            return PasswordHashService.verify(storedPassword, password) ? user : Optional.empty();
+        }
+
+        if (storedPassword != null && storedPassword.equals(password)) {
+            found.setPassword(PasswordHashService.hash(password));
+            userRepo.update(found);
+            return user;
+        }
+
+        return Optional.empty();
     }
 
     public boolean register(String username, String password, String role) {
         if (userRepo.existsByUsername(username)) return false;
+        String passwordHash = PasswordHashService.hash(password);
 
         User newUser = switch (role.toUpperCase()) {
-            case "SELLER" -> new Seller(username, password, username + "_Shop");
-            case "ADMIN"  -> new Admin(username, password);
-            default       -> new Bidder(username, password, 0.0);
+            case "SELLER" -> new Seller(username, passwordHash, username + "_Shop");
+            case "ADMIN"  -> new Admin(username, passwordHash);
+            default       -> new Bidder(username, passwordHash, 0.0);
         };
         userRepo.save(newUser);
         return true;
@@ -66,6 +84,11 @@ public class UserService {
 
     /** Persist any in-memory changes (balance, shopName, password, etc.) back to DB. */
     public void saveUser(User user) {
+        if (user.getPassword() != null
+                && !user.getPassword().isEmpty()
+                && !PasswordHashService.isArgon2idHash(user.getPassword())) {
+            user.setPassword(PasswordHashService.hash(user.getPassword()));
+        }
         userRepo.update(user);
     }
 
@@ -93,13 +116,16 @@ public class UserService {
     private static final java.time.LocalDateTime SEED_TIME = java.time.LocalDateTime.of(2025, 1, 1, 0, 0);
 
     private Admin makeAdmin(String username, String password) {
-        return new Admin(deterministicId("user-" + username), SEED_TIME, username, password, 1);
+        return new Admin(deterministicId("user-" + username), SEED_TIME, username,
+                PasswordHashService.hash(password), 1);
     }
     private Bidder makeBidder(String username, String password, double balance) {
-        return new Bidder(deterministicId("user-" + username), SEED_TIME, username, password, balance);
+        return new Bidder(deterministicId("user-" + username), SEED_TIME, username,
+                PasswordHashService.hash(password), balance);
     }
     private Seller makeSeller(String username, String password, String shopName) {
-        return new Seller(deterministicId("user-" + username), SEED_TIME, username, password, shopName, 0.0, 0);
+        return new Seller(deterministicId("user-" + username), SEED_TIME, username,
+                PasswordHashService.hash(password), shopName, 0.0, 0);
     }
 
     /** UUID derived from a fixed string — always the same across JVM restarts. */

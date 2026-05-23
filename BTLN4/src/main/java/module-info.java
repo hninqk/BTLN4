@@ -12,6 +12,7 @@ module com.auction {
     requires com.google.gson;
     requires org.slf4j;
     requires com.zaxxer.hikari;
+    requires org.bouncycastle.provider;
 
     // Open model to JavaFX property binding and Gson
     opens com.auction.model to javafx.base, javafx.fxml, com.google.gson;
@@ -32,4 +33,5 @@ module com.auction {
     exports com.auction.repository;
     exports com.auction.client;
     exports com.auction.server;
+    exports com.auction.security;
 }
