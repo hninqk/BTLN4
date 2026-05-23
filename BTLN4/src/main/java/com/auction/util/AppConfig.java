@@ -190,7 +190,9 @@ public final class AppConfig {
     }
 
     private static String maskedJdbcUrl(String jdbcUrl) {
-        return jdbcUrl.replaceAll("(?i)(://[^:/@]+:)[^@]+@", "$1****@");
+        return jdbcUrl
+                .replaceAll("(?i)(://[^:/@]+:)[^@]+@", "$1****@")
+                .replaceAll("(?i)([?&]password=)[^&]+", "$1****");
     }
 
     private static Map<String, String> loadDotEnv() {
