@@ -8,7 +8,7 @@ import java.util.Optional;
 
 /**
  * UserService - handles authentication and user CRUD.
- * Backed by SQLite via JdbcUserRepository.
+ * Backed by Render PostgreSQL via JdbcUserRepository.
  * Falls back to seed data if DB is empty.
  */
 public class UserService {

@@ -45,6 +45,9 @@ public final class AuctionSerializer {
         o.addProperty("sellerUsername",   a.getSeller().getUsername());
         o.addProperty("status",           a.getStatus().name());
         o.addProperty("highestBid",       a.getHighestBid());
+        BidTransaction winner = a.getWinner();
+        o.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
+        o.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
         o.addProperty("startTime",        a.getStartTime() != null
                 ? a.getStartTime().toString() : "");
         o.addProperty("endTime",          a.getEndTime().toString());

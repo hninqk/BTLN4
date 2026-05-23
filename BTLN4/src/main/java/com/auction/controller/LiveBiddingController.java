@@ -1,10 +1,7 @@
 package com.auction.controller;
 
 import com.auction.client.AuctionClient;
-import com.auction.exception.InvalidBidException;
-import com.auction.exception.InvalidStatusException;
 import com.auction.model.*;
-import com.auction.service.AuctionService;
 import com.auction.util.DataReceiver;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
@@ -39,7 +36,7 @@ import java.util.function.UnaryOperator;
  * When a bid arrives via WS, ALL connected clients update simultaneously.
  * Falls back to 1-second polling if WS connection fails.
  *
- * Works with ngrok: set -Dauction.server.url=ws://<ngrok-host>:<port>/auction
+ * Connects only to the Render WebSocket endpoint configured in AppConfig.
  */
 public class LiveBiddingController implements DataReceiver {
 
@@ -159,9 +156,13 @@ public class LiveBiddingController implements DataReceiver {
                 return;
             }
 
-            if (json.has("amount") && json.has("bidder") && json.has("time")) {
+            if ("BID_UPDATE".equals(json.has("type") ? json.get("type").getAsString() : "")
+                    || (json.has("amount") && json.has("time"))) {
                 double amount = json.get("amount").getAsDouble();
-                String bidderName = json.get("bidder").getAsString();
+                String bidderName = json.has("bidderUsername")
+                        ? json.get("bidderUsername").getAsString()
+                        : json.get("bidder").getAsString();
+                String bidderId = json.has("bidderId") ? json.get("bidderId").getAsString() : "remote";
                 String time = json.get("time").getAsString();
                 String auctionId = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
 
@@ -175,7 +176,7 @@ public class LiveBiddingController implements DataReceiver {
                     currentAuction.setHighestBid(amount);
 
                     // Create a dummy bid for history/count/feed consistency
-                    Bidder dummyBidder = new Bidder("remote", com.auction.util.TimeSyncManager.getNow(), bidderName, "", 0);
+                    Bidder dummyBidder = new Bidder(bidderId, com.auction.util.TimeSyncManager.getNow(), bidderName, "", 0);
                     BidTransaction dummyBid = new BidTransaction(
                             java.util.UUID.randomUUID().toString(),
                             com.auction.util.TimeSyncManager.getNow(),
@@ -196,35 +197,8 @@ public class LiveBiddingController implements DataReceiver {
         }
     }
 
-    /**
-     * Polling fallback – used when WS is unavailable.
-     * Polls DB every 2 seconds for new bids.
-     */
     private void startPollingFallback() {
-        if (scheduler != null && !scheduler.isShutdown())
-            return; // already running
-        System.out.println("[LiveBidding] WS unavailable – polling local DB (view-only, bids blocked).");
-        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "LiveBidding-Poll");
-            t.setDaemon(true);
-            return t;
-        });
-        scheduler.scheduleAtFixedRate(() -> Platform.runLater(() -> {
-            if (currentAuction == null)
-                return;
-            AuctionService.getInstance().findById(currentAuction.getId())
-                    .ifPresent(fresh -> {
-                        int prevCount = currentAuction.getBidHistory().size();
-                        currentAuction = fresh;
-                        // Only update feed/chart for genuinely new bids
-                        List<BidTransaction> history = fresh.getBidHistory();
-                        for (int i = prevCount; i < history.size(); i++) {
-                            addBidToChart(history.get(i));
-                            addBidToFeed(history.get(i));
-                        }
-                        refreshDisplay();
-                    });
-        }), 2, 2, TimeUnit.SECONDS);
+        System.out.println("[LiveBidding] WS unavailable – bidding disabled until the server reconnects.");
     }
 
     // =========================================================================
@@ -269,8 +243,7 @@ public class LiveBiddingController implements DataReceiver {
         // Enable bid input only if RUNNING and user is Bidder
         User user = SessionManager.getInstance().getCurrentUser();
         boolean canBid = currentAuction.getStatus() == AuctionStatus.RUNNING && user instanceof Bidder;
-        placeBidButton.setDisable(!canBid);
-        bidAmountField.setDisable(!canBid);
+        setBidControlsEnabled(canBid && !isCurrentUserHighestBidder());
     }
 
     private void refreshDisplay() {
@@ -293,6 +266,7 @@ public class LiveBiddingController implements DataReceiver {
                     remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart()));
         }
         updateStatusBadge();
+        refreshBidControls();
     }
 
     private void updateStatusBadge() {
@@ -308,6 +282,38 @@ public class LiveBiddingController implements DataReceiver {
             case CLOSED -> statusBadge.getStyleClass().add("badge-closed");
             case CANCELED -> statusBadge.getStyleClass().add("badge-canceled");
         }
+    }
+
+    private void refreshBidControls() {
+        User user = SessionManager.getInstance().getCurrentUser();
+        boolean canBid = currentAuction != null
+                && currentAuction.getStatus() == AuctionStatus.RUNNING
+                && user instanceof Bidder
+                && wsConnected
+                && !isCurrentUserHighestBidder();
+        setBidControlsEnabled(canBid);
+        if (isCurrentUserHighestBidder()) {
+            bidErrorLabel.setText("Bạn đang là người ra giá cao nhất.");
+        } else if (bidErrorLabel.getText().contains("người ra giá cao nhất")) {
+            bidErrorLabel.setText("");
+        }
+    }
+
+    private void setBidControlsEnabled(boolean enabled) {
+        placeBidButton.setDisable(!enabled);
+        bidAmountField.setDisable(!enabled);
+    }
+
+    private boolean isCurrentUserHighestBidder() {
+        if (currentAuction == null) {
+            return false;
+        }
+        User user = SessionManager.getInstance().getCurrentUser();
+        BidTransaction winner = currentAuction.getWinner();
+        return user != null
+                && winner != null
+                && winner.getBidder() != null
+                && user.getId().equals(winner.getBidder().getId());
     }
 
     // =========================================================================
@@ -382,6 +388,12 @@ public class LiveBiddingController implements DataReceiver {
             return;
         }
 
+        if (isCurrentUserHighestBidder()) {
+            bidErrorLabel.setText("Bạn đang là người ra giá cao nhất.");
+            refreshBidControls();
+            return;
+        }
+
         if (wsConnected && wsClient != null) {
             // ── WS mode: send bid to server, server broadcasts to ALL clients ──
             JsonObject req = new JsonObject();
@@ -395,9 +407,6 @@ public class LiveBiddingController implements DataReceiver {
             bidAmountField.clear();
         } else {
             // ── Server is offline – reject the bid clearly ──
-            // (The old fallback wrote directly to the local DB, which made it
-            // look like sync was working on the same machine, but remote users
-            // each have their own db.auction so nothing was actually shared.)
             bidErrorLabel.setText(
                     "❌ Không thể kết nối server. Vui lòng chờ server hoạt động trở lại.");
         }

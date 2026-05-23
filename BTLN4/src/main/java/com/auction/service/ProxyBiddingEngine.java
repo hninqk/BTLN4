@@ -30,15 +30,15 @@ public class ProxyBiddingEngine {
 
     private final JdbcAutoBidRepository autoBidRepo;
     private final JdbcUserRepository userRepo;
-    private final AuctionService auctionService;
+    private final BiddingService biddingService;
 
     public ProxyBiddingEngine(
             JdbcAutoBidRepository autoBidRepo,
             JdbcUserRepository userRepo,
-            AuctionService auctionService) {
+            BiddingService biddingService) {
         this.autoBidRepo = autoBidRepo;
         this.userRepo = userRepo;
-        this.auctionService = auctionService;
+        this.biddingService = biddingService;
     }
 
     /** Entry point – call after any manual bid or new auto-bid registration. */
@@ -125,8 +125,8 @@ public class ProxyBiddingEngine {
                 if (top2.getMaxBid() > currentHighest && !top2.getBidderId().equals(currentWinnerId)) {
                     // Let top2 place its max bid to defend/challenge and create history
                     try {
-                        BidTransaction b2 = auctionService.placeBid(auction, top2Bidder, top2.getMaxBid());
-                        Bidder unfrozen2 = auctionService.processOutbidUnfreeze();
+                        BidTransaction b2 = biddingService.placeBid(auction, top2Bidder, top2.getMaxBid());
+                        Bidder unfrozen2 = biddingService.processOutbidUnfreeze();
                         result.newBids.add(b2);
                         if (unfrozen2 != null) unfrozenMap.put(unfrozen2.getId(), unfrozen2);
                         result.virtualLogs.add(String.format("[Auto-Bid] %s tự động đẩy giá lên %,.0f ₫", 
@@ -168,8 +168,8 @@ public class ProxyBiddingEngine {
 
             // ── 6 & 7. Place the bid ─────────────────────────────────────────
             try {
-                BidTransaction b = auctionService.placeBid(auction, top1Bidder, targetBid);
-                Bidder unfrozen = auctionService.processOutbidUnfreeze();
+                BidTransaction b = biddingService.placeBid(auction, top1Bidder, targetBid);
+                Bidder unfrozen = biddingService.processOutbidUnfreeze();
                 result.newBids.add(b);
                 if (unfrozen != null) unfrozenMap.put(unfrozen.getId(), unfrozen);
                 result.virtualLogs.add(logMsg);

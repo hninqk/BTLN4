@@ -6,6 +6,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * DatabaseConnection – cung cấp Connection qua HikariCP Connection Pool.
@@ -14,108 +16,46 @@ import java.sql.Statement;
  * - Mở một kết nối TCP (đặc biệt tới PostgreSQL từ xa) tốn 0.5-1 giây.
  * - HikariCP giữ sẵn các kết nối đã mở, mỗi getConnection() chỉ mất vài micro-giây.
  * - Pool size mặc định 10 (cấu hình trong buildConfig).
- *
- * SQLite WAL mode được bật sau khi tạo pool để hỗ trợ đọc đồng thời.
  */
 public class DatabaseConnection {
 
+    private static final Logger log = LoggerFactory.getLogger(DatabaseConnection.class);
     private static final HikariDataSource POOL;
     private static volatile boolean tablesCreated = false;
 
     static {
         POOL = buildPool();
-        // Áp dụng PRAGMA WAL cho SQLite ngay khi khởi tạo pool
-        if (!isPostgres()) {
-            applySqlitePragmas();
-        }
     }
 
     // ─────────────────────────── Cấu hình Pool ───────────────────────────
 
     private static HikariDataSource buildPool() {
-        // Đảm bảo driver được load
         try {
-            Class.forName("org.sqlite.JDBC");
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {
-            System.err.println("[DB] Warning: Driver not found: " + e.getMessage());
+            log.warn("Driver not found: {}", e.getMessage());
         }
 
-        String jdbcUrl = resolveJdbcUrl();
+        String jdbcUrl = AppConfig.jdbcUrl();
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(jdbcUrl);
 
-        if (jdbcUrl.startsWith("jdbc:postgresql:")) {
-            // PostgreSQL: pool lớn hơn để xử lý nhiều client đồng thời
-            config.setMaximumPoolSize(10);
-            config.setMinimumIdle(2);
-            config.setConnectionTimeout(5_000);      // 5 giây timeout kết nối
-            config.setIdleTimeout(300_000);           // 5 phút idle
-            config.setMaxLifetime(1_800_000);         // 30 phút tuổi thọ tối đa
-            config.setConnectionTestQuery("SELECT 1");
-            System.out.println("[DB] Using PostgreSQL via HikariCP: " + jdbcUrl);
-        } else {
-            // SQLite: chỉ cần 1 connection vì SQLite là single-writer
-            config.setMaximumPoolSize(1);
-            config.setMinimumIdle(1);
-            config.setConnectionTimeout(10_000);
-            System.out.println("[DB] Using SQLite via HikariCP: " + jdbcUrl);
-        }
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(5_000);
+        config.setIdleTimeout(300_000);
+        config.setMaxLifetime(1_800_000);
+        config.setConnectionTestQuery("SELECT 1");
+        log.info("Using Render PostgreSQL via HikariCP");
 
         config.setPoolName("AuctionPool");
         return new HikariDataSource(config);
     }
 
-    private static String resolveJdbcUrl() {
-        // Priority 1: Environment variable (Render PostgreSQL)
-        String envUrl = System.getenv("JDBC_DATABASE_URL");
-        if (envUrl != null && !envUrl.isBlank()) {
-            return envUrl;
-        }
-
-        // Priority 2: System property (Custom path)
-        String customPath = System.getProperty("database.path");
-        if (customPath != null && !customPath.isBlank()) {
-            return "jdbc:sqlite:" + customPath;
-        }
-
-        // Priority 3: Giải quyết đường dẫn dựa vào vị trí class-file
-        try {
-            java.net.URL loc = DatabaseConnection.class
-                    .getProtectionDomain().getCodeSource().getLocation();
-            java.io.File codeFile = new java.io.File(loc.toURI());
-            java.io.File dbDir;
-            if (codeFile.isDirectory()) {
-                dbDir = codeFile.getParentFile().getParentFile();
-            } else {
-                dbDir = codeFile.getParentFile();
-            }
-            String path = new java.io.File(dbDir, "db.auction").getAbsolutePath();
-            System.out.println("[DB] Falling back to local SQLite: " + path);
-            return "jdbc:sqlite:" + path;
-        } catch (Exception e) {
-            System.err.println("[DB] Cannot resolve location, using CWD SQLite");
-            return "jdbc:sqlite:db.auction";
-        }
-    }
-
-    private static void applySqlitePragmas() {
-        try (Connection conn = POOL.getConnection();
-             Statement st = conn.createStatement()) {
-            st.execute("PRAGMA foreign_keys = ON");
-            st.execute("PRAGMA journal_mode = WAL");
-            st.execute("PRAGMA synchronous = NORMAL");
-            st.execute("PRAGMA cache_size = -8000");   // 8 MB cache
-            st.execute("PRAGMA temp_store = MEMORY");
-        } catch (SQLException e) {
-            System.err.println("[DB] Warning: PRAGMA setup failed: " + e.getMessage());
-        }
-    }
-
     // ─────────────────────────── Public API ───────────────────────────
 
     public static boolean isPostgres() {
-        return POOL.getJdbcUrl() != null && POOL.getJdbcUrl().startsWith("jdbc:postgresql:");
+        return true;
     }
 
     private DatabaseConnection() {}
@@ -142,10 +82,10 @@ public class DatabaseConnection {
 
     public static void initialize() {
         try (Connection conn = getConnection()) {
-            System.out.println("[DB] Database ready (HikariCP pool active).");
+            log.info("Database ready (HikariCP pool active)");
         } catch (SQLException e) {
-            System.err.println("[DB] Failed to initialize: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to initialize database", e);
+            throw new IllegalStateException("Failed to initialize database", e);
         }
     }
 
@@ -171,9 +111,9 @@ public class DatabaseConnection {
             // Migration: thêm cột frozen_balance nếu DB cũ chưa có
             try {
                 st.execute("ALTER TABLE users ADD COLUMN frozen_balance " + realType + " DEFAULT 0.0");
-                System.out.println("[DB] Migration: added frozen_balance column to users.");
+                log.info("Migration applied: added frozen_balance column to users");
             } catch (Exception ignored) {
-                // Cột đã tồn tại – bỏ qua (SQLite/Postgres đều ném lỗi khi ADD COLUMN duplicate)
+                // Column already exists.
             }
 
             st.execute("CREATE TABLE IF NOT EXISTS items ("
@@ -229,8 +169,8 @@ public class DatabaseConnection {
             st.execute("CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_autobids_auction ON auto_bids(auction_id)");
 
-            System.out.println("[DB] Tables & indexes ready.");
-            System.out.println("[DB] Schema includes frozen_balance for fund-freezing support.");
+            log.info("Tables and indexes ready");
+            log.info("Schema includes frozen_balance for fund-freezing support");
         }
     }
 }

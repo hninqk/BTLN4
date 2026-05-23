@@ -69,14 +69,10 @@ public class SplashController {
                     }
                 }
 
-                // Step 2: Init DB
+                // Step 2: Confirm remote API is reachable; clients never open DB connections.
                 updateProgress(0.4, 1.0);
-                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang thiết lập connection pool..."));
+                Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đã kết nối máy chủ..."));
                 Thread.sleep(400); // Simulate/Wait for pool init
-                
-                try {
-                    com.auction.util.DatabaseConnection.getConnection().close();
-                } catch(Exception e){}
 
                 // Step 3: Fetch Configs
                 updateProgress(0.7, 1.0);

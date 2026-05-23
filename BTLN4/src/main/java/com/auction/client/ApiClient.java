@@ -1,6 +1,6 @@
 package com.auction.client;
 
-import com.auction.util.ServerConfig;
+import com.auction.util.AppConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -18,11 +18,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * DESIGN
  * ──────
- * • Reads the server base URL from ServerConfig (which honours -Dauction.server.url).
- *   ws://host/auction  →  http://host
- *   wss://host/auction →  https://host
- * • Every request sends the "ngrok-skip-browser-warning: true" header so the
- *   ngrok browser-warning redirect never interferes with HTTP calls.
+ * • Reads the server base URL from AppConfig.
  * • Provides both async (CompletableFuture) and blocking (…Sync) overloads.
  *   Controllers ALWAYS use the async overloads from the FX thread and update
  *   UI inside Platform.runLater().  AppFacade uses the blocking overloads from
@@ -46,7 +42,7 @@ public class ApiClient {
     private final HttpClient httpClient;
     private final Gson       gson = new Gson();
 
-    // Lazily derived from ServerConfig so any runtime URL override is respected
+    // Lazily derived from AppConfig so runtime URL overrides are respected
     private String cachedBaseUrl;
 
     private ApiClient() {
@@ -65,23 +61,10 @@ public class ApiClient {
     // ── URL helpers ───────────────────────────────────────────────────────────
 
     /**
-     * Derives the HTTP base URL from the WebSocket URL stored in ServerConfig.
-     * Examples:
-     *   ws://localhost:7000/auction  →  http://localhost:7000
-     *   wss://abc.ngrok-free.app/auction → https://abc.ngrok-free.app
+     * Derives the HTTP base URL from AppConfig.
      */
     public String getBaseUrl() {
-        // Re-derive each call to pick up runtime URL changes (setServerUrl)
-        String wsUrl = ServerConfig.getServerUrl();
-        String httpUrl = wsUrl
-                .replaceFirst("^wss://", "https://")
-                .replaceFirst("^ws://",  "http://");
-        // Strip trailing /auction (or any path component)
-        int slashAfterHost = httpUrl.indexOf('/', httpUrl.indexOf("://") + 3);
-        if (slashAfterHost > 0) {
-            httpUrl = httpUrl.substring(0, slashAfterHost);
-        }
-        cachedBaseUrl = httpUrl;
+        cachedBaseUrl = AppConfig.httpBaseUrl();
         return cachedBaseUrl;
     }
 
@@ -97,7 +80,6 @@ public class ApiClient {
                 .uri(URI.create(getBaseUrl() + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
-                .header("ngrok-skip-browser-warning", "true")
                 .GET()
                 .build();
 
@@ -116,7 +98,6 @@ public class ApiClient {
                 .uri(URI.create(getBaseUrl() + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
-                .header("ngrok-skip-browser-warning", "true")
                 .POST(HttpRequest.BodyPublishers.ofString(
                         body.toString(), StandardCharsets.UTF_8))
                 .build();
@@ -133,7 +114,6 @@ public class ApiClient {
                 .uri(URI.create(getBaseUrl() + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
-                .header("ngrok-skip-browser-warning", "true")
                 .DELETE()
                 .build();
 
@@ -149,7 +129,6 @@ public class ApiClient {
                 .uri(URI.create(getBaseUrl() + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
-                .header("ngrok-skip-browser-warning", "true")
                 .PUT(HttpRequest.BodyPublishers.ofString(
                         body.toString(), StandardCharsets.UTF_8))
                 .build();

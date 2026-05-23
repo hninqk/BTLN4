@@ -1,6 +1,6 @@
 package com.auction.client;
 
-import com.auction.util.ServerConfig;
+import com.auction.util.AppConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,18 +44,13 @@ public class AuctionClient {
      */
     public void connect(Consumer<String> onMessage, Consumer<String> onError, Runnable onOpen) {
         this.onOpen = onOpen;
-        String baseUrl = ServerConfig.getServerUrl();
-        String url = baseUrl.replaceFirst("^http", "ws");
-        if (!url.endsWith("/auction")) {
-            url += "/auction";
-        }
+        String url = AppConfig.webSocketUrl();
 
         System.out.println("[AuctionClient] Connecting to: " + url);
 
         try {
             HttpClient client = HttpClient.newHttpClient();
             ws = client.newWebSocketBuilder()
-                    .header("ngrok-skip-browser-warning", "true")
                     .buildAsync(URI.create(url), new WebSocket.Listener() {
 
                         private final StringBuilder messageBuffer = new StringBuilder();

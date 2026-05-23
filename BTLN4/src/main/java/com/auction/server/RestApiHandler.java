@@ -15,6 +15,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +46,8 @@ import java.util.Optional;
  */
 public class RestApiHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(RestApiHandler.class);
+
     private final AuctionService auctionService;
     private final UserService    userService;
     private final Gson           gson = new Gson();
@@ -55,12 +59,16 @@ public class RestApiHandler {
 
     /** Register all routes on the provided Javalin app. */
     public void register(Javalin app) {
-        // Allow browser/ngrok clients without the extra warning page redirect
         app.before(ctx -> {
-            ctx.header("ngrok-skip-browser-warning", "true");
+            log.info("HTTP {} {}", ctx.method(), ctx.path());
             ctx.header("Access-Control-Allow-Origin",  "*");
             ctx.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-            ctx.header("Access-Control-Allow-Headers", "Content-Type,ngrok-skip-browser-warning");
+            ctx.header("Access-Control-Allow-Headers", "Content-Type");
+        });
+        app.after(ctx -> log.info("HTTP {} {} -> {}", ctx.method(), ctx.path(), ctx.status()));
+        app.exception(Exception.class, (e, ctx) -> {
+            log.error("Unhandled REST error {} {}", ctx.method(), ctx.path(), e);
+            ctx.status(500).contentType("application/json").result(errorJson("Internal server error"));
         });
         app.options("/*", ctx -> ctx.status(204));  // CORS pre-flight
 
@@ -338,6 +346,7 @@ public class RestApiHandler {
     // =========================================================================
 
     private String errorJson(String msg) {
+        log.warn("Returning REST error: {}", msg);
         return "{\"error\":\"" + (msg != null ? msg.replace("\"", "'") : "Unknown error") + "\"}";
     }
 }

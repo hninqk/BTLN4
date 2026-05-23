@@ -11,7 +11,7 @@ import java.io.IOException;
 /**
  * Main – Client entry point (JavaFX UI only).
  *
- * Connects automatically to the public ngrok server.
+ * Connects automatically to the Render production server.
  * Friends just run this JAR – no configuration needed.
  *
  * The server is managed separately: see ServerMain.java / run_server.sh.

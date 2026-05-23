@@ -17,7 +17,7 @@ import java.util.Optional;
  * AppFacade – the single entry-point all Controllers use.
  *
  * Architecture (NEW – 3-Tier):
- *   Controllers → AppFacade → ApiClient (HTTP) → Javalin Server → SQLite
+ *   Controllers → AppFacade → ApiClient (HTTP) → Render Javalin Server → Render PostgreSQL
  *
  * Key rules enforced here:
  *   • Controllers MUST NOT import ApiClient, AuctionService, UserService, or
@@ -26,7 +26,7 @@ import java.util.Optional;
  *     must be called from a background thread (javafx.concurrent.Task or
  *     CompletableFuture).  Platform.runLater() must be used to push results
  *     back to the FX thread.
- *   • The Server machine is the ONLY entity that ever touches SQLite.
+ *   • The Render server is the ONLY entity that ever touches PostgreSQL.
  *     No database driver is needed in the Client runtime.
  */
 public final class AppFacade {

@@ -336,8 +336,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         }
         setTextIfChanged(bidErrorLabel, errMsg);
         bidErrorLabel.setStyle("-fx-text-fill: red;");
-        setDisableIfChanged(placeBidButton, false);
-        setDisableIfChanged(bidAmountField, false);
+        refreshControls();
     }
 
     /** New bid placed on server – update price, feed, chart. */
@@ -897,7 +896,12 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         AuctionStatus status = currentAuction.getStatus();
         User user = SessionManager.getInstance().getCurrentUser();
         boolean isExpired = currentAuction.getEndTime() != null && TimeSyncManager.getNow().isAfter(currentAuction.getEndTime());
-        boolean canBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
+        boolean isHighestBidder = isCurrentUserHighestBidder();
+        boolean canBid = status == AuctionStatus.RUNNING
+                && !isExpired
+                && user instanceof Bidder
+                && wsConnected
+                && !isHighestBidder;
 
         if (sellerWarningLabel != null) {
             boolean isSeller = user instanceof Seller;
@@ -905,8 +909,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             setManagedIfChanged(sellerWarningLabel, isSeller);
         }
 
-        // Removed client-side isHighestBidder validation to let server handle it
-        
         boolean canAutoBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
 
         setDisableIfChanged(placeBidButton, !canBid);
@@ -938,12 +940,28 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             }
         }
 
+        if (isHighestBidder) {
+            setTextIfChanged(bidErrorLabel, "Bạn đang là người ra giá cao nhất.");
+            bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
+            return;
+        }
+
         // Reset về default nếu đang hiển thị thông báo pending
         String cur = bidErrorLabel.getText();
-        if (cur.contains("Đang gửi")) {
+        if (cur.contains("Đang gửi") || cur.contains("người ra giá cao nhất")) {
             setTextIfChanged(bidErrorLabel, "");
             bidErrorLabel.setStyle(""); // Reset màu về mặc định
         }
+    }
+
+    private boolean isCurrentUserHighestBidder() {
+        if (currentAuction == null) return false;
+        User user = SessionManager.getInstance().getCurrentUser();
+        BidTransaction winner = currentAuction.getWinner();
+        return user != null
+                && winner != null
+                && winner.getBidder() != null
+                && user.getId().equals(winner.getBidder().getId());
     }
 
     /**
@@ -1037,6 +1055,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) {
             bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return;
+        }
+
+        if (isCurrentUserHighestBidder()) {
+            bidErrorLabel.setText("Bạn đang là người ra giá cao nhất.");
+            bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
+            refreshControls();
+            return;
         }
 
         if (!wsConnected || wsService == null) {

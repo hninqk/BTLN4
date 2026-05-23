@@ -126,6 +126,9 @@ public class AuctionWebSocketHandler {
         broadcast.addProperty("auctionId",  fresh.getId());
         broadcast.addProperty("newStatus",  fresh.getStatus().name());
         broadcast.addProperty("highestBid", fresh.getHighestBid());
+        BidTransaction winner = fresh.getWinner();
+        broadcast.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
+        broadcast.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
         broadcast.addProperty("startTime",  fresh.getStartTime() != null
                 ? fresh.getStartTime().toString() : "");
         // Thêm thông tin người thắng cuộc
@@ -232,8 +235,12 @@ public class AuctionWebSocketHandler {
             bidUpdate.addProperty("type",           "BID_UPDATE");
             bidUpdate.addProperty("auctionId",      auction.getId());
             bidUpdate.addProperty("amount",         amount);
-            bidUpdate.addProperty("bidderId",       bidder.getId());
-            bidUpdate.addProperty("bidderUsername", bidder.getUsername());
+            bidUpdate.addProperty("bidderId",       createdBid.getBidder().getId());
+            bidUpdate.addProperty("bidderUsername", createdBid.getBidder().getUsername());
+            bidUpdate.addProperty("highestBidderId", createdBid.getBidder().getId());
+            bidUpdate.addProperty("highestBidderUsername", createdBid.getBidder().getUsername());
+            bidUpdate.addProperty("isHighestBidder", true);
+            bidUpdate.addProperty("canPlaceBid", false);
             bidUpdate.addProperty("time",           createdBid.getTimestamp().toString());
             if (auction.getEndTime() != null) {
                 bidUpdate.addProperty("endTime",    auction.getEndTime().toString());
@@ -356,6 +363,10 @@ public class AuctionWebSocketHandler {
             bidUpdate.addProperty("amount", b.getAmount());
             bidUpdate.addProperty("bidderId", b.getBidder().getId());
             bidUpdate.addProperty("bidderUsername", b.getBidder().getUsername());
+            bidUpdate.addProperty("highestBidderId", b.getBidder().getId());
+            bidUpdate.addProperty("highestBidderUsername", b.getBidder().getUsername());
+            bidUpdate.addProperty("isHighestBidder", true);
+            bidUpdate.addProperty("canPlaceBid", false);
             bidUpdate.addProperty("time", b.getTimestamp().toString());
             if (endTimeStr != null) {
                 bidUpdate.addProperty("endTime", endTimeStr);
@@ -464,6 +475,9 @@ public class AuctionWebSocketHandler {
             broadcast.addProperty("auctionId",   fresh.getId());
             broadcast.addProperty("newStatus",   fresh.getStatus().name());
             broadcast.addProperty("highestBid",  fresh.getHighestBid());
+            BidTransaction winner = fresh.getWinner();
+            broadcast.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
+            broadcast.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
             broadcast.addProperty("startTime",   fresh.getStartTime() != null
                     ? fresh.getStartTime().toString() : "");
             broadcastAll(broadcast.toString());
@@ -509,8 +523,7 @@ public class AuctionWebSocketHandler {
             }
             String auctionId = req.get("auctionId").getAsString();
             String bidderId  = req.get("bidderId").getAsString();
-            com.auction.model.AutoBid activeBid = new com.auction.repository.JdbcAutoBidRepository()
-                    .findByAuctionIdAndBidderId(auctionId, bidderId);
+            com.auction.model.AutoBid activeBid = auctionService.findAutoBid(auctionId, bidderId);
             if (activeBid != null) {
                 JsonObject resp = new JsonObject();
                 resp.addProperty("type", "AUTO_BID_STATUS");

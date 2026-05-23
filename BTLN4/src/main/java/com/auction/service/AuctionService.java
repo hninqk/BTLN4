@@ -58,16 +58,11 @@ public class AuctionService {
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
-    /**
-     * Lock per-auction để tránh race condition khi 2+ user đăng ký auto-bid
-     * cùng lúc trên cùng 1 phiên đấu giá.
-     */
-    private final ConcurrentHashMap<String, ReentrantLock> auctionLocks = new ConcurrentHashMap<>();
-
-    private final ProxyBiddingEngine proxyBiddingEngine;
+    private final BiddingService biddingService;
 
     private AuctionService() {
-        this.proxyBiddingEngine = new ProxyBiddingEngine(autoBidRepo, userRepo, this);
+        this.biddingService = new BiddingService(
+                auctionRepo, bidRepo, userRepo, autoBidRepo, auctionCache, userLocks);
         ensureSeeded();
     }
 
@@ -279,213 +274,14 @@ public class AuctionService {
         }
     }
 
-    // ── Bidding ───────────────────────────────────────────────────────────────
-
-    /**
-     * Bidder đặt giá.
-     *
-     * Luồng xử lý (thread-safe):
-     * 1. Lock user theo bidderId
-     * 2. Load bidder fresh từ DB (balance chính xác nhất)
-     * 3. Kiểm tra bidder có đang là highest bidder không → chặn double-bid
-     * 4. Kiểm tra availableBalance >= amount → từ chối nếu không đủ
-     * 5. Lưu thông tin old highest bidder (để unfreeze sau)
-     * 6. Freeze tiền bidder mới: frozenBalance += amount → persist DB
-     * 7. auction.placeBid() [synchronized trong Auction model]
-     * 8. Unfreeze old highest bidder (nếu có và khác bidder mới)
-     * 9. Unlock
-     *
-     * @param auction phiên đấu giá
-     * @param bidder  người đặt giá (có thể stale — sẽ reload fresh từ DB)
-     * @param amount  mức giá đặt
-     * @return BidTransaction được tạo
-     */
     public BidTransaction placeBid(Auction auction, Bidder bidder, double amount)
             throws InvalidBidException, InvalidStatusException {
-        System.out.println("[AuctionService] ---- placeBid called ----");
-        System.out.println("[AuctionService] auctionId: " + auction.getId() + ", bidder: " + bidder.getUsername() + ", amount: " + amount);
-
-        String bidderId = bidder.getId();
-        ReentrantLock lock = getUserLock(bidderId);
-        lock.lock();
-        try {
-            // ── 1. Load bidder fresh từ DB (balance authoritative) ──
-            Bidder freshBidder = (Bidder) userRepo.findById(bidderId)
-                    .filter(u -> u instanceof Bidder)
-                    .orElse(bidder); // fallback nếu chưa có trong DB
-
-            // ── 2. Chặn double-bid: không cho bidder đặt giá nếu đang là highest ──
-            BidTransaction currentHighest = auction.getWinner();
-            if (currentHighest != null
-                    && currentHighest.getBidder().getUsername().equals(freshBidder.getUsername())) {
-                System.out.println("[AuctionService] Exception: Double bid blocked for " + freshBidder.getUsername());
-                throw new InvalidBidException(
-                        "Bạn đang là người ra giá cao nhất (" +
-                                String.format("%,.0f ₫", currentHighest.getAmount()) +
-                                "), không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
-            }
-
-            // ── 2.5 Kiểm tra số tiền đặt tối thiểu ──
-            if (amount <= auction.getHighestBid()) {
-                System.out.println("[AuctionService] Exception: Bid amount " + amount + " <= highest bid " + auction.getHighestBid());
-                throw new InvalidBidException("Số tiền đặt giá chưa đủ!");
-            }
-
-            // ── 3. Kiểm tra số dư khả dụng ──
-            double available = freshBidder.getAvailableBalance();
-            if (amount > available) {
-                System.out.println("[AuctionService] Exception: Insufficient funds. Available: " + available + ", amount: " + amount);
-                throw new InvalidBidException(
-                        String.format("Số dư khả dụng không đủ. " +
-                                "Khả dụng: %,.0f ₫ | Đóng băng: %,.0f ₫ | Giá đặt: %,.0f ₫",
-                                available,
-                                freshBidder.getFrozenBalance(),
-                                amount));
-            }
-
-            // ── 4. Lưu old highest bidder trước khi đặt giá mới ──
-            Bidder oldHighestBidder = null;
-            double oldHighestAmount = 0;
-            if (currentHighest != null) {
-                oldHighestAmount = currentHighest.getAmount();
-                String oldId = currentHighest.getBidder().getId();
-                // Chỉ unfreeze nếu old bidder là người khác
-                if (!oldId.equals(bidderId)) {
-                    oldHighestBidder = (Bidder) userRepo.findById(oldId)
-                            .filter(u -> u instanceof Bidder)
-                            .orElse(null);
-                }
-            }
-
-            // ── 5. Đóng băng tiền bidder mới ──
-            boolean hasAutoBid = autoBidRepo.findByAuctionId(auction.getId()).stream()
-                    .anyMatch(ab -> ab.getBidderId().equals(freshBidder.getId()));
-            
-            System.out.println("[AuctionService] hasAutoBid: " + hasAutoBid);
-            
-            if (!hasAutoBid) {
-                freshBidder.freezeFunds(amount);
-                userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
-                System.out.printf("[AuctionService] FREEZE bidder=%s amount=%,.0f ₫ | " +
-                        "frozen=%.0f ₫ | available=%.0f ₫%n",
-                        freshBidder.getUsername(), amount,
-                        freshBidder.getFrozenBalance(),
-                        freshBidder.getAvailableBalance());
-            } else {
-                System.out.println("[AuctionService] Skipped freezing because hasAutoBid is true.");
-            }
-
-            // Ghi nhớ auctionId để unfreeze
-            this.pendingUnfreezeAuctionId.set(auction.getId());
-
-            // ── 6. Tạo bid transaction và ghi vào auction (synchronized) ──
-            BidTransaction bid = new BidTransaction(
-                    java.util.UUID.randomUUID().toString(),
-                    com.auction.util.TimeSyncManager.getNow(),
-                    freshBidder,
-                    auction,
-                    amount);
-
-            // Throws InvalidBidException nếu amount ≤ highest, InvalidStatusException nếu
-            // không RUNNING
-            auction.placeBid(bid);
-
-            // --- Anti-Sniping (Bid Extension) ---
-            LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
-            LocalDateTime endTime = auction.getEndTime();
-            System.out.println("DEBUG");
-            System.out.println("Thoi gian hien tai" + now);
-            System.out.println("Thoi gian ket thuc" + endTime);
-            if (endTime != null) {
-                long diffSeconds = java.time.Duration.between(now, endTime).getSeconds();
-                System.out.println("Thoi gian chenh lech" + diffSeconds);
-                System.out.println("Dieu kien diff <= 60 co thoa man?" + diffSeconds);
-                System.out.println("Dieu kien diff > 0 co thoa man?" + diffSeconds);
-                if (diffSeconds <= 60) {
-                    auction.setEndTime(endTime.plusMinutes(3));
-                    auctionRepo.updateEndTime(auction.getId(), auction.getEndTime());
-                    System.out.printf("[AuctionService] Anti-Sniping activated for auction %s: Extended end time by 3 minutes.%n", auction.getId());
-                }
-            }
-
-            // Cập nhật cache
-            auctionCache.put(auction.getId(), auction);
-
-            // Persist bid + highest_bid bất đồng bộ
-            final BidTransaction bidToSave = bid;
-            new Thread(() -> {
-                bidRepo.save(bidToSave);
-                auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
-                        auction.getHighestBid(), auction.getStartTime());
-            }, "BidPersist-" + bidderId).start();
-
-            // ── 7. Ghi nhận thông tin old bidder để WebSocket handler xử lý unfreeze ──
-            // Sử dụng ThreadLocal để an toàn khi nhiều luồng cùng gọi placeBid()
-            this.pendingUnfreezeId.set((oldHighestBidder != null) ? oldHighestBidder.getId() : null);
-            this.pendingUnfreezeAmount.set(oldHighestAmount);
-
-            return bid;
-
-        } finally {
-            lock.unlock();
-        }
+        return biddingService.placeBid(auction, bidder, amount);
     }
 
-    /**
-     * Hoàn trả tiền đóng băng cho old highest bidder sau khi họ bị outbid.
-     *
-     * Phải được gọi NGAY SAU placeBid() từ cùng luồng (WebSocket handler).
-     * Thực thi đồng bộ với ReentrantLock riêng của old bidder.
-     *
-     * @return old bidder đã được unfreeze (để broadcast BALANCE_UPDATE), hoặc null
-     */
     public Bidder processOutbidUnfreeze() {
-        String oldId = this.pendingUnfreezeId.get();
-        double oldAmount = this.pendingUnfreezeAmount.get();
-        String auctionId = this.pendingUnfreezeAuctionId.get();
-        this.pendingUnfreezeId.remove();
-        this.pendingUnfreezeAmount.remove();
-        this.pendingUnfreezeAuctionId.remove();
-
-        if (oldId == null || oldAmount <= 0) {
-            return null;
-        }
-
-        ReentrantLock oldLock = getUserLock(oldId);
-        oldLock.lock();
-        try {
-            Bidder freshOld = (Bidder) userRepo.findById(oldId)
-                    .filter(u -> u instanceof Bidder)
-                    .orElse(null);
-            if (freshOld == null)
-                return null;
-
-            boolean oldHasAutoBid = auctionId != null && autoBidRepo.findByAuctionId(auctionId).stream()
-                    .anyMatch(ab -> ab.getBidderId().equals(freshOld.getId()));
-
-            if (!oldHasAutoBid) {
-                freshOld.unfreezeFunds(oldAmount);
-                userRepo.updateFrozenBalance(freshOld.getId(), freshOld.getFrozenBalance());
-                System.out.printf("[AuctionService] UNFREEZE (outbid) bidder=%s amount=%,.0f ₫ | " +
-                        "frozen=%.0f ₫ | available=%.0f ₫%n",
-                        freshOld.getUsername(), oldAmount,
-                        freshOld.getFrozenBalance(), freshOld.getAvailableBalance());
-            } else {
-                System.out.printf("[AuctionService] SKIP UNFREEZE (AutoBid active) bidder=%s amount=%,.0f ₫%n",
-                        freshOld.getUsername(), oldAmount);
-            }
-            return freshOld;
-        } finally {
-            oldLock.unlock();
-        }
+        return biddingService.processOutbidUnfreeze();
     }
-
-    /**
-     * Thông tin old bidder cần unfreeze – ThreadLocal để an toàn giữa các luồng.
-     */
-    private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
-    private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
-    private final ThreadLocal<String> pendingUnfreezeAuctionId = new ThreadLocal<>();
 
     // ── Auto-Bidding ──────────────────────────────────────────────────────────
 
@@ -497,47 +293,15 @@ public class AuctionService {
     }
 
     public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {
-        if (maxBid <= auction.getHighestBid()) {
-            throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
-        }
-        if (bidder.getAvailableBalance() < maxBid) {
-            throw new InvalidBidException("Số dư không đủ. Cần " + String.format("%,.0f ₫", maxBid) + " để đặt Auto-Bid.");
-        }
-        
-        // Remove existing autobid if any, and unfreeze its old maxBid
-        AutoBid existing = autoBidRepo.findByAuctionId(auction.getId()).stream()
-                .filter(ab -> ab.getBidderId().equals(bidder.getId())).findFirst().orElse(null);
-        if (existing != null) {
-            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
-            bidder.unfreezeFunds(existing.getMaxBid());
-            userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
-        }
-        
-        // Freeze new maxBid immediately (Dong Bang)
-        bidder.freezeFunds(maxBid);
-        userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
-        
-        AutoBid ab = new AutoBid(
-            java.util.UUID.randomUUID().toString(),
-            auction.getId(),
-            bidder.getId(),
-            maxBid,
-            increment,
-            com.auction.util.TimeSyncManager.getNow()
-        );
-        autoBidRepo.save(ab);
-        
-        return resolveBiddingWar(auction);
+        return biddingService.registerAutoBid(auction, bidder, maxBid, increment);
     }
 
     public AutoBidResult resolveBiddingWar(Auction auction) {
-        ReentrantLock lock = getAuctionLock(auction.getId());
-        lock.lock();
-        try {
-            return proxyBiddingEngine.resolveBiddingWar(auction);
-        } finally {
-            lock.unlock();
-        }
+        return biddingService.resolveBiddingWar(auction);
+    }
+
+    public AutoBid findAutoBid(String auctionId, String bidderId) {
+        return autoBidRepo.findByAuctionIdAndBidderId(auctionId, bidderId);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -548,10 +312,6 @@ public class AuctionService {
      */
     private ReentrantLock getUserLock(String userId) {
         return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true));
-    }
-
-    private ReentrantLock getAuctionLock(String auctionId) {
-        return auctionLocks.computeIfAbsent(auctionId, id -> new ReentrantLock(true));
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────
