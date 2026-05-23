@@ -302,6 +302,8 @@ public class AuctionService {
      */
     public BidTransaction placeBid(Auction auction, Bidder bidder, double amount)
             throws InvalidBidException, InvalidStatusException {
+        System.out.println("[AuctionService] ---- placeBid called ----");
+        System.out.println("[AuctionService] auctionId: " + auction.getId() + ", bidder: " + bidder.getUsername() + ", amount: " + amount);
 
         String bidderId = bidder.getId();
         ReentrantLock lock = getUserLock(bidderId);
@@ -316,6 +318,7 @@ public class AuctionService {
             BidTransaction currentHighest = auction.getWinner();
             if (currentHighest != null
                     && currentHighest.getBidder().getUsername().equals(freshBidder.getUsername())) {
+                System.out.println("[AuctionService] Exception: Double bid blocked for " + freshBidder.getUsername());
                 throw new InvalidBidException(
                         "Bạn đang là người ra giá cao nhất (" +
                                 String.format("%,.0f ₫", currentHighest.getAmount()) +
@@ -324,12 +327,14 @@ public class AuctionService {
 
             // ── 2.5 Kiểm tra số tiền đặt tối thiểu ──
             if (amount <= auction.getHighestBid()) {
+                System.out.println("[AuctionService] Exception: Bid amount " + amount + " <= highest bid " + auction.getHighestBid());
                 throw new InvalidBidException("Số tiền đặt giá chưa đủ!");
             }
 
             // ── 3. Kiểm tra số dư khả dụng ──
             double available = freshBidder.getAvailableBalance();
             if (amount > available) {
+                System.out.println("[AuctionService] Exception: Insufficient funds. Available: " + available + ", amount: " + amount);
                 throw new InvalidBidException(
                         String.format("Số dư khả dụng không đủ. " +
                                 "Khả dụng: %,.0f ₫ | Đóng băng: %,.0f ₫ | Giá đặt: %,.0f ₫",
@@ -356,6 +361,8 @@ public class AuctionService {
             boolean hasAutoBid = autoBidRepo.findByAuctionId(auction.getId()).stream()
                     .anyMatch(ab -> ab.getBidderId().equals(freshBidder.getId()));
             
+            System.out.println("[AuctionService] hasAutoBid: " + hasAutoBid);
+            
             if (!hasAutoBid) {
                 freshBidder.freezeFunds(amount);
                 userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
@@ -364,6 +371,8 @@ public class AuctionService {
                         freshBidder.getUsername(), amount,
                         freshBidder.getFrozenBalance(),
                         freshBidder.getAvailableBalance());
+            } else {
+                System.out.println("[AuctionService] Skipped freezing because hasAutoBid is true.");
             }
 
             // Ghi nhớ auctionId để unfreeze
