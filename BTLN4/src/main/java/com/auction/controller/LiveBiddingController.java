@@ -175,10 +175,10 @@ public class LiveBiddingController implements DataReceiver {
                     currentAuction.setHighestBid(amount);
 
                     // Create a dummy bid for history/count/feed consistency
-                    Bidder dummyBidder = new Bidder("remote", LocalDateTime.now(), bidderName, "", 0);
+                    Bidder dummyBidder = new Bidder("remote", com.auction.util.TimeSyncManager.getNow(), bidderName, "", 0);
                     BidTransaction dummyBid = new BidTransaction(
                             java.util.UUID.randomUUID().toString(),
-                            LocalDateTime.now(),
+                            com.auction.util.TimeSyncManager.getNow(),
                             dummyBidder,
                             currentAuction,
                             amount);

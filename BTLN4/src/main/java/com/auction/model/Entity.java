@@ -8,8 +8,8 @@ public abstract class Entity {
     protected final LocalDateTime createdAt;
 
     public Entity() {
-        this.id = UUID.randomUUID().toString();
-        this.createdAt = LocalDateTime.now();
+        this.id = java.util.UUID.randomUUID().toString();
+        this.createdAt = com.auction.util.TimeSyncManager.getNow();
     }
 
     public Entity(String id, LocalDateTime createdAt) {

@@ -226,8 +226,8 @@ public class AdminManagementController {
                 // Inject a bid entry so bid count updates
                 String bidderName = json.has("bidderUsername") ? json.get("bidderUsername").getAsString() : "?";
                 String bidderId   = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";
-                String timeStr    = json.has("time")           ? json.get("time").getAsString()           : LocalDateTime.now().toString();
-                Bidder dummy = new Bidder(bidderId, LocalDateTime.now(), bidderName, "", 0);
+                String timeStr    = json.has("time")           ? json.get("time").getAsString()           : com.auction.util.TimeSyncManager.getNow().toString();
+                Bidder dummy = new Bidder(bidderId, com.auction.util.TimeSyncManager.getNow(), bidderName, "", 0);
                 a.injectBid(new BidTransaction(
                         java.util.UUID.randomUUID().toString(),
                         LocalDateTime.parse(timeStr), dummy, a, amount));
@@ -509,8 +509,8 @@ public class AdminManagementController {
             String statusStr      = json.get("status").getAsString();
             double highestBid     = json.get("highestBid").getAsDouble();
             String endTimeStr     = json.get("endTime").getAsString();
-            String createdAtStr   = json.has("auctionCreatedAt")
-                    ? json.get("auctionCreatedAt").getAsString() : LocalDateTime.now().toString();
+            String createdAtStr = json.has("auctionCreatedAt")
+                    ? json.get("auctionCreatedAt").getAsString() : com.auction.util.TimeSyncManager.getNow().toString();
 
             AuctionStatus status  = AuctionStatus.valueOf(statusStr);
             LocalDateTime endTime   = LocalDateTime.parse(endTimeStr);

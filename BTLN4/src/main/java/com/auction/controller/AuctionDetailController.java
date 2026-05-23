@@ -905,15 +905,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             setManagedIfChanged(sellerWarningLabel, isSeller);
         }
 
-        // Chặn đặt giá liên tiếp nếu đang giữ giá cao nhất
-        boolean isHighestBidder = false;
-        if (canBid && user != null) {
-            BidTransaction highestBid = currentAuction.getWinner();
-            if (highestBid != null && highestBid.getBidder().getUsername().equals(user.getUsername())) {
-                isHighestBidder = true;
-                canBid = false; // Vô hiệu hóa đặt giá
-            }
-        }
+        // Removed client-side isHighestBidder validation to let server handle it
         
         boolean canAutoBid = status == AuctionStatus.RUNNING && !isExpired && user instanceof Bidder && wsConnected;
 
@@ -946,16 +938,11 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             }
         }
 
-        if (isHighestBidder) {
-            setTextIfChanged(bidErrorLabel, "🏆 Bạn đang giữ giá cao nhất. Chờ người khác đặt giá cao hơn.");
-            bidErrorLabel.setStyle("-fx-text-fill: #e5a93c; -fx-font-weight: bold;");
-        } else {
-            // Reset về default nếu đang hiển thị thông báo highest-bidder hoặc pending
-            String cur = bidErrorLabel.getText();
-            if (cur.contains("giữ giá cao nhất") || cur.contains("Đang gửi")) {
-                setTextIfChanged(bidErrorLabel, "");
-                bidErrorLabel.setStyle(""); // Reset màu về mặc định
-            }
+        // Reset về default nếu đang hiển thị thông báo pending
+        String cur = bidErrorLabel.getText();
+        if (cur.contains("Đang gửi")) {
+            setTextIfChanged(bidErrorLabel, "");
+            bidErrorLabel.setStyle(""); // Reset màu về mặc định
         }
     }
 
@@ -1045,12 +1032,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         try { amount = com.auction.util.CurrencyUtil.parseCurrency(input); }
         catch (NumberFormatException e) { bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
 
-        double minBid = currentAuction.getHighestBid();
-        if (amount <= minBid) {
-            bidErrorLabel.setText("Số tiền đặt giá phải lớn hơn hoặc bằng số tiền tối thiểu quy định.");
-            bidErrorLabel.setStyle("-fx-text-fill: red;");
-            return;
-        }
+        // Removed client-side minBid validation to let server handle it
 
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) {
@@ -1137,12 +1119,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             return; 
         }
 
-        double minBid = currentAuction.getHighestBid();
-        if (maxBid <= minBid) {
-            autoBidErrorLabel.setText("Giá tối đa phải lớn hơn giá hiện tại.");
-            autoBidErrorLabel.setStyle("-fx-text-fill: red;");
-            return;
-        }
+        // Removed client-side minBid validation to let server handle it
+
         if (increment <= 0) {
             autoBidErrorLabel.setText("Bước giá phải lớn hơn 0.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");

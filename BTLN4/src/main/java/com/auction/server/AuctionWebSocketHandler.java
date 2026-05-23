@@ -68,7 +68,7 @@ public class AuctionWebSocketHandler {
         autoFinishScheduler.scheduleAtFixedRate(() -> {
             try {
                 List<Auction> all = auctionService.getAllAuctions();
-                LocalDateTime now = LocalDateTime.now();
+                LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
                 for (Auction a : all) {
                     if (a.getStatus() == AuctionStatus.RUNNING
                             && a.getEndTime() != null
@@ -213,7 +213,7 @@ public class AuctionWebSocketHandler {
                                 : "Guest_" + bidderId.substring(0, Math.min(6, bidderId.length()));
                         System.out.println("[Server] Auto-registering remote bidder: " + uname);
                         // Dùng balance client-reported chỉ khi đăng ký lần đầu
-                        Bidder nb = new Bidder(bidderId, LocalDateTime.now(), uname, "remote_pass", bidderBalance);
+                        Bidder nb = new Bidder(bidderId, com.auction.util.TimeSyncManager.getNow(), uname, "remote_pass", bidderBalance);
                         userService.saveUser(nb);
                         return nb;
                     });

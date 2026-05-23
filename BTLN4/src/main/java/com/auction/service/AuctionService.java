@@ -138,7 +138,7 @@ public class AuctionService {
      * Sets startTime = now() in the model, then persists it to DB.
      */
     public void startAuction(Auction auction) throws InvalidStatusException {
-        auction.startAuction(); // model sets startTime = LocalDateTime.now()
+        auction.startAuction(); // model sets startTime = com.auction.util.TimeSyncManager.getNow()
         auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
@@ -372,7 +372,7 @@ public class AuctionService {
             // ── 6. Tạo bid transaction và ghi vào auction (synchronized) ──
             BidTransaction bid = new BidTransaction(
                     java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.now(),
+                    com.auction.util.TimeSyncManager.getNow(),
                     freshBidder,
                     auction,
                     amount);
@@ -570,20 +570,20 @@ public class AuctionService {
         Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
                 800_000_000, dave, 0.0, 0);
 
-        Auction a1 = createAuction(carol, laptop, LocalDateTime.now().plusDays(2));
-        Auction a2 = createAuction(carol, phone, LocalDateTime.now().plusHours(5));
-        Auction a3 = createAuction(dave, painting, LocalDateTime.now().plusDays(7));
-        Auction a4 = createAuction(dave, car, LocalDateTime.now().plusDays(1));
+        Auction a1 = createAuction(carol, laptop, com.auction.util.TimeSyncManager.getNow().plusDays(2));
+        Auction a2 = createAuction(carol, phone, com.auction.util.TimeSyncManager.getNow().plusHours(5));
+        Auction a3 = createAuction(dave, painting, com.auction.util.TimeSyncManager.getNow().plusDays(7));
+        Auction a4 = createAuction(dave, car, com.auction.util.TimeSyncManager.getNow().plusDays(1));
 
         auctionRepo.deleteById(a1.getId());
         auctionRepo.deleteById(a2.getId());
         auctionRepo.deleteById(a3.getId());
         auctionRepo.deleteById(a4.getId());
 
-        LocalDateTime end1 = LocalDateTime.now().plusDays(2);
-        LocalDateTime end2 = LocalDateTime.now().plusHours(5);
-        LocalDateTime end3 = LocalDateTime.now().plusDays(7);
-        LocalDateTime end4 = LocalDateTime.now().plusDays(1);
+        LocalDateTime end1 = com.auction.util.TimeSyncManager.getNow().plusDays(2);
+        LocalDateTime end2 = com.auction.util.TimeSyncManager.getNow().plusHours(5);
+        LocalDateTime end3 = com.auction.util.TimeSyncManager.getNow().plusDays(7);
+        LocalDateTime end4 = com.auction.util.TimeSyncManager.getNow().plusDays(1);
 
         Auction b1 = new Auction(did("auction-laptop"), seed, carol, laptop, AuctionStatus.PENDING,
                 laptop.getBasePrice(), null, end1);
