@@ -6,3 +6,5 @@ CONTEXT.md
 db.auction-shm
 db.auction-wal
 .antigravitycli
+.vscode
+.idea
