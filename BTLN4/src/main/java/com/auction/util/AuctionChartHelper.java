@@ -19,6 +19,7 @@ public class AuctionChartHelper {
     private final XYChart.Series<Number, Number> priceSeries;
     private final LineChart<Number, Number> priceChart;
     private final NumberAxis timeAxis;
+    private DateTimeFormatter axisFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
     public AuctionChartHelper(LineChart<Number, Number> priceChart, NumberAxis timeAxis) {
         this.priceChart = priceChart;
@@ -37,11 +38,11 @@ public class AuctionChartHelper {
             timeAxis.setAutoRanging(true);
             timeAxis.setForceZeroInRange(false);
             timeAxis.setTickLabelFormatter(new StringConverter<>() {
-                private final DateTimeFormatter axisFmt = DateTimeFormatter.ofPattern("HH:mm");
                 @Override
                 public String toString(Number object) {
                     long epochMillis = object.longValue();
-                    return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh")).format(axisFmt);
+                    return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh"))
+                            .format(axisFormatter);
                 }
                 @Override
                 public Number fromString(String string) {
@@ -61,6 +62,25 @@ public class AuctionChartHelper {
     public void addRawBid(double amount, LocalDateTime ts) {
         long epochMillis = ts.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         priceSeries.getData().add(new XYChart.Data<>(epochMillis, amount));
+    }
+
+    public void setTimeWindow(LocalDateTime start, LocalDateTime end, String format, long tickMillis) {
+        if (timeAxis == null) {
+            return;
+        }
+        axisFormatter = DateTimeFormatter.ofPattern(format);
+        if (start == null || end == null) {
+            timeAxis.setAutoRanging(true);
+            return;
+        }
+
+        long lower = start.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
+        long upper = end.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
+        timeAxis.setAutoRanging(false);
+        timeAxis.setForceZeroInRange(false);
+        timeAxis.setLowerBound(lower);
+        timeAxis.setUpperBound(Math.max(lower + tickMillis, upper));
+        timeAxis.setTickUnit(tickMillis);
     }
 
     /** Clears all data from the chart. */

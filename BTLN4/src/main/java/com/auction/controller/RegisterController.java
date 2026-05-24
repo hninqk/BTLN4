@@ -13,6 +13,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.StackPane;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -31,6 +32,7 @@ public class RegisterController {
     @FXML private Label         errorLabel;
     @FXML private Label         successLabel;
     @FXML private Button        registerButton;
+    @FXML private StackPane     rootPane;
 
     @FXML
     public void initialize() {
@@ -42,8 +44,8 @@ public class RegisterController {
         Platform.runLater(() -> {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
             pause.setOnFinished(e -> {
-                if (registerButton != null && registerButton.getScene() != null && registerButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
-                    com.auction.util.AnimationUtil.createWaveBackground(p);
+                if (rootPane != null) {
+                    com.auction.util.AnimationUtil.createWaveBackground(rootPane);
                 }
             });
             pause.play();

@@ -15,6 +15,7 @@ import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
@@ -26,6 +27,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.HBox;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -112,6 +115,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     // ── Price chart ───────────────────────────────────────────────────────────
     @FXML private LineChart<Number, Number> priceChart;
     @FXML private NumberAxis timeAxis;
+    @FXML private ComboBox<String> chartRangeFilter;
 
     // ── Winner box ────────────────────────────────────────────────────────────
     @FXML private VBox  winnerBox;
@@ -142,6 +146,11 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     private static final DateTimeFormatter FMT      = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_SEC  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final String RANGE_1H = "1 giờ";
+    private static final String RANGE_24H = "24 giờ";
+    private static final String RANGE_7D = "7 ngày";
+    private static final String RANGE_30D = "30 ngày";
+    private static final String RANGE_ALL = "Tất cả";
 
     // ══════════════════════════════════════════════════════════════════════════
     // JavaFX UPDATE GUARDS
@@ -249,6 +258,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     public void initialize() {
         bidErrorLabel.setText("");
         chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
+        setupChartRangeFilter();
+        setupLiveFeedList();
 
         com.auction.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
         if (autoMaxBidField != null) com.auction.util.CurrencyUtil.setupCurrencyTextField(autoMaxBidField);
@@ -265,6 +276,98 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
                 }
             });
         }
+    }
+
+    private void setupChartRangeFilter() {
+        if (chartRangeFilter == null) {
+            return;
+        }
+        chartRangeFilter.getItems().setAll(RANGE_1H, RANGE_24H, RANGE_7D, RANGE_30D, RANGE_ALL);
+        chartRangeFilter.getSelectionModel().select(RANGE_24H);
+        applyChartWindow();
+    }
+
+    private void setupLiveFeedList() {
+        if (liveFeedList == null) {
+            return;
+        }
+
+        liveFeedList.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(String entry, boolean empty) {
+                super.updateItem(entry, empty);
+                if (empty || entry == null || entry.isBlank()) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                setText(null);
+                setGraphic(createFeedEntry(entry));
+            }
+        });
+    }
+
+    @FXML
+    private void handleChartRangeChanged(ActionEvent event) {
+        rebuildChartAndFeed();
+    }
+
+    private Node createFeedEntry(String entry) {
+        FeedEntry parsed = parseFeedEntry(entry);
+        boolean autoBid = parsed.amount().isBlank();
+
+        FontIcon icon = new FontIcon(autoBid ? FontAwesomeSolid.BOLT : FontAwesomeSolid.GAVEL);
+        icon.setIconSize(14);
+        icon.getStyleClass().add(autoBid ? "feed-icon-auto" : "feed-icon-bid");
+
+        Label time = new Label(parsed.time());
+        time.getStyleClass().add("feed-time");
+
+        Label actor = new Label(parsed.actor());
+        actor.getStyleClass().add("feed-actor");
+
+        Label amount = new Label(parsed.amount());
+        amount.getStyleClass().add("feed-amount");
+        amount.setVisible(!autoBid);
+        amount.setManaged(!autoBid);
+
+        Label message = new Label(parsed.message());
+        message.getStyleClass().add(autoBid ? "feed-message-auto" : "feed-message");
+        message.setWrapText(true);
+
+        VBox textBox = new VBox(3);
+        textBox.getChildren().addAll(new HBox(8, time, actor), message);
+        HBox.setHgrow(textBox, javafx.scene.layout.Priority.ALWAYS);
+
+        HBox row = new HBox(10, icon, textBox, amount);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add(autoBid ? "feed-entry-auto" : "feed-entry");
+        return row;
+    }
+
+    private FeedEntry parseFeedEntry(String entry) {
+        String time = "";
+        String body = entry;
+        int close = entry.indexOf(']');
+        if (entry.startsWith("[") && close > 1) {
+            time = entry.substring(1, close);
+            body = entry.substring(close + 1).trim();
+        }
+
+        if (body.startsWith("Auto-Bid:")) {
+            return new FeedEntry(time, "Auto-Bid", body.substring("Auto-Bid:".length()).trim(), "");
+        }
+
+        String[] parts = body.split("→", 2);
+        if (parts.length == 2) {
+            return new FeedEntry(time, parts[0].trim(), "Đặt giá mới", parts[1].trim());
+        }
+
+        return new FeedEntry(time, "Hệ thống", body, "");
+    }
+
+    private record FeedEntry(String time, String actor, String message, String amount) {
     }
 
     public void shutdown() {
@@ -319,14 +422,14 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         // re-render countdown, price, balance, or winner sections.
         setDisableIfChanged(placeBidButton, true);
         setDisableIfChanged(bidAmountField, true);
-        setTextIfChanged(bidErrorLabel, "🔴 Mất kết nối server – không thể đặt giá.");
+        setTextIfChanged(bidErrorLabel, "Mất kết nối server - không thể đặt giá.");
         // Refresh controls to reflect the disconnected state for auto-bid UI
         refreshControls();
     }
 
     @Override
     public void onWsError(String errorMsg) {
-        String errMsg = "⚠ " + errorMsg;
+        String errMsg = errorMsg;
         if (autoBidErrorLabel != null && !autoBidErrorLabel.getText().isEmpty()) {
             setTextIfChanged(autoBidErrorLabel, errMsg);
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
@@ -372,7 +475,9 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
-        chartHelper.addRawBid(amount, ts);
+        if (isBidInSelectedRange(ts)) {
+            chartHelper.addRawBid(amount, ts);
+        }
 
         setTextIfChanged(bidErrorLabel, "");
 
@@ -390,7 +495,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         
         String msg = json.get("message").getAsString();
         String timeDisplay = TimeSyncManager.getNow().format(TIME_FMT);
-        appendToFeed(String.format("[%s] ⚡ %s", timeDisplay, msg));
+        appendToFeed(String.format("[%s] Auto-Bid: %s", timeDisplay, msg));
     }
     
     @Override
@@ -399,7 +504,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
         
         if (autoBidErrorLabel != null) {
-            setTextIfChanged(autoBidErrorLabel, "✅ Đăng ký thành công.");
+            setTextIfChanged(autoBidErrorLabel, "Đăng ký thành công.");
             autoBidErrorLabel.setStyle("-fx-text-fill: #81c784;");
         }
         if (autoMaxBidField != null) autoMaxBidField.clear();
@@ -591,10 +696,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
     private void rebuildChartAndFeed() {
         chartHelper.clear();
+        applyChartWindow();
         liveFeedList.getItems().clear();
         List<BidTransaction> history = currentAuction.getBidHistory();
         for (BidTransaction bt : history) {
-            chartHelper.addBid(bt);
+            if (isBidInSelectedRange(bt.getTimestamp())) {
+                chartHelper.addBid(bt);
+            }
             addBidToFeed(bt);
         }
     }
@@ -687,12 +795,53 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
     private void preloadBidsIntoChartAndFeed() {
         if (currentAuction == null) return;
+        applyChartWindow();
         List<BidTransaction> history = currentAuction.getBidHistory();
         System.out.println("[AuctionDetail] REST data: " + history.size() + " bids for auction " + currentAuction.getId());
         for (BidTransaction bid : history) {
-            chartHelper.addBid(bid);
+            if (isBidInSelectedRange(bid.getTimestamp())) {
+                chartHelper.addBid(bid);
+            }
             addBidToFeed(bid);
         }
+    }
+
+    private void applyChartWindow() {
+        if (chartHelper == null) {
+            return;
+        }
+        String selected = chartRangeFilter == null ? RANGE_24H : chartRangeFilter.getValue();
+        LocalDateTime now = TimeSyncManager.getNow();
+        if (RANGE_1H.equals(selected)) {
+            chartHelper.setTimeWindow(now.minusHours(1), now, "HH:mm", Duration.ofMinutes(10).toMillis());
+        } else if (RANGE_7D.equals(selected)) {
+            chartHelper.setTimeWindow(now.minusDays(7), now, "dd/MM HH:mm", Duration.ofDays(1).toMillis());
+        } else if (RANGE_30D.equals(selected)) {
+            chartHelper.setTimeWindow(now.minusDays(30), now, "dd/MM", Duration.ofDays(5).toMillis());
+        } else if (RANGE_ALL.equals(selected)) {
+            chartHelper.setTimeWindow(null, null, "dd/MM HH:mm", Duration.ofHours(6).toMillis());
+        } else {
+            chartHelper.setTimeWindow(now.minusHours(24), now, "HH:mm", Duration.ofHours(4).toMillis());
+        }
+    }
+
+    private boolean isBidInSelectedRange(LocalDateTime timestamp) {
+        String selected = chartRangeFilter == null ? RANGE_24H : chartRangeFilter.getValue();
+        if (RANGE_ALL.equals(selected)) {
+            return true;
+        }
+        LocalDateTime now = TimeSyncManager.getNow();
+        LocalDateTime start;
+        if (RANGE_1H.equals(selected)) {
+            start = now.minusHours(1);
+        } else if (RANGE_7D.equals(selected)) {
+            start = now.minusDays(7);
+        } else if (RANGE_30D.equals(selected)) {
+            start = now.minusDays(30);
+        } else {
+            start = now.minusHours(24);
+        }
+        return !timestamp.isBefore(start) && !timestamp.isAfter(now.plusMinutes(1));
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -758,8 +907,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         // Countdown timer – compute the display string based on current status
         AuctionStatus status = currentAuction.getStatus();
         String countdownText = switch (status) {
-            case PENDING  -> "⏳ Chờ Admin duyệt";
-            case OPEN     -> "🟢 Chờ Admin bắt đầu";
+            case PENDING  -> "Chờ Admin duyệt";
+            case OPEN     -> "Chờ Admin bắt đầu";
             case CLOSED, CANCELED -> {
                 // Shut down the scheduler – no more countdown updates needed
                 if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
@@ -1065,7 +1214,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         }
 
         if (!wsConnected || wsService == null) {
-            bidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ server hoạt động.");
+            bidErrorLabel.setText("Không thể kết nối server. Vui lòng chờ server hoạt động.");
             return;
         }
 
@@ -1083,7 +1232,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         // Disable immediately to prevent double-click while waiting for server
         placeBidButton.setDisable(true);
         bidAmountField.setDisable(true);
-        bidErrorLabel.setText("⏳ Đang gửi giá đặt đến server...");
+        bidErrorLabel.setText("Đang gửi giá đặt đến server...");
         bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
@@ -1159,7 +1308,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         }
 
         if (!wsConnected || wsService == null) {
-            autoBidErrorLabel.setText("❌ Không thể kết nối server. Vui lòng chờ.");
+            autoBidErrorLabel.setText("Không thể kết nối server. Vui lòng chờ.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
             return;
         }
@@ -1175,7 +1324,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         registerAutoBidButton.setDisable(true);
         autoMaxBidField.setDisable(true);
         autoIncrementField.setDisable(true);
-        autoBidErrorLabel.setText("⏳ Đang gửi yêu cầu...");
+        autoBidErrorLabel.setText("Đang gửi yêu cầu...");
         autoBidErrorLabel.setStyle("-fx-text-fill: #64b5f6;");
     }
 
@@ -1195,7 +1344,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     private void showWinnerAnnouncement(String winnerUsername, double winnerBid) {
         javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
                 javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("🏆 Phiên đấu giá kết thúc");
+        alert.setTitle("Phiên đấu giá kết thúc");
         alert.setHeaderText("Phiên đấu giá: " + (currentAuction != null
                 ? currentAuction.getItem().getName() : ""));
         if (winnerUsername != null && winnerBid > 0) {

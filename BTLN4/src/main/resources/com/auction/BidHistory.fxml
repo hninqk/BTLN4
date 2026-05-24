@@ -62,12 +62,12 @@
 
             <!-- Filter bar -->
             <HBox spacing="8" alignment="CENTER_LEFT">
-                <TextField fx:id="searchField" promptText="🔍 Tìm kiếm sản phẩm..."
+                <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."
                            styleClass="text-field" prefWidth="240"/>
                 <ComboBox fx:id="resultFilter" promptText="Kết quả"
                           styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
-                <Button text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary"/>
+                <Button fx:id="searchButton" text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
+                <Button fx:id="resetButton" text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary"/>
             </HBox>
 
             <!-- History table -->
@@ -94,9 +94,11 @@
             <HBox alignment="CENTER_LEFT">
                 <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="Xem chi tiết phiên →" fx:id="viewDetailButton"
+                <Button text="Xem chi tiết phiên" fx:id="viewDetailButton"
                         onAction="#handleViewDetail" styleClass="btn-link" visible="false"/>
             </HBox>
+
+            <HBox fx:id="paginationBox" alignment="CENTER" spacing="6" styleClass="pagination-bar"/>
 
         </VBox>
         </StackPane>

@@ -29,12 +29,12 @@
                     <Label fx:id="welcomeLabel" text="Chào mừng bạn trở lại!" styleClass="label-subtle"/>
                 </VBox>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
+                <Button text="Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
             </HBox>
 
             <!-- News Banner -->
             <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: -theme-bid-panel; -fx-padding: 14 20; -fx-background-radius: 8; -fx-border-color: -theme-bid-border; -fx-border-radius: 8;">
-                <Label text="📢 TIN NÓNG:" style="-fx-text-fill: -theme-primary; -fx-font-weight: bold;"/>
+                <Label text="TIN NÓNG:" style="-fx-text-fill: -theme-primary; -fx-font-weight: bold;"/>
                 <Label fx:id="newsLabel" text="Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!" style="-fx-text-fill: -theme-text;"/>
             </HBox>
 
@@ -44,31 +44,19 @@
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Đang diễn ra" styleClass="stat-label"/>
                     <Label fx:id="activeAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" RUNNING" styleClass="label-subtle" style="-fx-text-fill: #DC2626;">
-                        <graphic>
-                            <javafx.scene.shape.Circle radius="5" fill="#DC2626"/>
-                        </graphic>
-                    </Label>
+                    <Label text="RUNNING" styleClass="label-subtle" style="-fx-text-fill: #DC2626;"/>
                 </VBox>
                 <!-- Card 2 -->
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Chờ bắt đầu" styleClass="stat-label"/>
                     <Label fx:id="openAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" OPEN" styleClass="label-subtle" style="-fx-text-fill: #10B981;">
-                        <graphic>
-                            <javafx.scene.shape.SVGPath content="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#10B981" scaleX="0.75" scaleY="0.75"/>
-                        </graphic>
-                    </Label>
+                    <Label text="OPEN" styleClass="label-subtle" style="-fx-text-fill: #10B981;"/>
                 </VBox>
                 <!-- Card 3 -->
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Chờ duyệt" styleClass="stat-label"/>
                     <Label fx:id="pendingAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" PENDING" styleClass="label-subtle" style="-fx-text-fill: #D97706;">
-                        <graphic>
-                            <javafx.scene.shape.SVGPath content="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z" fill="#D97706" scaleX="0.65" scaleY="0.65"/>
-                        </graphic>
-                    </Label>
+                    <Label text="PENDING" styleClass="label-subtle" style="-fx-text-fill: #D97706;"/>
                 </VBox>
                 <!-- Card 4 -->
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
@@ -87,11 +75,7 @@
             <!-- Hot Items Showcase -->
             <VBox spacing="12" VBox.vgrow="ALWAYS">
                 <HBox alignment="CENTER_LEFT">
-                    <Label text=" Top Sản phẩm Nổi bật" styleClass="section-title">
-                        <graphic>
-                            <javafx.scene.shape.SVGPath content="M17.66 11.2c-.23-.3-.51-.56-.77-.82-.67-.6-1.43-1.03-2.07-1.66C13.33 7.26 13 4.85 13.95 3c-.95.23-1.78.75-2.49 1.32-2.59 2.08-3.61 5.75-2.39 8.9.04.1.08.2.08.33 0 .22-.15.42-.35.5-.22.1-.46.04-.64-.12a6.35 6.35 0 0 1-1.68-2.19c-.5-1.13-.53-2.39-.23-3.56C4.1 10.15 3 13.62 3.65 16.71c.54 2.58 2.34 4.8 4.78 5.74 2.82 1.09 6.27.53 8.44-1.6 2.39-2.34 2.94-6.07.79-9.65zm-4.7 7.02c-1.34 1.15-3.32 1.16-4.4-.13-.26-.31-.47-.65-.63-1.02.5.47 1.19.78 1.93.78 1.54 0 2.8-1.25 2.8-2.8 0-.46-.11-.9-.31-1.28.67.62 1.18 1.48 1.36 2.45.1.53-.02 1.09-.35 1.5l-.4.5z" fill="#F97316" scaleX="0.8" scaleY="0.8"/>
-                        </graphic>
-                    </Label>
+                    <Label text="Top Sản phẩm Nổi bật" styleClass="section-title"/>
                 </HBox>
                 <ScrollPane fitToWidth="true" vbarPolicy="AS_NEEDED" hbarPolicy="NEVER" styleClass="scroll-pane" style="-fx-background-color: transparent;">
                     <FlowPane fx:id="hotItemsBox" hgap="20" vgap="20" style="-fx-padding: 8 4 16 4;"/>

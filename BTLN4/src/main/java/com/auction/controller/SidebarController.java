@@ -3,13 +3,26 @@ package com.auction.controller;
 import com.auction.model.User;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
-import javafx.scene.Parent;
+import javafx.scene.control.Tooltip;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * SidebarController – navigation controller for the reusable sidebar component.
@@ -18,6 +31,19 @@ import java.io.IOException;
  */
 public class SidebarController {
 
+    private static final double EXPANDED_WIDTH = 220;
+    private static final double COLLAPSED_WIDTH = 64;
+
+    @FXML
+    private VBox sidebarRoot;
+    @FXML
+    private VBox brandBox;
+    @FXML
+    private VBox userBox;
+    @FXML
+    private Label brandTitleLabel;
+    @FXML
+    private Label brandSubtitleLabel;
     @FXML
     private Label userNameLabel;
     @FXML
@@ -37,10 +63,25 @@ public class SidebarController {
     @FXML
     private Button btnSettings;
     @FXML
+    private Button btnLogout;
+    @FXML
+    private Label lblMain;
+    @FXML
     private Label lblManagement;
+    @FXML
+    private Label lblAccount;
+
+    private final Map<Button, String> navButtonTexts = new HashMap<>();
+    private PauseTransition collapseTimer;
+    private Timeline widthAnimation;
+    private boolean collapsed;
+    private boolean showManagementSection;
 
     @FXML
     public void initialize() {
+        setupIcons();
+        setupAutoCollapse();
+
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
             userNameLabel.setText(user.getUsername());
@@ -60,16 +101,153 @@ public class SidebarController {
             btnAdmin.setManaged(isAdmin);
 
             // Hide Management label if Bidder
-            boolean showManagement = isSeller || isAdmin;
+            showManagementSection = isSeller || isAdmin;
             if (lblManagement != null) {
-                lblManagement.setVisible(showManagement);
-                lblManagement.setManaged(showManagement);
+                lblManagement.setVisible(showManagementSection);
+                lblManagement.setManaged(showManagementSection);
             }
 
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
             btnHistory.setManaged(isBidder);
         }
+    }
+
+    private void setupIcons() {
+        configureNavButton(btnDashboard, FontAwesomeSolid.TACHOMETER_ALT);
+        configureNavButton(btnAuctionList, FontAwesomeSolid.GAVEL);
+        configureNavButton(btnHistory, FontAwesomeSolid.HISTORY);
+        configureNavButton(btnSeller, FontAwesomeSolid.BOX_OPEN);
+        configureNavButton(btnAdmin, FontAwesomeSolid.USERS_COG);
+        configureNavButton(btnProfile, FontAwesomeSolid.USER_CIRCLE);
+        configureNavButton(btnSettings, FontAwesomeSolid.COG);
+        configureNavButton(btnLogout, FontAwesomeSolid.SIGN_OUT_ALT);
+    }
+
+    private void configureNavButton(Button button, FontAwesomeSolid iconCode) {
+        if (button == null) {
+            return;
+        }
+
+        String text = button.getText();
+        navButtonTexts.put(button, text);
+
+        FontIcon icon = new FontIcon(iconCode);
+        icon.setIconSize(16);
+        icon.getStyleClass().add("nav-icon");
+
+        button.setGraphic(icon);
+        button.setContentDisplay(ContentDisplay.LEFT);
+        button.setGraphicTextGap(12);
+        button.setTooltip(new Tooltip(text));
+    }
+
+    private void setupAutoCollapse() {
+        if (sidebarRoot == null) {
+            return;
+        }
+
+        collapseTimer = new PauseTransition(Duration.seconds(1));
+        collapseTimer.setOnFinished(e -> setCollapsed(true));
+
+        sidebarRoot.addEventHandler(MouseEvent.MOUSE_ENTERED, e -> {
+            collapseTimer.stop();
+            setCollapsed(false);
+        });
+        sidebarRoot.addEventHandler(MouseEvent.MOUSE_MOVED, e -> {
+            collapseTimer.stop();
+            setCollapsed(false);
+        });
+        sidebarRoot.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
+            collapseTimer.stop();
+            setCollapsed(false);
+        });
+        sidebarRoot.addEventHandler(MouseEvent.MOUSE_EXITED, e -> {
+            collapseTimer.stop();
+            setCollapsed(true);
+        });
+    }
+
+    private void restartCollapseTimer() {
+        if (collapseTimer != null) {
+            collapseTimer.playFromStart();
+        }
+    }
+
+    private void setCollapsed(boolean collapse) {
+        if (sidebarRoot == null || collapsed == collapse) {
+            return;
+        }
+        collapsed = collapse;
+
+        if (widthAnimation != null) {
+            widthAnimation.stop();
+        }
+
+        if (collapse) {
+            if (!sidebarRoot.getStyleClass().contains("sidebar-collapsed")) {
+                sidebarRoot.getStyleClass().add("sidebar-collapsed");
+            }
+            animateSidebarWidth(COLLAPSED_WIDTH, () -> {
+                setInfoVisible(brandBox, false);
+                setInfoVisible(userBox, false);
+                setLabelVisible(lblMain, false);
+                setLabelVisible(lblAccount, false);
+                setLabelVisible(lblManagement, false);
+            });
+        } else {
+            sidebarRoot.getStyleClass().remove("sidebar-collapsed");
+            setInfoVisible(brandBox, true);
+            setInfoVisible(userBox, true);
+            setLabelVisible(lblMain, true);
+            setLabelVisible(lblAccount, true);
+            setLabelVisible(lblManagement, showManagementSection);
+            animateSidebarWidth(EXPANDED_WIDTH, null);
+        }
+
+        navButtonTexts.forEach((button, text) -> {
+            button.setText(collapse ? "" : text);
+            button.setContentDisplay(ContentDisplay.LEFT);
+            button.setGraphicTextGap(collapse ? 0 : 12);
+        });
+    }
+
+    private void animateSidebarWidth(double targetWidth, Runnable onFinished) {
+        widthAnimation = new Timeline(
+                new KeyFrame(Duration.millis(180),
+                        new KeyValue(sidebarRoot.minWidthProperty(), targetWidth),
+                        new KeyValue(sidebarRoot.prefWidthProperty(), targetWidth),
+                        new KeyValue(sidebarRoot.maxWidthProperty(), targetWidth))
+        );
+        widthAnimation.setOnFinished(e -> {
+            sidebarRoot.setMinWidth(targetWidth);
+            sidebarRoot.setPrefWidth(targetWidth);
+            sidebarRoot.setMaxWidth(targetWidth);
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
+        widthAnimation.play();
+    }
+
+    private void setInfoVisible(VBox box, boolean visible) {
+        if (box != null) {
+            fadeNode(box, visible);
+            box.setVisible(visible);
+            box.setManaged(visible);
+        }
+    }
+
+    private void setLabelVisible(Label label, boolean visible) {
+        if (label != null) {
+            fadeNode(label, visible);
+            label.setVisible(visible);
+            label.setManaged(visible);
+        }
+    }
+
+    private void fadeNode(Node node, boolean visible) {
+        node.setOpacity(visible ? 1.0 : 0.0);
     }
 
     @FXML

@@ -5,6 +5,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.chart.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
@@ -35,7 +36,11 @@
 
                 <!-- ── Header ──────────────────────────────────────────── -->
                 <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+                    <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-arrow-left" iconSize="13" styleClass="button-icon"/>
+                        </graphic>
+                    </Button>
                     <VBox spacing="2" HBox.hgrow="ALWAYS">
                         <Label fx:id="itemNameLabel" text="Chi tiết phiên đấu giá" styleClass="page-title"/>
                         <Label fx:id="auctionIdLabel" text="" styleClass="label-subtle"/>
@@ -87,7 +92,15 @@
 
                         <!-- Price chart -->
                         <VBox styleClass="card" spacing="6" VBox.vgrow="ALWAYS">
-                            <Label text="📈 Biểu đồ giá đấu (thời gian thực)" styleClass="section-title"/>
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="Biểu đồ giá đấu" styleClass="section-title" HBox.hgrow="ALWAYS">
+                                    <graphic>
+                                        <FontIcon iconLiteral="fas-chart-line" iconSize="14" styleClass="button-icon"/>
+                                    </graphic>
+                                </Label>
+                                <ComboBox fx:id="chartRangeFilter" prefWidth="140" styleClass="combo-box"
+                                          onAction="#handleChartRangeChanged"/>
+                            </HBox>
                             <Separator/>
                             <LineChart fx:id="priceChart" VBox.vgrow="ALWAYS" minHeight="160"
                                        createSymbols="true" legendVisible="false" animated="false">
@@ -99,7 +112,7 @@
                     </VBox>
 
                     <!-- RIGHT: Live bidding panel -->
-                    <VBox spacing="12" prefWidth="330" minWidth="300" VBox.vgrow="ALWAYS">
+                    <VBox spacing="12" prefWidth="370" minWidth="350" VBox.vgrow="ALWAYS">
 
                         <!-- Live price + timer -->
                         <VBox styleClass="bid-panel" spacing="8" alignment="CENTER">
@@ -108,7 +121,11 @@
                             <Label fx:id="bidCountLabel" text="0 lượt đấu giá" styleClass="label-subtle"/>
                             <Separator/>
                             <HBox alignment="CENTER" spacing="8">
-                                <Label text="⏱ Còn lại:" styleClass="label-subtle"/>
+                                <Label text="Còn lại:" styleClass="label-subtle">
+                                    <graphic>
+                                        <FontIcon iconLiteral="fas-clock" iconSize="12" styleClass="button-icon"/>
+                                    </graphic>
+                                </Label>
                                 <Label fx:id="timeRemainingLabel" text="--:--:--" styleClass="bid-timer"/>
                             </HBox>
                             <Label fx:id="lastUpdateLabel" text="" styleClass="label-subtle"/>
@@ -132,14 +149,22 @@
 
                             <!-- Bid button row: Place Bid + Auto-Bid toggle -->
                             <HBox spacing="8">
-                                <Button fx:id="placeBidButton" text="🔨 Đặt giá ngay"
+                                <Button fx:id="placeBidButton" text="Đặt giá ngay"
                                         onAction="#handlePlaceBid"
                                         style="-fx-background-color: #16A34A; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
-                                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-                                <Button fx:id="autoBidToggleButton" text="⚡ Auto"
+                                        HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                    <graphic>
+                                        <FontIcon iconLiteral="fas-gavel" iconSize="13" style="-fx-icon-color: white;"/>
+                                    </graphic>
+                                </Button>
+                                <Button fx:id="autoBidToggleButton" text="Auto"
                                         onAction="#handleToggleAutoBid"
                                         style="-fx-background-color: -theme-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
-                                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                                        HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                    <graphic>
+                                        <FontIcon iconLiteral="fas-bolt" iconSize="13" style="-fx-icon-color: white;"/>
+                                    </graphic>
+                                </Button>
                             </HBox>
                             
                             <Label fx:id="currentAutoBidLabel" text="" styleClass="label-subtle"
@@ -151,8 +176,12 @@
                         <VBox fx:id="winnerBox" styleClass="card" spacing="8"
                               style="-fx-background-color: -theme-success-bg; -fx-border-color: -theme-success-border;"
                               visible="false" managed="false">
-                            <Label text="🏆 Người thắng cuộc" styleClass="section-title"
-                                   style="-fx-text-fill: -theme-success-text;"/>
+                            <Label text="Người thắng cuộc" styleClass="section-title"
+                                   style="-fx-text-fill: -theme-success-text;">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-trophy" iconSize="14" style="-fx-icon-color: -theme-success-text;"/>
+                                </graphic>
+                            </Label>
                             <Label fx:id="winnerLabel"      text="" styleClass="label-subtle"/>
                             <Label fx:id="winnerPriceLabel" text=""
                                    style="-fx-font-weight:bold; -fx-text-fill: -theme-success-text;"/>
@@ -160,10 +189,14 @@
 
                         <!-- Live bid feed -->
                         <VBox styleClass="card" spacing="6" VBox.vgrow="ALWAYS">
-                            <Label text="📡 Nhật ký đấu giá (thời gian thực)" styleClass="section-title"/>
+                            <Label text="Nhật ký đấu giá" styleClass="section-title">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-broadcast-tower" iconSize="14" styleClass="button-icon"/>
+                                </graphic>
+                            </Label>
                             <Separator/>
-                            <ListView fx:id="liveFeedList" VBox.vgrow="ALWAYS" minHeight="120"
-                                      styleClass="list-view"/>
+                            <ListView fx:id="liveFeedList" VBox.vgrow="ALWAYS" minHeight="210"
+                                      styleClass="list-view feed-list"/>
                         </VBox>
 
                     </VBox>
@@ -182,9 +215,13 @@
 
                 <!-- Header: title + status badge + close button -->
                 <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="⚡ Cấu hình Auto-Bid"
+                    <Label text="Cấu hình Auto-Bid"
                            style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: -theme-primary;"
-                           HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                           HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-bolt" iconSize="13" styleClass="button-icon"/>
+                        </graphic>
+                    </Label>
                     <Label fx:id="autoBidStatusBadge" text="Chưa kích hoạt" styleClass="badge"
                            style="-fx-background-color: -theme-border; -fx-text-fill: -theme-text-muted; -fx-padding: 2 8;"/>
                     <Button text="X" onAction="#handleCloseAutoBidPopup"

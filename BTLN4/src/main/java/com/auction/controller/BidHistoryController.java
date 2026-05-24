@@ -11,8 +11,12 @@ import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +48,12 @@ public class BidHistoryController {
     private Label statusLabel;
     @FXML
     private Button viewDetailButton;
+    @FXML
+    private HBox paginationBox;
+    @FXML
+    private Button searchButton;
+    @FXML
+    private Button resetButton;
 
     @FXML
     private TableView<BidRow> historyTable;
@@ -63,7 +73,10 @@ public class BidHistoryController {
     private TableColumn<BidRow, String> colBidTime;
 
     private final AppFacade app = AppFacade.getInstance();
-    private List<BidRow> allRows;
+    private static final int PAGE_SIZE = 10;
+    private List<BidRow> allRows = Collections.emptyList();
+    private List<BidRow> filteredRows = Collections.emptyList();
+    private int currentPageIndex;
     private AuctionClient wsClient;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -94,7 +107,7 @@ public class BidHistoryController {
                 } else {
                     BidTransaction winner = full.getWinner();
                     if (winner != null && winner.getBidder().getId().equals(bidderId)) {
-                        result = "🏆 Thắng";
+                        result = "Thắng";
                     } else {
                         result = "Thua";
                     }
@@ -135,9 +148,28 @@ public class BidHistoryController {
     public void initialize() {
         resultFilter.setItems(FXCollections.observableArrayList("Tất cả", "Thắng", "Thua", "Đang tham gia"));
         resultFilter.getSelectionModel().selectFirst();
+        setupActionIcons();
         setupTableColumns();
         loadHistory();
         connectWebSocket();
+    }
+
+    private void setupActionIcons() {
+        setButtonIcon(searchButton, FontAwesomeSolid.SEARCH);
+        setButtonIcon(resetButton, FontAwesomeSolid.REDO_ALT);
+        setButtonIcon(viewDetailButton, FontAwesomeSolid.ARROW_RIGHT);
+    }
+
+    private void setButtonIcon(Button button, FontAwesomeSolid iconCode) {
+        if (button == null) {
+            return;
+        }
+        FontIcon icon = new FontIcon(iconCode);
+        icon.setIconSize(13);
+        icon.getStyleClass().add("button-icon");
+        button.setGraphic(icon);
+        button.setContentDisplay(ContentDisplay.LEFT);
+        button.setGraphicTextGap(8);
     }
 
     private void setupTableColumns() {
@@ -224,13 +256,12 @@ public class BidHistoryController {
 
         HistoryCache cache = cacheMap.get(bidder.getId());
         if (cache != null) {
-            allRows = cache.rows;
+            allRows = cache.rows == null ? Collections.emptyList() : cache.rows;
             totalBidsLabel.setText(cache.totalBids);
             wonAuctionsLabel.setText(cache.won);
             activeParticipationsLabel.setText(cache.active);
             totalSpentLabel.setText(cache.spent);
-            handleSearch(null); // Apply current filter to cached rows
-            statusLabel.setText("Dữ liệu từ cache. Đang làm mới...");
+            applyFilters(true);
         } else {
             statusLabel.setText("Đang tải dữ liệu từ server...");
         }
@@ -260,7 +291,7 @@ public class BidHistoryController {
                     } else {
                         BidTransaction winner = full.getWinner();
                         if (winner != null && winner.getBidder().getId().equals(bidder.getId())) {
-                            result = "🏆 Thắng";
+                            result = "Thắng";
                         } else {
                             result = "Thua";
                         }
@@ -272,7 +303,7 @@ public class BidHistoryController {
         };
 
         fetchTask.setOnSucceeded(e -> {
-            allRows = fetchTask.getValue();
+            allRows = fetchTask.getValue() == null ? Collections.emptyList() : fetchTask.getValue();
             long won = 0, active = 0;
             double totalSpent = 0;
 
@@ -297,10 +328,10 @@ public class BidHistoryController {
             wonAuctionsLabel.setText(fresh.won);
             activeParticipationsLabel.setText(fresh.active);
             totalSpentLabel.setText(fresh.spent);
-            
-            handleSearch(null); // Reapply search filter to new rows
-            statusLabel.setText("Tổng: " + allRows.size() + " lượt tham gia");
+
+            applyFilters(true);
         });
+        fetchTask.setOnFailed(e -> statusLabel.setText("Không thể tải lịch sử đấu giá."));
 
         Thread th = new Thread(fetchTask);
         th.setDaemon(true);
@@ -309,25 +340,147 @@ public class BidHistoryController {
 
     @FXML
     private void handleSearch(ActionEvent event) {
+        applyFilters(true);
+    }
+
+    private void applyFilters(boolean resetPage) {
         String keyword = searchField.getText().trim().toLowerCase();
         String resultSel = resultFilter.getValue();
-        List<BidRow> filtered = allRows.stream()
+        filteredRows = allRows.stream()
                 .filter(r -> {
                     boolean matchName = keyword.isEmpty()
                             || r.auction().getItem().getName().toLowerCase().contains(keyword);
                     boolean matchResult = resultSel == null || resultSel.equals("Tất cả") ||
-                            r.result().contains(resultSel.replace("🏆 ", ""));
+                            r.result().contains(resultSel);
                     return matchName && matchResult;
                 }).collect(Collectors.toList());
-        historyTable.setItems(FXCollections.observableArrayList(filtered));
-        statusLabel.setText("Kết quả: " + filtered.size() + " lượt");
+
+        int pageCount = getPageCount();
+        if (resetPage) {
+            currentPageIndex = 0;
+        } else if (currentPageIndex >= pageCount) {
+            currentPageIndex = Math.max(0, pageCount - 1);
+        }
+
+        updateHistoryPage();
+        renderPagination();
     }
 
     @FXML
     private void handleReset(ActionEvent event) {
         searchField.clear();
         resultFilter.getSelectionModel().selectFirst();
-        loadHistory();
+        applyFilters(true);
+    }
+
+    private void updateHistoryPage() {
+        int total = filteredRows.size();
+        int pageCount = getPageCount();
+        int fromIndex = Math.min(currentPageIndex * PAGE_SIZE, total);
+        int toIndex = Math.min(fromIndex + PAGE_SIZE, total);
+
+        List<BidRow> pageRows = total == 0
+                ? Collections.emptyList()
+                : filteredRows.subList(fromIndex, toIndex);
+
+        historyTable.setItems(FXCollections.observableArrayList(pageRows));
+        historyTable.getSelectionModel().clearSelection();
+        viewDetailButton.setVisible(false);
+
+        if (total == 0) {
+            statusLabel.setText("Không có lượt phù hợp.");
+        } else {
+            statusLabel.setText("Kết quả: " + total + " lượt | Trang "
+                    + (currentPageIndex + 1) + "/" + pageCount);
+        }
+    }
+
+    private void renderPagination() {
+        if (paginationBox == null) {
+            return;
+        }
+
+        paginationBox.getChildren().clear();
+        int pageCount = getPageCount();
+        paginationBox.setVisible(true);
+        paginationBox.setManaged(true);
+
+        paginationBox.getChildren().add(createArrowPageButton(
+                FontAwesomeSolid.ARROW_LEFT, currentPageIndex == 0, () -> goToPage(currentPageIndex - 1)));
+
+        List<Integer> pages = visiblePageIndexes(pageCount);
+        int lastAdded = -1;
+        for (int page : pages) {
+            if (lastAdded >= 0 && page - lastAdded > 1) {
+                Label ellipsis = new Label("...");
+                ellipsis.getStyleClass().add("label-subtle");
+                paginationBox.getChildren().add(ellipsis);
+            }
+            Button pageButton = createPageButton(String.valueOf(page + 1), false, () -> goToPage(page));
+            if (page == currentPageIndex) {
+                pageButton.getStyleClass().add("page-button-active");
+                pageButton.setMouseTransparent(true);
+            }
+            paginationBox.getChildren().add(pageButton);
+            lastAdded = page;
+        }
+
+        paginationBox.getChildren().add(createArrowPageButton(
+                FontAwesomeSolid.ARROW_RIGHT, currentPageIndex >= pageCount - 1,
+                () -> goToPage(currentPageIndex + 1)));
+    }
+
+    private Button createPageButton(String text, boolean disabled, Runnable action) {
+        Button button = new Button(text);
+        button.getStyleClass().addAll("btn-secondary", "page-button");
+        button.setDisable(disabled);
+        button.setOnAction(e -> action.run());
+        return button;
+    }
+
+    private Button createArrowPageButton(FontAwesomeSolid iconCode, boolean disabled, Runnable action) {
+        Button button = createPageButton("", disabled, action);
+        FontIcon icon = new FontIcon(iconCode);
+        icon.setIconSize(13);
+        icon.getStyleClass().add("page-icon");
+        button.setGraphic(icon);
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setTooltip(new Tooltip(iconCode == FontAwesomeSolid.ARROW_LEFT ? "Trang trước" : "Trang sau"));
+        return button;
+    }
+
+    private List<Integer> visiblePageIndexes(int pageCount) {
+        if (pageCount <= 7) {
+            List<Integer> pages = new ArrayList<>();
+            for (int i = 0; i < pageCount; i++) {
+                pages.add(i);
+            }
+            return pages;
+        }
+
+        int start = Math.max(1, currentPageIndex - 2);
+        int end = Math.min(pageCount - 2, currentPageIndex + 2);
+        List<Integer> pages = new ArrayList<>();
+        pages.add(0);
+        for (int i = start; i <= end; i++) {
+            pages.add(i);
+        }
+        pages.add(pageCount - 1);
+        return pages;
+    }
+
+    private void goToPage(int pageIndex) {
+        int pageCount = getPageCount();
+        if (pageIndex < 0 || pageIndex >= pageCount) {
+            return;
+        }
+        currentPageIndex = pageIndex;
+        updateHistoryPage();
+        renderPagination();
+    }
+
+    private int getPageCount() {
+        return Math.max(1, (int) Math.ceil(filteredRows.size() / (double) PAGE_SIZE));
     }
 
     @FXML

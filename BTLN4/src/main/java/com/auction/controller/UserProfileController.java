@@ -405,7 +405,7 @@ public class UserProfileController {
         btnCancel.getStyleClass().add("btn-secondary");
         btnCancel.setMinWidth(130);
 
-        Button btnConfirm = new Button("✔  Xác nhận đã chuyển khoản");
+        Button btnConfirm = new Button("Xác nhận đã chuyển khoản");
         btnConfirm.getStyleClass().add("btn-success");
         btnConfirm.setMinWidth(180);
 

@@ -35,14 +35,14 @@
 
             <!-- Filters toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <TextField fx:id="searchField" promptText="🔍  Tìm kiếm sản phẩm..."
+                <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."
                            styleClass="text-field" prefWidth="260"/>
                 <ComboBox fx:id="statusFilter" promptText="Trạng thái"
                           styleClass="combo-box" prefWidth="150"/>
                 <ComboBox fx:id="categoryFilter" promptText="Danh mục"
                           styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary"/>
-                <Button text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary"/>
+                <Button fx:id="searchButton" text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary"/>
+                <Button fx:id="resetButton" text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary"/>
             </HBox>
 
             <!-- Table -->
@@ -68,6 +68,8 @@
             <HBox alignment="CENTER_LEFT">
                 <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
             </HBox>
+
+            <HBox fx:id="paginationBox" alignment="CENTER" spacing="6" styleClass="pagination-bar"/>
 
         </VBox>
         </StackPane>

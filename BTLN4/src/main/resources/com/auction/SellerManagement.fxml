@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
@@ -24,20 +25,46 @@
                         <Label text="Quản lý Sản phẩm" styleClass="page-title"/>
                         <Label text="Tạo phiên đấu giá và theo dõi trạng thái duyệt" styleClass="label-subtle"/>
                     </VBox>
-                    <Button text="+ Tạo phiên đấu giá mới" onAction="#handleCreateAuction"
-                            styleClass="btn-primary"/>
+                    <Button text="Tạo phiên đấu giá mới" onAction="#handleCreateAuction"
+                            styleClass="btn-primary">
+                        <graphic>
+                            <FontIcon iconLiteral="fas-plus" iconSize="13" styleClass="button-icon"/>
+                        </graphic>
+                    </Button>
                 </HBox>
 
                 <!-- Notice -->
-                <Label text="ℹ️  Sau khi tạo, phiên đấu giá sẽ ở trạng thái 'Chờ duyệt'. Admin sẽ xét duyệt và bắt đầu phiên đấu giá."
-                       styleClass="label-subtle" wrapText="true"/>
+                <Label text="Sau khi tạo, phiên đấu giá sẽ ở trạng thái 'Chờ duyệt'. Admin sẽ xét duyệt và bắt đầu phiên đấu giá."
+                       styleClass="label-subtle" wrapText="true">
+                    <graphic>
+                        <FontIcon iconLiteral="fas-info-circle" iconSize="13" styleClass="button-icon"/>
+                    </graphic>
+                </Label>
+
+                <VBox styleClass="seller-earnings-panel" spacing="12">
+                    <HBox spacing="14" alignment="CENTER_LEFT">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Số dư người bán" styleClass="stat-label"/>
+                            <Label fx:id="sellerBalanceLabel" text="0 ₫" styleClass="stat-value"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Doanh thu 30 ngày" styleClass="stat-label"/>
+                            <Label fx:id="sellerMonthRevenueLabel" text="0 ₫" styleClass="stat-value"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Phiên đã chốt" styleClass="stat-label"/>
+                            <Label fx:id="sellerClosedCountLabel" text="0" styleClass="stat-value"/>
+                        </VBox>
+                    </HBox>
+                    <FlowPane fx:id="sellerRevenueHeatmap" hgap="5" vgap="5" prefWrapLength="560"/>
+                </VBox>
 
                 <HBox spacing="16" fillHeight="true" VBox.vgrow="ALWAYS">
 
                     <!-- LEFT: Auction list -->
                     <VBox spacing="12" HBox.hgrow="ALWAYS">
                         <HBox spacing="8" alignment="CENTER_LEFT">
-                            <TextField fx:id="searchField" promptText="🔍 Tìm kiếm..."
+                            <TextField fx:id="searchField" promptText="Tìm kiếm..."
                                        styleClass="text-field" prefWidth="220"/>
                             <ComboBox fx:id="statusFilter" promptText="Trạng thái"
                                       styleClass="combo-box" prefWidth="150"/>
@@ -63,19 +90,43 @@
 
                         <!-- Action buttons: seller can only cancel or delete -->
                         <HBox spacing="8">
-                            <Button fx:id="btnCancel" text="✖ Huỷ phiên" onAction="#handleCancel"
-                                    styleClass="btn-danger"/>
-                            <Button fx:id="btnDelete" text="🗑 Xoá"       onAction="#handleDelete"
-                                    styleClass="btn-secondary"/>
+                            <Button fx:id="btnCancel" text="Huỷ phiên" onAction="#handleCancel"
+                                    styleClass="btn-danger">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-times" iconSize="13" styleClass="button-icon"/>
+                                </graphic>
+                            </Button>
+                            <Button fx:id="btnDelete" text="Xoá"       onAction="#handleDelete"
+                                    styleClass="btn-secondary">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-trash" iconSize="13" styleClass="button-icon"/>
+                                </graphic>
+                            </Button>
                         </HBox>
 
                         <!-- Status legend -->
                         <VBox styleClass="card" spacing="6">
                             <Label text="Trạng thái phiên đấu giá:" styleClass="form-label"/>
-                            <Label text="⏳ Chờ duyệt  — Đang chờ Admin xét duyệt"   styleClass="label-subtle"/>
-                            <Label text="🟢 Chờ bắt đầu — Admin đã duyệt, sắp bắt đầu" styleClass="label-subtle"/>
-                            <Label text="🔴 Đang diễn ra — Người đặt giá có thể tham gia" styleClass="label-subtle"/>
-                            <Label text="✅ Đã đóng      — Phiên đã kết thúc"          styleClass="label-subtle"/>
+                            <Label text="Chờ duyệt - Đang chờ Admin xét duyệt"   styleClass="label-subtle">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-hourglass-half" iconSize="12" style="-fx-icon-color: #D97706;"/>
+                                </graphic>
+                            </Label>
+                            <Label text="Chờ bắt đầu - Admin đã duyệt, sắp bắt đầu" styleClass="label-subtle">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-clock" iconSize="12" style="-fx-icon-color: #10B981;"/>
+                                </graphic>
+                            </Label>
+                            <Label text="Đang diễn ra - Người đặt giá có thể tham gia" styleClass="label-subtle">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-play-circle" iconSize="12" style="-fx-icon-color: #DC2626;"/>
+                                </graphic>
+                            </Label>
+                            <Label text="Đã đóng - Phiên đã kết thúc"          styleClass="label-subtle">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-check-circle" iconSize="12" style="-fx-icon-color: #16A34A;"/>
+                                </graphic>
+                            </Label>
                         </VBox>
                     </VBox>
 
@@ -131,8 +182,12 @@
                         <Label fx:id="formSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
 
                         <HBox spacing="8">
-                            <Button fx:id="submitButton" text="📤 Gửi duyệt" onAction="#handleSave"
-                                    styleClass="btn-primary" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Button fx:id="submitButton" text="Gửi duyệt" onAction="#handleSave"
+                                    styleClass="btn-primary" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                                <graphic>
+                                    <FontIcon iconLiteral="fas-paper-plane" iconSize="13" styleClass="button-icon"/>
+                                </graphic>
+                            </Button>
                             <Button text="Xoá trắng" onAction="#handleClearForm"
                                     styleClass="btn-secondary"/>
                         </HBox>

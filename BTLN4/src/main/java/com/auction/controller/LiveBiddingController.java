@@ -132,7 +132,7 @@ public class LiveBiddingController implements DataReceiver {
                         // Disable bidding – server is unreachable
                         placeBidButton.setDisable(true);
                         bidAmountField.setDisable(true);
-                        bidErrorLabel.setText("🔴 Mất kết nối server – không thể đặt giá.");
+                        bidErrorLabel.setText("Mất kết nối server - không thể đặt giá.");
                         startPollingFallback(); // still show live data if DB is local
                     }));
             wsConnected = wsClient.isConnected();
@@ -254,7 +254,7 @@ public class LiveBiddingController implements DataReceiver {
         minBidHint.setText("Giá tối thiểu: "
                 + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
         lastUpdateLabel.setText("Cập nhật: " + TimeSyncManager.getNow().format(TIME_FMT)
-                + (wsConnected ? " 🟢 Server" : " 🔴 Offline – chỉ xem, không đặt giá"));
+                + (wsConnected ? " Server" : " Offline - chỉ xem, không đặt giá"));
 
         Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
         if (remaining.isNegative()) {
@@ -408,7 +408,7 @@ public class LiveBiddingController implements DataReceiver {
         } else {
             // ── Server is offline – reject the bid clearly ──
             bidErrorLabel.setText(
-                    "❌ Không thể kết nối server. Vui lòng chờ server hoạt động trở lại.");
+                    "Không thể kết nối server. Vui lòng chờ server hoạt động trở lại.");
         }
     }
 

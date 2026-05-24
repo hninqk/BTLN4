@@ -27,8 +27,8 @@ public class LogoutController {
     public void initialize() {
         // Run wave background for some visual flair during logout
         Platform.runLater(() -> {
-            if (spinner != null && spinner.getScene() != null && spinner.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
-                com.auction.util.AnimationUtil.createWaveBackground(p);
+            if (rootPane != null) {
+                com.auction.util.AnimationUtil.createWaveBackground(rootPane);
             }
         });
 

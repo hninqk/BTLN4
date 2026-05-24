@@ -13,20 +13,26 @@ import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.control.TableRow;
+import javafx.scene.layout.HBox;
+import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -43,6 +49,9 @@ public class AuctionListController {
     @FXML private ComboBox<String>    statusFilter;
     @FXML private ComboBox<String>    categoryFilter;
     @FXML private Label               statusLabel;
+    @FXML private HBox                paginationBox;
+    @FXML private Button              searchButton;
+    @FXML private Button              resetButton;
 
     @FXML private TableView<Auction>             auctionTable;
     @FXML private TableColumn<Auction, String> colTitle;
@@ -51,13 +60,35 @@ public class AuctionListController {
     @FXML private TableColumn<Auction, String> colPrice;
     @FXML private TableColumn<Auction, String> colEndTime;
 
+    private static final int PAGE_SIZE = 10;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private List<Auction> allAuctions = Collections.emptyList();
+    private List<Auction> filteredAuctions = Collections.emptyList();
+    private int currentPageIndex;
 
     @FXML
     public void initialize() {
         setupFilters();
+        setupActionIcons();
         setupTableColumns();
         loadAuctions();   // async – does not block FX thread
+    }
+
+    private void setupActionIcons() {
+        setButtonIcon(searchButton, FontAwesomeSolid.SEARCH);
+        setButtonIcon(resetButton, FontAwesomeSolid.REDO_ALT);
+    }
+
+    private void setButtonIcon(Button button, FontAwesomeSolid iconCode) {
+        if (button == null) {
+            return;
+        }
+        FontIcon icon = new FontIcon(iconCode);
+        icon.setIconSize(13);
+        icon.getStyleClass().add("button-icon");
+        button.setGraphic(icon);
+        button.setContentDisplay(ContentDisplay.LEFT);
+        button.setGraphicTextGap(8);
     }
 
     private boolean isAdmin() {
@@ -179,9 +210,8 @@ public class AuctionListController {
 
         // 2. On success, update UI on the FX Application Thread
         task.setOnSucceeded(e -> {
-            List<Auction> source = task.getValue();
-            auctionTable.setItems(FXCollections.observableArrayList(source));
-            statusLabel.setText("Tổng: " + source.size() + " phiên đấu giá");
+            allAuctions = task.getValue() == null ? Collections.emptyList() : task.getValue();
+            applyFilters(true);
         });
 
         // 3. On failure, show error
@@ -199,48 +229,35 @@ public class AuctionListController {
 
     @FXML
     private void handleSearch(ActionEvent event) {
+        applyFilters(true);
+    }
+
+    private void applyFilters(boolean resetPage) {
         String keyword = searchField.getText().trim().toLowerCase();
         String statusSel = statusFilter.getValue();
         String categorySel = categoryFilter.getValue();
 
-        statusLabel.setText("Đang tìm kiếm...");
-        boolean admin = isAdmin();
+        filteredAuctions = allAuctions.stream()
+                .filter(a -> {
+                    boolean matchName = keyword.isEmpty()
+                            || a.getItem().getName().toLowerCase().contains(keyword)
+                            || a.getSeller().getUsername().toLowerCase().contains(keyword);
+                    boolean matchStatus = statusSel == null || statusSel.equals("Tất cả")
+                            || a.getStatusDisplay().equals(statusSel);
+                    boolean matchCat = categorySel == null || categorySel.equals("Tất cả")
+                            || a.getItem().getCategory().equals(categorySel);
+                    return matchName && matchStatus && matchCat;
+                }).collect(Collectors.toList());
 
-        Task<List<Auction>> task = new Task<>() {
-            @Override
-            protected List<Auction> call() throws Exception {
-                AppFacade app = AppFacade.getInstance();
-                List<Auction> source = admin ? app.getAllAuctions() : app.getPublicAuctions();
+        int pageCount = getPageCount();
+        if (resetPage) {
+            currentPageIndex = 0;
+        } else if (currentPageIndex >= pageCount) {
+            currentPageIndex = Math.max(0, pageCount - 1);
+        }
 
-                return source.stream()
-                        .filter(a -> {
-                            boolean matchName = keyword.isEmpty()
-                                    || a.getItem().getName().toLowerCase().contains(keyword)
-                                    || a.getSeller().getUsername().toLowerCase().contains(keyword);
-                            boolean matchStatus = statusSel == null || statusSel.equals("Tất cả")
-                                    || a.getStatusDisplay().equals(statusSel);
-                            boolean matchCat = categorySel == null || categorySel.equals("Tất cả")
-                                    || a.getItem().getCategory().equals(categorySel);
-                            return matchName && matchStatus && matchCat;
-                        }).collect(Collectors.toList());
-            }
-        };
-
-        task.setOnSucceeded(e -> {
-            List<Auction> filtered = task.getValue();
-            auctionTable.setItems(FXCollections.observableArrayList(filtered));
-            statusLabel.setText("Kết quả: " + filtered.size() + " phiên đấu giá");
-        });
-
-        task.setOnFailed(e -> {
-            Platform.runLater(() -> {
-                statusLabel.setText("Lỗi tìm kiếm: " + task.getException().getMessage());
-            });
-        });
-
-        Thread t = new Thread(task, "search-auctions-thread");
-        t.setDaemon(true);
-        t.start();
+        updateAuctionPage();
+        renderPagination();
     }
 
     @FXML
@@ -248,7 +265,116 @@ public class AuctionListController {
         searchField.clear();
         statusFilter.getSelectionModel().selectFirst();
         categoryFilter.getSelectionModel().selectFirst();
-        loadAuctions();
+        applyFilters(true);
+    }
+
+    private void updateAuctionPage() {
+        int total = filteredAuctions.size();
+        int pageCount = getPageCount();
+        int fromIndex = Math.min(currentPageIndex * PAGE_SIZE, total);
+        int toIndex = Math.min(fromIndex + PAGE_SIZE, total);
+
+        List<Auction> pageRows = total == 0
+                ? Collections.emptyList()
+                : filteredAuctions.subList(fromIndex, toIndex);
+
+        auctionTable.setItems(FXCollections.observableArrayList(pageRows));
+        auctionTable.getSelectionModel().clearSelection();
+
+        if (total == 0) {
+            statusLabel.setText("Không có phiên phù hợp.");
+        } else {
+            statusLabel.setText("Kết quả: " + total + " phiên đấu giá | Trang "
+                    + (currentPageIndex + 1) + "/" + pageCount);
+        }
+    }
+
+    private void renderPagination() {
+        if (paginationBox == null) {
+            return;
+        }
+
+        paginationBox.getChildren().clear();
+        int pageCount = getPageCount();
+        paginationBox.setVisible(true);
+        paginationBox.setManaged(true);
+
+        paginationBox.getChildren().add(createArrowPageButton(
+                FontAwesomeSolid.ARROW_LEFT, currentPageIndex == 0, () -> goToPage(currentPageIndex - 1)));
+
+        List<Integer> pages = visiblePageIndexes(pageCount);
+        int lastAdded = -1;
+        for (int page : pages) {
+            if (lastAdded >= 0 && page - lastAdded > 1) {
+                Label ellipsis = new Label("...");
+                ellipsis.getStyleClass().add("label-subtle");
+                paginationBox.getChildren().add(ellipsis);
+            }
+            Button pageButton = createPageButton(String.valueOf(page + 1), false, () -> goToPage(page));
+            if (page == currentPageIndex) {
+                pageButton.getStyleClass().add("page-button-active");
+                pageButton.setMouseTransparent(true);
+            }
+            paginationBox.getChildren().add(pageButton);
+            lastAdded = page;
+        }
+
+        paginationBox.getChildren().add(createArrowPageButton(
+                FontAwesomeSolid.ARROW_RIGHT, currentPageIndex >= pageCount - 1,
+                () -> goToPage(currentPageIndex + 1)));
+    }
+
+    private Button createPageButton(String text, boolean disabled, Runnable action) {
+        Button button = new Button(text);
+        button.getStyleClass().addAll("btn-secondary", "page-button");
+        button.setDisable(disabled);
+        button.setOnAction(e -> action.run());
+        return button;
+    }
+
+    private Button createArrowPageButton(FontAwesomeSolid iconCode, boolean disabled, Runnable action) {
+        Button button = createPageButton("", disabled, action);
+        FontIcon icon = new FontIcon(iconCode);
+        icon.setIconSize(13);
+        icon.getStyleClass().add("page-icon");
+        button.setGraphic(icon);
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setTooltip(new Tooltip(iconCode == FontAwesomeSolid.ARROW_LEFT ? "Trang trước" : "Trang sau"));
+        return button;
+    }
+
+    private List<Integer> visiblePageIndexes(int pageCount) {
+        if (pageCount <= 7) {
+            List<Integer> pages = new ArrayList<>();
+            for (int i = 0; i < pageCount; i++) {
+                pages.add(i);
+            }
+            return pages;
+        }
+
+        int start = Math.max(1, currentPageIndex - 2);
+        int end = Math.min(pageCount - 2, currentPageIndex + 2);
+        List<Integer> pages = new ArrayList<>();
+        pages.add(0);
+        for (int i = start; i <= end; i++) {
+            pages.add(i);
+        }
+        pages.add(pageCount - 1);
+        return pages;
+    }
+
+    private void goToPage(int pageIndex) {
+        int pageCount = getPageCount();
+        if (pageIndex < 0 || pageIndex >= pageCount) {
+            return;
+        }
+        currentPageIndex = pageIndex;
+        updateAuctionPage();
+        renderPagination();
+    }
+
+    private int getPageCount() {
+        return Math.max(1, (int) Math.ceil(filteredAuctions.size() / (double) PAGE_SIZE));
     }
 
     @FXML

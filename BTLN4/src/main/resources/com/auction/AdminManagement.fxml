@@ -27,22 +27,23 @@
 
             <!-- Main Actions Dashboard -->
             <VBox styleClass="card" spacing="12">
-                <Label text="⚡ Thao tác nhanh (Main Actions)" styleClass="section-title"/>
+                <Label text="Thao tác nhanh (Main Actions)" styleClass="section-title"/>
                 <HBox spacing="16">
-                    <Button text="✅ Duyệt sản phẩm chờ" onAction="#handleQuickApprove" styleClass="btn-primary" style="-fx-padding: 12 24;"/>
-                    <Button text="▶ Bắt đầu phiên đấu giá" onAction="#handleQuickStart" styleClass="btn-success" style="-fx-padding: 12 24;"/>
-                    <Button text="📊 Xem thống kê" onAction="#handleRefreshStats" styleClass="btn-secondary" style="-fx-padding: 12 24;"/>
+                    <Button text="Duyệt sản phẩm chờ" onAction="#handleQuickApprove" styleClass="btn-primary" style="-fx-padding: 12 24;"/>
+                    <Button text="Bắt đầu phiên đấu giá" onAction="#handleQuickStart" styleClass="btn-success" style="-fx-padding: 12 24;"/>
                 </HBox>
             </VBox>
 
             <!-- Tabs -->
-            <TabPane fx:id="adminTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE">
+            <TabPane fx:id="adminTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE"
+                     tabMinWidth="126" tabMaxWidth="180" tabMinHeight="36"
+                     styleClass="admin-tab-pane">
 
                 <!-- ══════════════════ Tab 1: Users ══════════════════ -->
-                <Tab text="👥  Người dùng">
+                <Tab text="Người dùng">
                     <VBox spacing="12" style="-fx-padding: 16 0 0 0;">
                         <HBox spacing="8" alignment="CENTER_LEFT">
-                            <TextField fx:id="userSearchField" promptText="🔍 Tìm người dùng..."
+                            <TextField fx:id="userSearchField" promptText="Tìm người dùng..."
                                        styleClass="text-field" prefWidth="240"/>
                             <ComboBox fx:id="roleFilter" promptText="Vai trò"
                                       styleClass="combo-box" prefWidth="130"/>
@@ -67,19 +68,19 @@
                         </VBox>
 
                         <HBox spacing="8">
-                            <Button text="🗑 Xoá người dùng" onAction="#handleDeleteUser" styleClass="btn-danger"/>
-                            <Button text="🔄 Làm mới"        onAction="#handleRefreshUsers" styleClass="btn-secondary"/>
+                            <Button text="Xoá người dùng" onAction="#handleDeleteUser" styleClass="btn-danger"/>
+                            <Button text="Làm mới"        onAction="#handleRefreshUsers" styleClass="btn-secondary"/>
                         </HBox>
                     </VBox>
                 </Tab>
 
                 <!-- ══════════════════ Tab 2: All Auctions ══════════════════ -->
-                <Tab text="🔖  Quản lý Đấu giá">
+                <Tab text="Quản lý Đấu giá">
                     <VBox spacing="12" style="-fx-padding: 16 0 0 0;">
 
                         <!-- Search bar -->
                         <HBox spacing="8" alignment="CENTER_LEFT">
-                            <TextField fx:id="auctionSearchField" promptText="🔍 Tìm phiên / người bán..."
+                            <TextField fx:id="auctionSearchField" promptText="Tìm phiên / người bán..."
                                        styleClass="text-field" prefWidth="240"/>
                             <ComboBox fx:id="auctionStatusFilter" promptText="Trạng thái"
                                       styleClass="combo-box" prefWidth="150"/>
@@ -107,27 +108,27 @@
                         </VBox>
 
                         <!-- Action buttons — contextually enabled by row selection -->
-                        <HBox spacing="8">
-                            <Button fx:id="btnApprove" text="✅ Duyệt (PENDING→OPEN)"
+                        <HBox spacing="8" styleClass="admin-action-bar">
+                            <Button fx:id="btnApprove" text="Duyệt (PENDING-&gt;OPEN)"
                                     onAction="#handleApprove"     styleClass="btn-primary"/>
-                            <Button fx:id="btnStart"   text="▶ Bắt đầu (OPEN→RUNNING)"
+                            <Button fx:id="btnStart"   text="Bắt đầu (OPEN-&gt;RUNNING)"
                                     onAction="#handleForceStart"  styleClass="btn-success"/>
-                            <Button fx:id="btnFinish"  text="✔ Kết thúc (RUNNING→CLOSED)"
+                            <Button fx:id="btnFinish"  text="Kết thúc (RUNNING-&gt;CLOSED)"
                                     onAction="#handleForceFinish" styleClass="btn-warning"/>
-                            <Button fx:id="btnCancel"  text="✖ Huỷ"
+                            <Button fx:id="btnCancel"  text="Huỷ"
                                     onAction="#handleForceCancel" styleClass="btn-danger"/>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="🔄 Làm mới" onAction="#handleRefreshAuctions" styleClass="btn-secondary"/>
+                            <Button text="Làm mới" onAction="#handleRefreshAuctions" styleClass="btn-secondary"/>
                         </HBox>
 
                         <!-- Workflow hint -->
-                        <Label text="💡 Luồng duyệt: Seller tạo → PENDING → Admin duyệt → OPEN → Admin bắt đầu → RUNNING (Bidder có thể đặt giá)"
+                        <Label text="Luồng duyệt: Seller tạo -&gt; PENDING -&gt; Admin duyệt -&gt; OPEN -&gt; Admin bắt đầu -&gt; RUNNING (Bidder có thể đặt giá)"
                                styleClass="label-subtle" wrapText="true"/>
                     </VBox>
                 </Tab>
 
                 <!-- ══════════════════ Tab 3: System Stats ══════════════════ -->
-                <Tab text="📊  Thống kê">
+                <Tab text="Thống kê">
                     <ScrollPane fitToWidth="true" styleClass="scroll-pane">
                         <VBox spacing="16" style="-fx-padding: 16 0 0 0;">
 
@@ -154,28 +155,28 @@
                             <!-- Row 2: Auction status breakdown -->
                             <HBox spacing="16">
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="⏳ Chờ duyệt" styleClass="stat-label"/>
+                                    <Label text="Chờ duyệt" styleClass="stat-label"/>
                                     <Label fx:id="statPending"  text="0" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="🟢 Chờ bắt đầu" styleClass="stat-label"/>
+                                    <Label text="Chờ bắt đầu" styleClass="stat-label"/>
                                     <Label fx:id="statOpen"     text="0" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="🔴 Đang diễn ra" styleClass="stat-label"/>
+                                    <Label text="Đang diễn ra" styleClass="stat-label"/>
                                     <Label fx:id="statRunning"  text="0" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="✅ Hoàn thành" styleClass="stat-label"/>
+                                    <Label text="Hoàn thành" styleClass="stat-label"/>
                                     <Label fx:id="statFinished" text="0" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="❌ Đã huỷ" styleClass="stat-label"/>
+                                    <Label text="Đã huỷ" styleClass="stat-label"/>
                                     <Label fx:id="statCanceled" text="0" styleClass="stat-value"/>
                                 </VBox>
                             </HBox>
 
-                            <Button text="🔄 Cập nhật thống kê" onAction="#handleRefreshStats"
+                            <Button text="Cập nhật thống kê" onAction="#handleRefreshStats"
                                     styleClass="btn-secondary"/>
                         </VBox>
                     </ScrollPane>

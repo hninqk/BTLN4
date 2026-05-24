@@ -5,25 +5,23 @@ import com.auction.service.AppFacade;
 import com.auction.util.HotItemCache;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
+import com.auction.util.TimeSyncManager;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 
 import java.io.IOException;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
-import javafx.geometry.Pos;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.Cursor;
-import javafx.scene.layout.Priority;
 import javafx.application.Platform;
 import javafx.util.Duration;
 import com.auction.util.ImageLoaderUtil;
@@ -56,7 +54,6 @@ public class DashboardController {
     private FlowPane hotItemsBox;
 
     private final AppFacade app = AppFacade.getInstance();
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final String[] newsHeadlines = {
             "Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!",
@@ -69,6 +66,8 @@ public class DashboardController {
 
     private final HotItemCache hotCache = HotItemCache.getInstance();
     private Timeline hotRefreshTimeline;
+    private Timeline hotCountdownTimeline;
+    private final Map<String, Auction> visibleHotAuctions = new HashMap<>();
     /** Guard to prevent overlapping hot-refresh DB queries. */
     private volatile boolean isRefreshing = false;
 
@@ -77,6 +76,7 @@ public class DashboardController {
         loadData();
         startNewsTicker();
         startHotItemRefresh();
+        startHotCountdownRefresh();
     }
 
     private void startNewsTicker() {
@@ -140,7 +140,6 @@ public class DashboardController {
                 openAuctionsLabel.setText(String.valueOf(open));
                 if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText(String.valueOf(pending));
 
-                // Render hot items using cached bid counts for ordering
                 refreshHotItems(all);
             }
 
@@ -157,32 +156,21 @@ public class DashboardController {
     }
 
     /**
-     * Re-renders the hot-items strip using current HotItemCache bid counts.
+     * Re-renders the hot-items strip with auctions ending soonest first.
      * Must be called on the FX thread.
      */
     private void refreshHotItems(List<Auction> all) {
-        // Pull top-5 IDs from O(1) cache
-        List<String> topIds = hotCache.getTopN(5);
+        List<Auction> hotList = all.stream()
+                .filter(a -> a.getStatus() == AuctionStatus.OPEN
+                        || a.getStatus() == AuctionStatus.RUNNING)
+                .sorted(Comparator
+                        .comparing((Auction a) -> endTimeOrMax(a))
+                        .thenComparing(a -> a.getItem().getName()))
+                .limit(5)
+                .toList();
 
-        // Map IDs → Auction objects (prefer cache order, fall back to bid-history size)
-        List<Auction> hotList;
-        if (!topIds.isEmpty()) {
-            Map<String, Auction> byId = new java.util.HashMap<>();
-            all.forEach(a -> byId.put(a.getId(), a));
-            hotList = topIds.stream()
-                    .map(byId::get)
-                    .filter(a -> a != null
-                            && (a.getStatus() == AuctionStatus.RUNNING
-                                || a.getStatus() == AuctionStatus.OPEN))
-                    .toList();
-        } else {
-            // Fallback: sort by name
-            hotList = all.stream()
-                    .filter(a -> a.getStatus() == AuctionStatus.OPEN
-                            || a.getStatus() == AuctionStatus.RUNNING)
-                    .sorted((a1, a2) -> a1.getItem().getName().compareTo(a2.getItem().getName()))
-                    .limit(5).toList();
-        }
+        visibleHotAuctions.clear();
+        hotList.forEach(a -> visibleHotAuctions.put(a.getId(), a));
 
         // Smart update: only clear and rebuild if the list of items changed
         boolean changed = false;
@@ -211,8 +199,8 @@ public class DashboardController {
                 Auction a = hotList.get(i);
                 VBox card = (VBox) hotItemsBox.getChildren().get(i);
                 
-                // createHotItemCard structure: [0] ImageView, [1] Title Label, [2] Price Label, [3] Status Label
-                if (card.getChildren().size() >= 4) {
+                // createHotItemCard structure: [0] image, [1] title, [2] price, [3] status, [4] countdown
+                if (card.getChildren().size() >= 5) {
                     Label price = (Label) card.getChildren().get(2);
                     price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
                     
@@ -222,9 +210,16 @@ public class DashboardController {
                     // Update badge color
                     status.getStyleClass().removeAll("badge-running", "badge-open");
                     status.getStyleClass().add(a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
+
+                    Label countdown = (Label) card.getChildren().get(4);
+                    countdown.setText(formatCountdown(a));
                 }
             }
         }
+    }
+
+    private LocalDateTime endTimeOrMax(Auction auction) {
+        return auction.getEndTime() == null ? LocalDateTime.MAX : auction.getEndTime();
     }
 
     /**
@@ -252,6 +247,26 @@ public class DashboardController {
         }));
         hotRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
         hotRefreshTimeline.play();
+    }
+
+    private void startHotCountdownRefresh() {
+        hotCountdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateHotCountdownLabels()));
+        hotCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        hotCountdownTimeline.play();
+    }
+
+    private void updateHotCountdownLabels() {
+        for (javafx.scene.Node node : hotItemsBox.getChildren()) {
+            if (!(node instanceof VBox card) || !(card.getUserData() instanceof String auctionId)) {
+                continue;
+            }
+            Auction auction = visibleHotAuctions.get(auctionId);
+            if (auction == null || card.getChildren().size() < 5) {
+                continue;
+            }
+            Label countdown = (Label) card.getChildren().get(4);
+            countdown.setText(formatCountdown(auction));
+        }
     }
 
     @FXML
@@ -309,7 +324,10 @@ public class DashboardController {
         status.getStyleClass().addAll("badge",
                 auction.getStatus() == AuctionStatus.RUNNING ? "badge-running" : "badge-open");
 
-        card.getChildren().addAll(iv, title, price, status);
+        Label countdown = new Label(formatCountdown(auction));
+        countdown.getStyleClass().add("hot-countdown");
+
+        card.getChildren().addAll(iv, title, price, status, countdown);
 
         card.setOnMouseClicked(e -> {
             // Fetch full details asynchronously
@@ -334,8 +352,28 @@ public class DashboardController {
         return card;
     }
 
+    private String formatCountdown(Auction auction) {
+        if (auction.getEndTime() == null) return "Chưa có hạn kết thúc";
+
+        java.time.Duration remaining = java.time.Duration.between(TimeSyncManager.getNow(), auction.getEndTime());
+        if (remaining.isNegative() || remaining.isZero()) {
+            return "Sắp kết thúc";
+        }
+
+        long days = remaining.toDays();
+        long hours = remaining.toHoursPart();
+        long minutes = remaining.toMinutesPart();
+        long seconds = remaining.toSecondsPart();
+
+        if (days > 0) {
+            return String.format("Còn %dd %02dh %02dm", days, hours, minutes);
+        }
+        return String.format("Còn %02d:%02d:%02d", remaining.toHours(), minutes, seconds);
+    }
+
     public void cleanup() {
         if (newsTimeline != null) newsTimeline.stop();
         if (hotRefreshTimeline != null) hotRefreshTimeline.stop();
+        if (hotCountdownTimeline != null) hotCountdownTimeline.stop();
     }
 }

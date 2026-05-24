@@ -13,6 +13,8 @@ module com.auction {
     requires org.slf4j;
     requires com.zaxxer.hikari;
     requires org.bouncycastle.provider;
+    requires org.kordamp.ikonli.javafx;
+    requires org.kordamp.ikonli.fontawesome5;
 
     // Open model to JavaFX property binding and Gson
     opens com.auction.model to javafx.base, javafx.fxml, com.google.gson;

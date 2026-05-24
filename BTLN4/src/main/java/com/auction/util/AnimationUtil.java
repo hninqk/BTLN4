@@ -56,7 +56,14 @@ public final class AnimationUtil {
      * Uses JavaFX Canvas and AnimationTimer for optical illusion effects.
      */
     public static void createWaveBackground(javafx.scene.layout.Pane parent) {
+        boolean alreadyInstalled = parent.getChildren().stream()
+                .anyMatch(node -> node.getStyleClass().contains("wave-background-canvas"));
+        if (alreadyInstalled) {
+            return;
+        }
+
         javafx.scene.canvas.Canvas canvas = new javafx.scene.canvas.Canvas();
+        canvas.getStyleClass().add("wave-background-canvas");
         canvas.widthProperty().bind(parent.widthProperty());
         canvas.heightProperty().bind(parent.heightProperty());
         canvas.setManaged(false); // Do not interfere with parent layout (e.g. BorderPane, VBox)

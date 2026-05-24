@@ -20,6 +20,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -86,6 +88,7 @@ public class AdminManagementController {
     private final ObservableList<Auction> auctionList = FXCollections.observableArrayList();
     // Cached user list (loaded once; refreshed via handleRefreshUsers)
     private final ObservableList<User> userList = FXCollections.observableArrayList();
+    private final Map<String, Integer> auctionBidCounts = new ConcurrentHashMap<>();
 
     @FXML
     public void initialize() {
@@ -161,12 +164,14 @@ public class AdminManagementController {
         if (!json.has("auctions")) return;
         JsonArray arr = json.get("auctions").getAsJsonArray();
         List<Auction> synced = new ArrayList<>();
+        auctionBidCounts.clear();
         for (int i = 0; i < arr.size(); i++) {
             buildAuctionFromJson(arr.get(i).getAsJsonObject()).ifPresent(synced::add);
         }
         auctionList.setAll(synced);
         allAuctionTable.setItems(auctionList);
         auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
+        updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
         refreshStats();
         System.out.println("[AdminMgmt] FULL_SYNC received: " + synced.size() + " auctions.");
     }
@@ -176,6 +181,7 @@ public class AdminManagementController {
         buildAuctionFromJson(json).ifPresent(a -> {
             auctionList.add(0, a);
             auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
+            updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
             refreshStats();
             System.out.println("[AdminMgmt] New auction: " + a.getItem().getName());
         });
@@ -206,6 +212,7 @@ public class AdminManagementController {
             }
         }
         allAuctionTable.refresh();
+        updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
         refreshStats();
     }
 
@@ -214,6 +221,7 @@ public class AdminManagementController {
         String auctionId = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         double amount    = json.get("amount").getAsDouble();
         if (auctionId == null) return;
+        auctionBidCounts.merge(auctionId, 1, Integer::sum);
 
         for (Auction a : auctionList) {
             if (a.getId().equals(auctionId)) {
@@ -235,6 +243,7 @@ public class AdminManagementController {
             }
         }
         allAuctionTable.refresh();
+        updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────
@@ -266,9 +275,14 @@ public class AdminManagementController {
         colAuctionPrice.setCellValueFactory(c ->
                 new SimpleStringProperty(String.format("%,.0f ₫", c.getValue().getHighestBid())));
         colAuctionBids.setCellValueFactory(c ->
-                new SimpleStringProperty(String.valueOf(c.getValue().getBidHistory().size())));
+                new SimpleStringProperty(String.valueOf(getBidCount(c.getValue()))));
         colAuctionEnd.setCellValueFactory(c ->
                 new SimpleStringProperty(c.getValue().getEndTime().format(FMT)));
+    }
+
+    private int getBidCount(Auction auction) {
+        if (auction == null) return 0;
+        return auctionBidCounts.getOrDefault(auction.getId(), auction.getBidHistory().size());
     }
 
     // ── Button state ─────────────────────────────────────────────────────────
@@ -319,9 +333,14 @@ public class AdminManagementController {
         };
         task.setOnSucceeded(e -> {
             auctionList.setAll(task.getValue());
+            auctionBidCounts.clear();
+            for (Auction a : auctionList) {
+                auctionBidCounts.put(a.getId(), a.getBidHistory().size());
+            }
             allAuctionTable.setItems(auctionList);
             if (auctionCountLabel != null)
                 auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
+            allAuctionTable.getSelectionModel().clearSelection();
             disableAuctionButtons();
             refreshStats();
         });
@@ -444,7 +463,36 @@ public class AdminManagementController {
         req.addProperty("auctionId", auctionId);
         req.addProperty("adminId",   admin != null ? admin.getId() : "");
         wsClient.send(req.toString());
+        applyOptimisticAuctionStatus(action, auctionId);
         System.out.println("[AdminMgmt] Sent ADMIN_ACTION action=" + action + " auctionId=" + auctionId);
+    }
+
+    private void applyOptimisticAuctionStatus(String action, String auctionId) {
+        AuctionStatus nextStatus = statusAfterAdminAction(action);
+        if (nextStatus == null) return;
+
+        auctionList.stream()
+                .filter(a -> a.getId().equals(auctionId))
+                .findFirst()
+                .ifPresent(a -> {
+                    a.setStatus(nextStatus);
+                    if (nextStatus == AuctionStatus.RUNNING && a.getStartTime() == null) {
+                        a.setStartTime(com.auction.util.TimeSyncManager.getNow());
+                    }
+                    allAuctionTable.refresh();
+                    updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
+                    refreshStats();
+                });
+    }
+
+    private AuctionStatus statusAfterAdminAction(String action) {
+        return switch (action) {
+            case "approve" -> AuctionStatus.OPEN;
+            case "start" -> AuctionStatus.RUNNING;
+            case "finish" -> AuctionStatus.CLOSED;
+            case "cancel" -> AuctionStatus.CANCELED;
+            default -> null;
+        };
     }
 
     @FXML private void handleAuctionSearch(ActionEvent event) {
@@ -460,6 +508,8 @@ public class AdminManagementController {
                     return matchName && matchStatus;
                 }).collect(Collectors.toList());
         allAuctionTable.setItems(FXCollections.observableArrayList(filtered));
+        allAuctionTable.getSelectionModel().clearSelection();
+        disableAuctionButtons();
         auctionCountLabel.setText("Kết quả: " + filtered.size() + " phiên");
     }
 
@@ -548,6 +598,10 @@ public class AdminManagementController {
                     a.injectBid(new BidTransaction(bidId, ts, dummy, a, amt));
                 }
             }
+            int bidCount = json.has("bidCount")
+                    ? json.get("bidCount").getAsInt()
+                    : a.getBidHistory().size();
+            auctionBidCounts.put(auctionId, bidCount);
             return java.util.Optional.of(a);
         } catch (Exception e) {
             System.err.println("[AdminMgmt] buildAuctionFromJson error: " + e.getMessage());

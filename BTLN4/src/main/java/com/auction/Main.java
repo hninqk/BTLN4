@@ -4,6 +4,7 @@ import com.auction.util.NavigationManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 import java.awt.*;
 import java.io.IOException;
@@ -23,6 +24,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         Platform.setImplicitExit(false);
+        stage.initStyle(StageStyle.UNDECORATED);
         createTrayIcon(stage);
         
         // Fetch server time offset asynchronously

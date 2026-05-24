@@ -16,6 +16,8 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -24,7 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -56,6 +60,10 @@ public class SellerManagementController {
 
     @FXML private Button btnCancel;
     @FXML private Button btnDelete;
+    @FXML private Label sellerBalanceLabel;
+    @FXML private Label sellerMonthRevenueLabel;
+    @FXML private Label sellerClosedCountLabel;
+    @FXML private FlowPane sellerRevenueHeatmap;
 
     @FXML private Label            formTitle;
     @FXML private TextField        itemNameField;
@@ -154,6 +162,7 @@ public class SellerManagementController {
         buildMinimalAuction(json, mySeller).ifPresent(a -> {
             sellerAuctions.add(0, a);
             auctionTable.refresh();
+            updateSellerEarningsDashboard();
             showFormSuccess("Đã gửi lên server thành công! Đang chờ Admin duyệt.");
             System.out.println("[SellerMgmt] Auction created confirmed: " + a.getId());
         });
@@ -182,6 +191,7 @@ public class SellerManagementController {
             }
         }
         auctionTable.refresh();
+        updateSellerEarningsDashboard();
     }
 
     /** Full sync: reload seller's auctions from REST API. */
@@ -224,6 +234,7 @@ public class SellerManagementController {
             sellerAuctions.setAll(task.getValue());
             auctionTable.setItems(sellerAuctions);
             formSuccessLabel.setText("");
+            updateSellerEarningsDashboard();
         });
         task.setOnFailed(e -> Platform.runLater(() ->
                 showFormError("Lỗi tải dữ liệu: " + task.getException().getMessage())));
@@ -298,6 +309,7 @@ public class SellerManagementController {
                 sellerAuctions.remove(sel);
                 disableActionButtons();
                 showFormSuccess("Đã xoá phiên đấu giá.");
+                updateSellerEarningsDashboard();
             } else {
                 showFormError("Không thể xoá phiên đấu giá.");
             }
@@ -433,6 +445,62 @@ public class SellerManagementController {
     private void showFormError(String msg)   { formErrorLabel.setText(msg);   formSuccessLabel.setText(""); }
     private void showFormSuccess(String msg) { formSuccessLabel.setText(msg); formErrorLabel.setText(""); }
     private void clearFormMessages()          { formErrorLabel.setText("");    formSuccessLabel.setText(""); }
+
+    private void updateSellerEarningsDashboard() {
+        if (sellerBalanceLabel == null || sellerRevenueHeatmap == null) {
+            return;
+        }
+
+        LocalDate today = TimeSyncManager.getNow().toLocalDate();
+        LocalDate firstDay = today.minusDays(34);
+        Map<LocalDate, Double> revenueByDay = new HashMap<>();
+        double totalRevenue = 0;
+        double monthRevenue = 0;
+        int closedCount = 0;
+
+        for (Auction auction : sellerAuctions) {
+            if (auction.getStatus() != AuctionStatus.CLOSED) {
+                continue;
+            }
+            double amount = Math.max(0, auction.getHighestBid());
+            LocalDate day = auction.getEndTime().toLocalDate();
+            totalRevenue += amount;
+            closedCount++;
+            if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today)) {
+                monthRevenue += amount;
+            }
+            if (!day.isBefore(firstDay) && !day.isAfter(today)) {
+                revenueByDay.merge(day, amount, Double::sum);
+            }
+        }
+
+        sellerBalanceLabel.setText(String.format("%,.0f ₫", totalRevenue));
+        sellerMonthRevenueLabel.setText(String.format("%,.0f ₫", monthRevenue));
+        sellerClosedCountLabel.setText(String.valueOf(closedCount));
+
+        double maxDayRevenue = revenueByDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+        sellerRevenueHeatmap.getChildren().clear();
+        for (int i = 0; i < 35; i++) {
+            LocalDate day = firstDay.plusDays(i);
+            double amount = revenueByDay.getOrDefault(day, 0.0);
+            Region square = new Region();
+            square.getStyleClass().addAll("heatmap-square", heatmapLevel(amount, maxDayRevenue));
+            Tooltip.install(square, new Tooltip(day.format(DateTimeFormatter.ofPattern("dd/MM"))
+                    + " - " + String.format("%,.0f ₫", amount)));
+            sellerRevenueHeatmap.getChildren().add(square);
+        }
+    }
+
+    private String heatmapLevel(double amount, double maxDayRevenue) {
+        if (amount <= 0 || maxDayRevenue <= 0) {
+            return "heatmap-level-0";
+        }
+        double ratio = amount / maxDayRevenue;
+        if (ratio < 0.25) return "heatmap-level-1";
+        if (ratio < 0.50) return "heatmap-level-2";
+        if (ratio < 0.75) return "heatmap-level-3";
+        return "heatmap-level-4";
+    }
 
     /** Build a minimal Auction from a WS JSON snapshot (for display while local DB syncs). */
     private java.util.Optional<Auction> buildMinimalAuction(JsonObject json, Seller seller) {

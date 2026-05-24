@@ -14,10 +14,12 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 public class SplashController {
+    @FXML private StackPane splashRoot;
     @FXML private Rectangle sq1;
     @FXML private Rectangle sq2;
     @FXML private Rectangle sq3;
@@ -41,8 +43,8 @@ public class SplashController {
         startWordCycle();
 
         Platform.runLater(() -> {
-            if (sq1 != null && sq1.getScene() != null && sq1.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
-                com.auction.util.AnimationUtil.createWaveBackground(p);
+            if (splashRoot != null) {
+                com.auction.util.AnimationUtil.createWaveBackground(splashRoot);
             }
         });
 
