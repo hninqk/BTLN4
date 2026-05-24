@@ -13,6 +13,6 @@ public class ElectronicsFactory extends ItemFactory {
 
     @Override
     public Item createItem(String name, String description, double price, User owner) {
-        return new Electronics(name, description, price, owner, warrantyMonths);
+        return new Electronics(name, description, price, owner);
     }
 }

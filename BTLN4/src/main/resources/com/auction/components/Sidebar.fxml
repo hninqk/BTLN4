@@ -55,11 +55,13 @@
     <Region VBox.vgrow="ALWAYS"/>
 
     <!-- Logout -->
-    <VBox spacing="8" style="-fx-padding: 0 16 8 16;">
-        <Button text="Đăng xuất" onAction="#handleLogout"
-                styleClass="nav-button"
-                style="-fx-text-fill: #F87171;"
-                maxWidth="Infinity"/>
-    </VBox>
+    <Button text="Đăng xuất" onAction="#handleLogout"
+            styleClass="nav-button"
+            style="-fx-text-fill: #F87171;"
+            maxWidth="Infinity">
+        <VBox.margin>
+            <Insets bottom="8.0" />
+        </VBox.margin>
+    </Button>
 
 </VBox>

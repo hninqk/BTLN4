@@ -4,24 +4,21 @@ import java.time.LocalDateTime;
 
 public class Art extends Item {
     private String artistName;
-    private int yearCreated;
 
-    public Art(String name, String description, double startingPrice, User owner, String artistName, int yearCreated) {
+    public Art(String name, String description, double startingPrice, User owner, String artistName) {
         super(name, description, startingPrice, owner);
         this.artistName = artistName;
-        this.yearCreated = yearCreated;
     }
 
     public Art(String name, String description, double startingPrice, User owner) {
-        this(name, description, startingPrice, owner, "Unknown", 0);
+        this(name, description, startingPrice, owner, "Unknown");
     }
 
     /** DB reconstruction constructor */
     public Art(String id, LocalDateTime createdAt, String name, String description,
-               double startingPrice, User owner, String artistName, int yearCreated) {
+               double startingPrice, User owner, String artistName) {
         super(id, createdAt, name, description, startingPrice, owner);
         this.artistName = artistName;
-        this.yearCreated = yearCreated;
     }
 
     @Override
@@ -31,5 +28,4 @@ public class Art extends Item {
     public String getCategory() { return "Nghệ thuật"; }
 
     public String getArtistName() { return artistName; }
-    public int getYearCreated()   { return yearCreated; }
 }

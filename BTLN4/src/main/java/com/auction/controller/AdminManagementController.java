@@ -523,7 +523,7 @@ public class AdminManagementController {
             String imageUrl   = json.has("itemImageUrl")  ? json.get("itemImageUrl").getAsString()  : "";
             String category   = json.has("itemCategory")  ? json.get("itemCategory").getAsString()  : "Điện tử";
 
-            Seller seller = new Seller(sellerId, createdAt, sellerUsername, "", sellerUsername + "_Shop", 0, 0);
+            Seller seller = new Seller(sellerId, createdAt, sellerUsername, "", sellerUsername + "_Shop");
             // Use 4-arg normal constructors (no extra fields needed for display)
             Item item = switch (category) {
                 case "Nghệ thuật" -> new Art(itemName, desc, startPrice, seller);

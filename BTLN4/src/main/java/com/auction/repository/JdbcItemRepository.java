@@ -23,16 +23,16 @@ public class JdbcItemRepository {
             sql = """
                 INSERT INTO items
                     (id, name, description, starting_price, image_url, category,
-                     owner_id, warranty_months, artist_name, year_created, mileage, year, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     owner_id, artist_name, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 ON CONFLICT (id) DO NOTHING
                 """;
         } else {
             sql = """
                 INSERT OR IGNORE INTO items
                     (id, name, description, starting_price, image_url, category,
-                     owner_id, warranty_months, artist_name, year_created, mileage, year, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     owner_id, artist_name, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """;
         }
         try (Connection conn = DatabaseConnection.getConnection();
@@ -45,32 +45,16 @@ public class JdbcItemRepository {
             ps.setString(5, item.getImageUrl());
             ps.setString(6, item.getCategory());
             ps.setString(7, owner.getId());
-            ps.setString(13, item.getCreatedAt().toString());
+            ps.setString(9, item.getCreatedAt().toString());
 
             if (item instanceof Electronics e) {
-                ps.setInt(8, e.getWarrantyMonths());
-                ps.setString(9, "");
-                ps.setInt(10, 0);
-                ps.setDouble(11, 0.0);
-                ps.setInt(12, 0);
+                ps.setString(8, "");
             } else if (item instanceof Art a) {
-                ps.setInt(8, 0);
-                ps.setString(9, a.getArtistName());
-                ps.setInt(10, a.getYearCreated());
-                ps.setDouble(11, 0.0);
-                ps.setInt(12, 0);
+                ps.setString(8, a.getArtistName());
             } else if (item instanceof Vehicle v) {
-                ps.setInt(8, 0);
-                ps.setString(9, "");
-                ps.setInt(10, 0);
-                ps.setDouble(11, v.getMileage());
-                ps.setInt(12, v.getYear());
+                ps.setString(8, "");
             } else {
-                ps.setInt(8, 0);
-                ps.setString(9, "");
-                ps.setInt(10, 0);
-                ps.setDouble(11, 0.0);
-                ps.setInt(12, 0);
+                ps.setString(8, "");
             }
 
             ps.executeUpdate();
@@ -159,13 +143,11 @@ public class JdbcItemRepository {
         LocalDateTime createdAt = LocalDateTime.parse(rs.getString("created_at"));
 
         Item item = switch (category) {
-            case "Điện tử", "Electronics" -> new Electronics(id, createdAt, name, description, price, owner,
-                                                              rs.getInt("warranty_months"));
+            case "Điện tử", "Electronics" -> new Electronics(id, createdAt, name, description, price, owner);
             case "Nghệ thuật", "Art"      -> new Art(id, createdAt, name, description, price, owner,
-                                                      rs.getString("artist_name"), rs.getInt("year_created"));
-            case "Xe cộ", "Vehicle"       -> new Vehicle(id, createdAt, name, description, price, owner,
-                                                          rs.getDouble("mileage"), rs.getInt("year"));
-            default                        -> new Electronics(id, createdAt, name, description, price, owner, 0);
+                                                      rs.getString("artist_name"));
+            case "Xe cộ", "Vehicle"       -> new Vehicle(id, createdAt, name, description, price, owner);
+            default                        -> new Electronics(id, createdAt, name, description, price, owner);
         };
         item.setImageUrl(imageUrl);
         return item;

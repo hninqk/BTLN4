@@ -37,8 +37,6 @@ public class JdbcAuctionRepository {
                 s.username      AS s_username,
                 s.password      AS s_password,
                 s.shop_name     AS s_shop_name,
-                s.rating        AS s_rating,
-                s.cntvoted      AS s_cntvoted,
                 s.created_at    AS s_created_at,
 
                 i.id            AS i_id,
@@ -47,11 +45,7 @@ public class JdbcAuctionRepository {
                 i.starting_price AS i_starting_price,
                 i.image_url     AS i_image_url,
                 i.category      AS i_category,
-                i.warranty_months AS i_warranty_months,
                 i.artist_name   AS i_artist_name,
-                i.year_created  AS i_year_created,
-                i.mileage       AS i_mileage,
-                i.year          AS i_year,
                 i.created_at    AS i_created_at
 
             FROM auctions a
@@ -233,9 +227,7 @@ public class JdbcAuctionRepository {
                 LocalDateTime.parse(rs.getString("s_created_at")),
                 rs.getString("s_username"),
                 rs.getString("s_password"),
-                rs.getString("s_shop_name"),
-                rs.getDouble("s_rating"),
-                rs.getInt("s_cntvoted")
+                rs.getString("s_shop_name")
         );
 
         // ── Item (từ JOIN, không cần query riêng) ──
@@ -248,15 +240,13 @@ public class JdbcAuctionRepository {
 
         Item item = switch (category) {
             case "Điện tử", "Electronics" -> new Electronics(
-                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
-                    rs.getInt("i_warranty_months"));
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
             case "Nghệ thuật", "Art" -> new Art(
                     itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
-                    rs.getString("i_artist_name"), rs.getInt("i_year_created"));
+                    rs.getString("i_artist_name"));
             case "Xe cộ", "Vehicle" -> new Vehicle(
-                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
-                    rs.getDouble("i_mileage"), rs.getInt("i_year"));
-            default -> new Electronics(itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller, 0);
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
+            default -> new Electronics(itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
         };
         item.setImageUrl(rs.getString("i_image_url"));
 

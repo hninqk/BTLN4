@@ -15,6 +15,6 @@ public class ArtFactory extends ItemFactory {
 
     @Override
     public Item createItem(String name, String description, double price, User owner) {
-        return new Art(name, description, price, owner, artistName, yearCreated);
+        return new Art(name, description, price, owner, artistName);
     }
 }

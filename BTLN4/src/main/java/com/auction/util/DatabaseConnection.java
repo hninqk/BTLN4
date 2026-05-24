@@ -103,9 +103,6 @@ public class DatabaseConnection {
                     + "balance        " + realType + " DEFAULT 0.0, "
                     + "frozen_balance " + realType + " DEFAULT 0.0, "
                     + "shop_name      TEXT, "
-                    + "rating         " + realType + " DEFAULT 0.0, "
-                    + "cntvoted       INTEGER DEFAULT 0, "
-                    + "access_level   INTEGER DEFAULT 1, "
                     + "created_at     TEXT NOT NULL)");
 
             // Migration: thêm cột frozen_balance nếu DB cũ chưa có
@@ -124,11 +121,7 @@ public class DatabaseConnection {
                     + "image_url       TEXT DEFAULT '', "
                     + "category        TEXT NOT NULL, "
                     + "owner_id        TEXT NOT NULL, "
-                    + "warranty_months INTEGER DEFAULT 0, "
                     + "artist_name     TEXT DEFAULT '', "
-                    + "year_created    INTEGER DEFAULT 0, "
-                    + "mileage         " + realType + " DEFAULT 0.0, "
-                    + "year            INTEGER DEFAULT 0, "
                     + "created_at      TEXT NOT NULL, "
                     + "FOREIGN KEY (owner_id) REFERENCES users(id))");
 

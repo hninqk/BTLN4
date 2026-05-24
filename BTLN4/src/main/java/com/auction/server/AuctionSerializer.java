@@ -111,11 +111,8 @@ public final class AuctionSerializer {
             o.addProperty("availableBalance", bidder.getAvailableBalance());
         } else if (user instanceof Seller seller) {
             o.addProperty("shopName",  seller.getShopName());
-            o.addProperty("rating",    seller.getRating());
-            o.addProperty("cntvoted",  seller.getCntvoted());
             o.addProperty("balance",   0.0);
         } else if (user instanceof Admin admin) {
-            o.addProperty("level",   admin.getAccessLevel());
             o.addProperty("balance", 0.0);
         }
         return o;
@@ -146,13 +143,10 @@ public final class AuctionSerializer {
                 case "Seller" -> {
                     String shopName = o.has("shopName") ? o.get("shopName").getAsString()
                             : username + "_Shop";
-                    double rating   = o.has("rating")   ? o.get("rating").getAsDouble()  : 0.0;
-                    int cntvoted    = o.has("cntvoted")  ? o.get("cntvoted").getAsInt()   : 0;
-                    yield new Seller(id, ts, username, "", shopName, rating, cntvoted);
+                    yield new Seller(id, ts, username, "", shopName);
                 }
                 case "Admin" -> {
-                    int level = o.has("level") ? o.get("level").getAsInt() : 1;
-                    yield new Admin(id, ts, username, "", level);
+                    yield new Admin(id, ts, username, "");
                 }
                 default -> null;
             };
@@ -193,7 +187,7 @@ public final class AuctionSerializer {
             String category   = json.has("itemCategory") ? json.get("itemCategory").getAsString() : "Điện tử";
 
             Seller seller = new Seller(sellerId, createdAt, sellerUsername, "",
-                    sellerUsername + "_Shop", 0, 0);
+                    sellerUsername + "_Shop");
 
             com.auction.model.Item item = switch (category) {
                 case "Nghệ thuật" -> new com.auction.model.Art(

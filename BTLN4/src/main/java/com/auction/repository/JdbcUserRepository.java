@@ -22,15 +22,15 @@ public class JdbcUserRepository {
         if (DatabaseConnection.isPostgres()) {
             sql = """
                 INSERT INTO users
-                    (id, username, password, role, balance, frozen_balance, shop_name, rating, cntvoted, access_level, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    (id, username, password, role, balance, frozen_balance, shop_name, created_at)
+                VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT (id) DO NOTHING
                 """;
         } else {
             sql = """
                 INSERT OR IGNORE INTO users
-                    (id, username, password, role, balance, frozen_balance, shop_name, rating, cntvoted, access_level, created_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    (id, username, password, role, balance, frozen_balance, shop_name, created_at)
+                VALUES (?,?,?,?,?,?,?,?)
                 """;
         }
         try (Connection conn = DatabaseConnection.getConnection();
@@ -45,33 +45,21 @@ public class JdbcUserRepository {
                 ps.setDouble(5, b.getAccountBalance());
                 ps.setDouble(6, b.getFrozenBalance());
                 ps.setNull(7, Types.VARCHAR);
-                ps.setDouble(8, 0.0);
-                ps.setInt(9, 0);
-                ps.setInt(10, 1);
             } else if (user instanceof Seller s) {
                 ps.setDouble(5, 0.0);
                 ps.setDouble(6, 0.0);
                 ps.setString(7, s.getShopName());
-                ps.setDouble(8, s.getRating());
-                ps.setInt(9, s.getCntvoted());
-                ps.setInt(10, 1);
             } else if (user instanceof Admin a) {
                 ps.setDouble(5, 0.0);
                 ps.setDouble(6, 0.0);
                 ps.setNull(7, Types.VARCHAR);
-                ps.setDouble(8, 0.0);
-                ps.setInt(9, 0);
-                ps.setInt(10, a.getAccessLevel());
             } else {
                 ps.setDouble(5, 0.0);
                 ps.setDouble(6, 0.0);
                 ps.setNull(7, Types.VARCHAR);
-                ps.setDouble(8, 0.0);
-                ps.setInt(9, 0);
-                ps.setInt(10, 1);
             }
 
-            ps.setString(11, user.getCreatedAt().toString());
+            ps.setString(8, user.getCreatedAt().toString());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -129,8 +117,7 @@ public class JdbcUserRepository {
     public void update(User user) {
         String sql = """
             UPDATE users SET
-                username=?, password=?, balance=?, frozen_balance=?, shop_name=?,
-                rating=?, cntvoted=?, access_level=?
+                username=?, password=?, balance=?, frozen_balance=?, shop_name=?
             WHERE id=?
             """;
         try (Connection conn = DatabaseConnection.getConnection();
@@ -143,33 +130,21 @@ public class JdbcUserRepository {
                 ps.setDouble(3, b.getAccountBalance());
                 ps.setDouble(4, b.getFrozenBalance());
                 ps.setNull(5, Types.VARCHAR);
-                ps.setDouble(6, 0.0);
-                ps.setInt(7, 0);
-                ps.setInt(8, 1);
             } else if (user instanceof Seller s) {
                 ps.setDouble(3, 0.0);
                 ps.setDouble(4, 0.0);
                 ps.setString(5, s.getShopName());
-                ps.setDouble(6, s.getRating());
-                ps.setInt(7, s.getCntvoted());
-                ps.setInt(8, 1);
             } else if (user instanceof Admin a) {
                 ps.setDouble(3, 0.0);
                 ps.setDouble(4, 0.0);
                 ps.setNull(5, Types.VARCHAR);
-                ps.setDouble(6, 0.0);
-                ps.setInt(7, 0);
-                ps.setInt(8, a.getAccessLevel());
             } else {
                 ps.setDouble(3, 0.0);
                 ps.setDouble(4, 0.0);
                 ps.setNull(5, Types.VARCHAR);
-                ps.setDouble(6, 0.0);
-                ps.setInt(7, 0);
-                ps.setInt(8, 1);
             }
 
-            ps.setString(9, user.getId());
+            ps.setString(6, user.getId());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -241,14 +216,11 @@ public class JdbcUserRepository {
             }
             case "Seller" -> {
                 Seller s = new Seller(id, createdAt, username, password,
-                                      rs.getString("shop_name"),
-                                      rs.getDouble("rating"),
-                                      rs.getInt("cntvoted"));
+                                      rs.getString("shop_name"));
                 yield s;
             }
             case "Admin" -> {
-                Admin a = new Admin(id, createdAt, username, password,
-                                    rs.getInt("access_level"));
+                Admin a = new Admin(id, createdAt, username, password);
                 yield a;
             }
             default -> throw new SQLException("Unknown role: " + role);

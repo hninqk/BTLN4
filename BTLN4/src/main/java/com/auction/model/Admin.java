@@ -4,27 +4,15 @@ import java.time.LocalDateTime;
 
 public class Admin extends User {
 
-    public int accessLevel;
-
-    public Admin(String username, String password, int accessLevel) {
-        super(username, password);
-        this.accessLevel = accessLevel;
-    }
-
-    /** Convenience constructor – default access level 1. */
     public Admin(String username, String password) {
-        this(username, password, 1);
+        super(username, password);
     }
 
     /** DB reconstruction constructor */
-    public Admin(String id, LocalDateTime createdAt, String username, String password, int accessLevel) {
+    public Admin(String id, LocalDateTime createdAt, String username, String password) {
         super(id, createdAt, username, password);
-        this.accessLevel = accessLevel;
     }
 
     @Override
     public String getRole() { return "Admin"; }
-
-    public int getAccessLevel() { return accessLevel; }
-    public void setAccessLevel(int accessLevel) { this.accessLevel = accessLevel; }
 }

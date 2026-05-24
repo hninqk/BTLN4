@@ -33,6 +33,7 @@ public class LoginController {
     public void initialize() {
         errorLabel.setText("");
         Platform.runLater(() -> {
+            // Background wave animation
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
             pause.setOnFinished(e -> {
                 if (loginButton != null && loginButton.getScene() != null && loginButton.getScene().getRoot() instanceof javafx.scene.layout.Pane p) {
@@ -40,6 +41,25 @@ public class LoginController {
                 }
             });
             pause.play();
+
+            // Entrance animation for the card
+            if (loginButton != null && loginButton.getScene() != null) {
+                javafx.scene.Node authCard = loginButton.getScene().lookup(".auth-card");
+                if (authCard != null) {
+                    authCard.setOpacity(0.0);
+                    authCard.setTranslateY(30);
+                    
+                    javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(800), authCard);
+                    ft.setToValue(1.0);
+                    
+                    javafx.animation.TranslateTransition tt = new javafx.animation.TranslateTransition(javafx.util.Duration.millis(800), authCard);
+                    tt.setToY(0);
+                    tt.setInterpolator(javafx.animation.Interpolator.EASE_OUT);
+                    
+                    javafx.animation.ParallelTransition pt = new javafx.animation.ParallelTransition(ft, tt);
+                    pt.play();
+                }
+            }
         });
     }
 

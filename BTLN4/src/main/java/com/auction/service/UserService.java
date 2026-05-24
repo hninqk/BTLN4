@@ -117,7 +117,7 @@ public class UserService {
 
     private Admin makeAdmin(String username, String password) {
         return new Admin(deterministicId("user-" + username), SEED_TIME, username,
-                PasswordHashService.hash(password), 1);
+                PasswordHashService.hash(password));
     }
     private Bidder makeBidder(String username, String password, double balance) {
         return new Bidder(deterministicId("user-" + username), SEED_TIME, username,
@@ -125,7 +125,7 @@ public class UserService {
     }
     private Seller makeSeller(String username, String password, String shopName) {
         return new Seller(deterministicId("user-" + username), SEED_TIME, username,
-                PasswordHashService.hash(password), shopName, 0.0, 0);
+                PasswordHashService.hash(password), shopName);
     }
 
     /** UUID derived from a fixed string — always the same across JVM restarts. */

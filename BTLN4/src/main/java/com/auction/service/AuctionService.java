@@ -331,13 +331,13 @@ public class AuctionService {
 
         // Items — deterministic IDs by item name
         Electronics laptop = new Electronics(did("item-laptop"), seed, "Laptop Dell XPS 15",
-                "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol, 0);
+                "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol);
         Electronics phone = new Electronics(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
-                28_000_000, carol, 0);
+                28_000_000, carol);
         Art painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
-                5_000_000, dave, "", 0);
+                5_000_000, dave, "");
         Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
-                800_000_000, dave, 0.0, 0);
+                800_000_000, dave);
 
         Auction a1 = createAuction(carol, laptop, com.auction.util.TimeSyncManager.getNow().plusDays(2));
         Auction a2 = createAuction(carol, phone, com.auction.util.TimeSyncManager.getNow().plusHours(5));
