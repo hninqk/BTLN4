@@ -105,8 +105,6 @@ Hệ thống sử dụng thuật toán băm mật khẩu **Argon2id** (thuật t
 
 ```mermaid
 classDiagram
-direction BT
-
 %% Thực thể Cốt Lõi
 class Entity {
   <<abstract>>
@@ -145,14 +143,11 @@ Admin --|> User
 %% Sản phẩm (Kế thừa Item & Factory Pattern)
 class Item {
   <<abstract>>
-  -String name
   -String description
   -double startingPrice
   -String imageUrl
 }
-
 class Electronics {
-  -int warrantyMonths
 }
 
 class Art {
@@ -203,7 +198,6 @@ class AuctionStatus {
   CLOSED
   CANCELED
 }
-
 Auction o-- Item : has
 Auction o-- Seller : createdBy
 Auction o-- BidTransaction : hasHighest
@@ -211,7 +205,149 @@ Auction --> AuctionStatus : currentStatus
 BidTransaction --> Bidder : placedBy
 ```
 
+```mermaid
+flowchart TD
+  subgraph Client["Client (JavaFX)"]
+    U[User] --> UI[UI Components]
+    UI --> WSClient[WebSocket client]
+    UI --> RESTClient[REST client]
+  end
+
+  subgraph Server["Server (Javalin)"]
+    WS_Srv[WebSocket]
+    REST_Srv[REST API]
+    AM[AuctionManager]
+    Proxy[ProxyBiddingEngine]
+    Scheduler[Auto-finish Scheduler]
+    DB[(Postgres DB)]
+  end
+
+  WSClient --> WS_Srv
+  RESTClient --> REST_Srv
+  WS_Srv --> AM
+  REST_Srv --> AM
+  AM --> DB
+  AM --> Freeze[Freeze funds]
+  Freeze --> DB
+  AM --> Broadcast[BROADCAST]
+  Broadcast --> WSClient
+  AM --> Proxy
+  Proxy --> AM
+  AM --> AntiSnipe[Anti-Snipe]
+  AntiSnipe --> AM
+  Scheduler --> AM
+  AM --> Finalize[Finalize payments]
+  Finalize --> DB
+
+  classDef infra fill:#f9f,stroke:#333,stroke-width:1px;
+  class DB,Scheduler infra;
+```
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant UI as "Desktop UI"
+    participant WS as "WebSocket"
+    participant Server
+    participant Manager as "AuctionManager"
+    participant Auto as "ProxyBiddingEngine"
+    participant DB as "Database"
+
+    Client->>UI: Chọn phiên và nhập giá
+    UI->>WS: PLACE_BID(bidAmount)
+    WS->>Server: Nhận payload PLACE_BID
+    Server->>Manager: processBid(bid)
+    Manager->>DB: SELECT availableBalance FOR UPDATE
+    DB-->>Manager: availableBalance
+    Manager->>DB: freezeFunds(bidAmount)
+    DB-->>Manager: frozen confirmed
+    Manager-->>Server: bid accepted
+    Server->>WS: BROADCAST BID_UPDATE(highestBid)
+    alt Auto-bid applicable
+        Server->>Auto: evaluateAutoBids(auctionId)
+        Auto->>Server: placeAutoBid(...)
+        Server->>WS: BROADCAST BID_UPDATE
+    end
+    alt Bid in last 60s
+        Manager->>Manager: extendAuctionEnd(+3m)
+        Server->>WS: BROADCAST TIME_EXTENDED(newEndTime)
+    end
+    Manager->>DB: finalizeAuction(winner)
+    DB-->>Server: confirmed
+    Server->>WS: BROADCAST AUCTION_CLOSED(winner)
+```
+
 ---
+
+## **Demo Nhanh (Quick demo)**
+
+Mục tiêu demo: minh hoạ một phiên đấu giá cơ bản — khởi động server, chạy client, tạo phiên, đặt giá tay và kích hoạt auto-bid / anti-snipe.
+
+- **Chế độ nhanh (kết nối tới máy chủ công khai)**
+  - Nếu bạn không muốn chạy server cục bộ, chạy `mvn clean javafx:run` để khởi động giao diện khách; theo mặc định client sẽ kết nối tới dịch vụ công khai (Render). Điều này thuận tiện để xem UI và lịch sử phiên đã có sẵn.
+
+- **Chế độ cục bộ (end-to-end, toàn bộ chạy trên máy của bạn)**
+  1. Mở Terminal A — khởi động server:
+
+```bash
+mvn exec:java -Pserver -Dcheckstyle.skip=true
+```
+
+  Khi server khởi động, bạn sẽ thấy thông báo tương tự: "WebSocket + REST server running on port <port>" (mặc định `AppConfig.port()` = 10000).
+
+ 2. (Tùy chọn) Nếu bạn muốn client kết nối tới server cục bộ, chỉnh `RENDER_SERVER_URL` trong
+     `BTLN4/BTLN4/src/main/java/com/auction/util/AppConfig.java` thành `http://localhost:10000` rồi build/run client.
+
+ 3. Mở Terminal B — khởi động client JavaFX:
+
+```bash
+mvn clean javafx:run
+```
+
+ 4. Trong UI: đăng ký 2 tài khoản (seller + bidder), seller tạo một auction (hoặc tạo qua REST API), rồi bidder đặt giá.
+
+- **Tương tác REST (ví dụ tạo auction bằng curl)**
+
+```bash
+curl -X POST http://localhost:10000/api/auctions \
+  -H "Content-Type: application/json" \
+  -d '{"sellerId":"seller-1","itemName":"Vintage Vase","startPrice":100.0,"endTime":"2026-05-24T21:00:00"}'
+```
+
+- **Sample WebSocket messages (gửi tới `ws://localhost:10000/auction`)**
+
+PLACE_BID example:
+```json
+{
+  "type": "PLACE_BID",
+  "auctionId": "AUCTION_ID",
+  "bidderId": "BIDDER_ID",
+  "bidderUsername": "alice",
+  "amount": 150.0
+}
+```
+
+REGISTER_AUTO_BID example:
+```json
+{
+  "type": "REGISTER_AUTO_BID",
+  "auctionId": "AUCTION_ID",
+  "bidderId": "BIDDER_ID",
+  "maxBid": 300.0,
+  "increment": 5.0
+}
+```
+
+REQUEST_SYNC example (client asks server for full snapshot):
+```json
+{ "type": "REQUEST_SYNC" }
+```
+
+- **Quan sát:** server sẽ broadcast `BID_UPDATE`, `BALANCE_UPDATE`, `AUCTION_STATUS_CHANGED`, `AUTO_BID_LOG`, `AUTO_BID_ACK`, `AUTO_BID_DEACTIVATED`.
+
+- **Ghi chú:**
+  - WebSocket endpoint server-side: `/auction` (ví dụ: `ws://localhost:10000/auction`).
+  - Mặc định project dùng `RENDER_SERVER_URL` hướng tới https://btln4.onrender.com — chỉnh `AppConfig` nếu bạn muốn đổi target cho client.
 
 ## 🚀 Hướng Dẫn Khởi Động & Vận Hành
 
