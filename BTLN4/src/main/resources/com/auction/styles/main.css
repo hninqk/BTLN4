@@ -153,6 +153,20 @@
     -fx-background-color: rgba(37, 99, 235, 0.2);
 }
 
+.active, .nav-button.active {
+    -fx-background-color: linear-gradient(to right, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.02));
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-border-color: -theme-primary;
+    -fx-border-width: 0 0 0 4;
+}
+
+.active:hover, .nav-button.active:hover {
+    -fx-background-color: linear-gradient(to right, rgba(37, 99, 235, 0.25), rgba(37, 99, 235, 0.05));
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: -theme-primary;
+}
+
 /* ---------- Top Bar ---------- */
 .topbar {
     -fx-background-color: #FFFFFF;

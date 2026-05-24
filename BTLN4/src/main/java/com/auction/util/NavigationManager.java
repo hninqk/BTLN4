@@ -17,8 +17,13 @@ public class NavigationManager {
     private Stage primaryStage;
     private Object currentController; // tracks the active controller for cleanup
     private boolean isDarkMode = true; // Persistent theme state
+    private String currentScreen; // Tracks the currently active screen name
 
     private NavigationManager() {
+    }
+
+    public String getCurrentScreen() {
+        return currentScreen;
     }
 
     public static NavigationManager getInstance() {
@@ -66,6 +71,8 @@ public class NavigationManager {
      * Calls cleanup() on the previous controller (if it supports it) before switching.
      */
     public void navigateTo(String fxmlName, String title, Object data) throws IOException {
+        this.currentScreen = fxmlName;
+
         // Cleanup the current controller before switching screens
         if (currentController != null) {
             try {
