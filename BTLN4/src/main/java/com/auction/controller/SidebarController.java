@@ -77,8 +77,6 @@ public class SidebarController {
     private boolean collapsed;
     private boolean showManagementSection;
 
-    private Button[] navButtons;
-
     @FXML
     public void initialize() {
         setupIcons();
@@ -112,71 +110,6 @@ public class SidebarController {
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
             btnHistory.setManaged(isBidder);
-        }
-
-        // Initialize the navButtons array
-        navButtons = new Button[]{btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile, btnSettings};
-
-        // Determine the current active screen, defaulting to DASHBOARD if not set
-        String currentScreen = NavigationManager.getInstance().getCurrentScreen();
-        if (currentScreen == null) {
-            currentScreen = NavigationManager.DASHBOARD;
-        }
-        highlightActiveButton(currentScreen);
-    }
-
-    private void highlightActiveButton(String currentScreen) {
-        if (navButtons == null) {
-            return;
-        }
-        
-        // Remove 'active' class from all buttons
-        for (Button btn : navButtons) {
-            if (btn != null) {
-                btn.getStyleClass().remove("active");
-            }
-        }
-        
-        // Match screen with the corresponding button
-        Button targetButton = null;
-        if (currentScreen != null) {
-            switch (currentScreen) {
-                case NavigationManager.DASHBOARD -> targetButton = btnDashboard;
-                case NavigationManager.AUCTION_LIST -> targetButton = btnAuctionList;
-                case NavigationManager.HISTORY -> targetButton = btnHistory;
-                case NavigationManager.SELLER_MGMT -> targetButton = btnSeller;
-                case NavigationManager.ADMIN_MGMT -> targetButton = btnAdmin;
-                case NavigationManager.USER_PROFILE -> targetButton = btnProfile;
-                case NavigationManager.SETTINGS -> targetButton = btnSettings;
-                default -> {
-                    targetButton = btnDashboard;
-                }
-            }
-        } else {
-            targetButton = btnDashboard;
-        }
-
-        // Apply 'active' class to target button
-        if (targetButton != null) {
-            if (!targetButton.getStyleClass().contains("active")) {
-                targetButton.getStyleClass().add("active");
-            }
-        }
-    }
-
-    private void setActiveButton(Button activeButton) {
-        if (navButtons == null) {
-            navButtons = new Button[]{btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile, btnSettings};
-        }
-        for (Button btn : navButtons) {
-            if (btn != null) {
-                btn.getStyleClass().remove("active");
-            }
-        }
-        if (activeButton != null) {
-            if (!activeButton.getStyleClass().contains("active")) {
-                activeButton.getStyleClass().add("active");
-            }
         }
     }
 
@@ -319,43 +252,36 @@ public class SidebarController {
 
     @FXML
     private void handleDashboard(ActionEvent event) {
-        setActiveButton(btnDashboard);
         navigate(NavigationManager.DASHBOARD, "Tổng quan");
     }
 
     @FXML
     private void handleAuctionList(ActionEvent event) {
-        setActiveButton(btnAuctionList);
         navigate(NavigationManager.AUCTION_LIST, "Danh sách đấu giá");
     }
 
     @FXML
     private void handleHistory(ActionEvent event) {
-        setActiveButton(btnHistory);
         navigate(NavigationManager.HISTORY, "Lịch sử đấu giá");
     }
 
     @FXML
     private void handleSeller(ActionEvent event) {
-        setActiveButton(btnSeller);
         navigate(NavigationManager.SELLER_MGMT, "Quản lý sản phẩm");
     }
 
     @FXML
     private void handleAdmin(ActionEvent event) {
-        setActiveButton(btnAdmin);
         navigate(NavigationManager.ADMIN_MGMT, "Danh sách chờ duyệt");
     }
 
     @FXML
     private void handleProfile(ActionEvent event) {
-        setActiveButton(btnProfile);
         navigate(NavigationManager.USER_PROFILE, "Hồ sơ cá nhân");
     }
 
     @FXML
     private void handleSettings(ActionEvent event) {
-        setActiveButton(btnSettings);
         navigate(NavigationManager.SETTINGS, "Cài đặt");
     }
 
