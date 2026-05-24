@@ -190,21 +190,16 @@
     -fx-text-fill: #CBD5E1;
     -fx-font-size: 13px;
     -fx-alignment: CENTER_LEFT;
+    -fx-text-overrun: clip;
     -fx-padding: 12 16 12 20;
     -fx-cursor: hand;
     -fx-border-width: 0 0 0 4;
     -fx-border-color: transparent;
     -fx-background-radius: 0;
-    -fx-min-width: 220;
-    -fx-pref-width: 220;
 }
 
 .sidebar-collapsed .nav-button {
-    -fx-alignment: CENTER_LEFT;
     -fx-padding: 12 0 12 20;
-    -fx-min-width: 64;
-    -fx-pref-width: 64;
-    -fx-max-width: 64;
 }
 
 .nav-icon {

@@ -19,6 +19,8 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
+import javafx.animation.Interpolator;
+import javafx.scene.CacheHint;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -147,7 +149,7 @@ public class SidebarController {
             return;
         }
 
-        collapseTimer = new PauseTransition(Duration.seconds(1));
+        collapseTimer = new PauseTransition(Duration.seconds(5));
         collapseTimer.setOnFinished(e -> setCollapsed(true));
 
         sidebarRoot.addEventHandler(MouseEvent.MOUSE_ENTERED, e -> {
@@ -163,8 +165,7 @@ public class SidebarController {
             setCollapsed(false);
         });
         sidebarRoot.addEventHandler(MouseEvent.MOUSE_EXITED, e -> {
-            collapseTimer.stop();
-            setCollapsed(true);
+            collapseTimer.playFromStart();
         });
     }
 
@@ -184,71 +185,91 @@ public class SidebarController {
             widthAnimation.stop();
         }
 
+        // Enable hardware acceleration
+        sidebarRoot.setCache(true);
+        sidebarRoot.setCacheHint(CacheHint.SPEED);
+
         if (collapse) {
             if (!sidebarRoot.getStyleClass().contains("sidebar-collapsed")) {
                 sidebarRoot.getStyleClass().add("sidebar-collapsed");
             }
-            animateSidebarWidth(COLLAPSED_WIDTH, () -> {
-                setInfoVisible(brandBox, false);
-                setInfoVisible(userBox, false);
-                setLabelVisible(lblMain, false);
-                setLabelVisible(lblAccount, false);
-                setLabelVisible(lblManagement, false);
+
+            // Animate everything together in one smooth motion
+            double targetWidth = COLLAPSED_WIDTH;
+            Timeline collapseAnimation = new Timeline(
+                new KeyFrame(Duration.millis(350),
+                    // Width animation
+                    new KeyValue(sidebarRoot.minWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    new KeyValue(sidebarRoot.prefWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    new KeyValue(sidebarRoot.maxWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    // Fade out text elements
+                    new KeyValue(brandBox.opacityProperty(), 0.0, Interpolator.EASE_OUT),
+                    new KeyValue(userBox.opacityProperty(), 0.0, Interpolator.EASE_OUT),
+                    new KeyValue(lblMain.opacityProperty(), 0.0, Interpolator.EASE_OUT),
+                    new KeyValue(lblAccount.opacityProperty(), 0.0, Interpolator.EASE_OUT),
+                    new KeyValue(lblManagement.opacityProperty(), 0.0, Interpolator.EASE_OUT)
+                )
+            );
+
+            collapseAnimation.setOnFinished(e -> {
+                hideElements();
+                sidebarRoot.setCache(false);
             });
+            collapseAnimation.play();
+
         } else {
             sidebarRoot.getStyleClass().remove("sidebar-collapsed");
-            setInfoVisible(brandBox, true);
-            setInfoVisible(userBox, true);
-            setLabelVisible(lblMain, true);
-            setLabelVisible(lblAccount, true);
-            setLabelVisible(lblManagement, showManagementSection);
-            animateSidebarWidth(EXPANDED_WIDTH, null);
+            showElements();
+
+            // Animate everything together in one smooth motion
+            double targetWidth = EXPANDED_WIDTH;
+            Timeline expandAnimation = new Timeline(
+                new KeyFrame(Duration.millis(350),
+                    // Width animation
+                    new KeyValue(sidebarRoot.minWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    new KeyValue(sidebarRoot.prefWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    new KeyValue(sidebarRoot.maxWidthProperty(), targetWidth, Interpolator.EASE_BOTH),
+                    // Fade in text elements
+                    new KeyValue(brandBox.opacityProperty(), 1.0, Interpolator.EASE_IN),
+                    new KeyValue(userBox.opacityProperty(), 1.0, Interpolator.EASE_IN),
+                    new KeyValue(lblMain.opacityProperty(), 1.0, Interpolator.EASE_IN),
+                    new KeyValue(lblAccount.opacityProperty(), 1.0, Interpolator.EASE_IN),
+                    new KeyValue(lblManagement.opacityProperty(), 1.0, Interpolator.EASE_IN)
+                )
+            );
+
+            expandAnimation.setOnFinished(e -> {
+                sidebarRoot.setCache(false);
+            });
+            expandAnimation.play();
         }
+    }
+
+
+    private void hideElements() {
+        // Only hide text after animation completes
+        navButtonTexts.forEach((button, text) -> {
+            button.setText("");
+            button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            button.setGraphicTextGap(0);
+        });
+    }
+
+    private void showElements() {
+        // Set opacity to 0 initially for smooth fade-in
+        brandBox.setOpacity(0.0);
+        userBox.setOpacity(0.0);
+        lblMain.setOpacity(0.0);
+        lblAccount.setOpacity(0.0);
+        lblManagement.setOpacity(0.0);
 
         navButtonTexts.forEach((button, text) -> {
-            button.setText(collapse ? "" : text);
+            button.setText(text);
             button.setContentDisplay(ContentDisplay.LEFT);
-            button.setGraphicTextGap(collapse ? 0 : 12);
+            button.setGraphicTextGap(12);
         });
     }
 
-    private void animateSidebarWidth(double targetWidth, Runnable onFinished) {
-        widthAnimation = new Timeline(
-                new KeyFrame(Duration.millis(180),
-                        new KeyValue(sidebarRoot.minWidthProperty(), targetWidth),
-                        new KeyValue(sidebarRoot.prefWidthProperty(), targetWidth),
-                        new KeyValue(sidebarRoot.maxWidthProperty(), targetWidth))
-        );
-        widthAnimation.setOnFinished(e -> {
-            sidebarRoot.setMinWidth(targetWidth);
-            sidebarRoot.setPrefWidth(targetWidth);
-            sidebarRoot.setMaxWidth(targetWidth);
-            if (onFinished != null) {
-                onFinished.run();
-            }
-        });
-        widthAnimation.play();
-    }
-
-    private void setInfoVisible(VBox box, boolean visible) {
-        if (box != null) {
-            fadeNode(box, visible);
-            box.setVisible(visible);
-            box.setManaged(visible);
-        }
-    }
-
-    private void setLabelVisible(Label label, boolean visible) {
-        if (label != null) {
-            fadeNode(label, visible);
-            label.setVisible(visible);
-            label.setManaged(visible);
-        }
-    }
-
-    private void fadeNode(Node node, boolean visible) {
-        node.setOpacity(visible ? 1.0 : 0.0);
-    }
 
     @FXML
     private void handleDashboard(ActionEvent event) {

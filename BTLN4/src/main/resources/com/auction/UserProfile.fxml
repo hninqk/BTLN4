@@ -20,85 +20,82 @@
 
                 <Label text="Hồ sơ cá nhân" styleClass="page-title"/>
 
-                <HBox spacing="20" fillHeight="true">
+                <HBox spacing="24" fillHeight="true">
 
-                    <!-- LEFT: Profile info -->
                     <VBox spacing="16" prefWidth="380" minWidth="340">
 
-                        <!-- Avatar + name card -->
                         <VBox styleClass="card" spacing="14" alignment="CENTER">
-                            <Label fx:id="avatarLabel" text="👤"
-                                   style="-fx-font-size:52px;"/>
-                            <VBox alignment="CENTER" spacing="4">
+                            <Label fx:id="avatarLabel" text="👤" style="-fx-font-size:56px;"/>
+                            <VBox alignment="CENTER" spacing="6">
                                 <Label fx:id="displayNameLabel" text="..."
-                                       style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
-                                <Label fx:id="roleLabel" text="..."
-                                       styleClass="badge badge-open"/>
+                                       style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
+                                <Label fx:id="roleLabel" text="..." styleClass="badge badge-open"/>
                             </VBox>
                             <Label fx:id="memberSinceLabel" text="" styleClass="label-subtle"/>
                         </VBox>
 
-                        <!-- Stats for bidder -->
                         <VBox fx:id="bidderStatsBox" styleClass="card" spacing="12">
-                            <Label text="Thông tin tài khoản" styleClass="section-title"/>
+                            <Label text="Thống kê hoạt động" styleClass="section-title"/>
                             <Separator/>
                             <HBox spacing="12">
                                 <VBox HBox.hgrow="ALWAYS" alignment="CENTER" styleClass="stat-card" spacing="6">
-                                    <Label text="Số dư" styleClass="stat-label"/>
+                                    <Label text="Số dư hiện tại" styleClass="stat-label"/>
                                     <Label fx:id="balanceLabel" text="0 ₫"
-                                           style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:#16A34A;"/>
+                                           style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:#16A34A;"/>
                                 </VBox>
                                 <VBox HBox.hgrow="ALWAYS" alignment="CENTER" styleClass="stat-card" spacing="6">
                                     <Label text="Lượt đặt giá" styleClass="stat-label"/>
                                     <Label fx:id="totalBidsLabel" text="0"
-                                           style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
+                                           style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
                                 </VBox>
                             </HBox>
                         </VBox>
 
-                        <!-- Stats for seller -->
-                        <VBox fx:id="sellerStatsBox" styleClass="card" spacing="12"
-                              visible="false" managed="false">
+                        <VBox fx:id="sellerStatsBox" styleClass="card" spacing="12" visible="false" managed="false">
                             <Label text="Thông tin cửa hàng" styleClass="section-title"/>
                             <Separator/>
-                            <GridPane hgap="12" vgap="8">
+                            <GridPane hgap="12" vgap="10">
                                 <Label text="Tên cửa hàng:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                                <Label fx:id="shopNameLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                                <Label text="Phiên đã tạo:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                                <Label fx:id="auctionCountLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                                <Label fx:id="shopNameLabel" text="" style="-fx-font-weight: bold;" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                
+                                <Label text="Phiên đã tạo:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                <Label fx:id="auctionCountLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
                             </GridPane>
                         </VBox>
 
                     </VBox>
 
-                    <!-- RIGHT: Edit form -->
                     <VBox spacing="16" HBox.hgrow="ALWAYS">
+                        
+                        <VBox spacing="4">
+                            <Label fx:id="profileErrorLabel" text="" styleClass="label-error" wrapText="true"/>
+                            <Label fx:id="profileSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
+                        </VBox>
 
-                        <VBox styleClass="card" spacing="14">
-                            <Label text="Chỉnh sửa thông tin" styleClass="section-title"/>
+                        <VBox fx:id="balanceBox" styleClass="card" spacing="14" visible="false" managed="false">
+                            <Label text="Quản lý số dư" styleClass="section-title"/>
                             <Separator/>
-
-                            <!-- Seller only -->
-                            <VBox fx:id="shopNameBox" spacing="6" visible="false" managed="false">
-                                <Label text="Tên cửa hàng" styleClass="form-label"/>
-                                <TextField fx:id="shopNameField" styleClass="text-field" maxWidth="Infinity"/>
-                            </VBox>
-
-                            <!-- Bidder only -->
-                            <VBox fx:id="balanceBox" spacing="6" visible="false" managed="false">
+                            <VBox spacing="8">
                                 <Label text="Nạp tiền vào tài khoản (₫)" styleClass="form-label"/>
-                                <HBox spacing="8">
-                                    <TextField fx:id="depositField" promptText="Số tiền muốn nạp..."
+                                <HBox spacing="10">
+                                    <TextField fx:id="depositField" promptText="VD: 500000"
                                                styleClass="text-field" HBox.hgrow="ALWAYS"/>
-                                    <Button text="Nạp tiền" onAction="#handleDeposit" styleClass="btn-success"/>
+                                    <Button text="💳 Nạp ngay" onAction="#handleDeposit" styleClass="btn-success"/>
                                 </HBox>
                             </VBox>
+                        </VBox>
 
-                            <Label fx:id="profileErrorLabel"   text="" styleClass="label-error"   wrapText="true"/>
-                            <Label fx:id="profileSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
-
-                            <Button text="💾 Lưu thay đổi" onAction="#handleSaveProfile"
-                                    styleClass="btn-primary" maxWidth="Infinity"/>
+                        <VBox fx:id="shopNameBox" styleClass="card" spacing="14" visible="false" managed="false">
+                            <Label text="Cài đặt cửa hàng" styleClass="section-title"/>
+                            <Separator/>
+                            <VBox spacing="8">
+                                <Label text="Tên cửa hàng" styleClass="form-label"/>
+                                <HBox spacing="10">
+                                    <TextField fx:id="shopNameField" promptText="Nhập tên cửa hàng mới..." 
+                                               styleClass="text-field" HBox.hgrow="ALWAYS"/>
+                                    <Button text="💾 Cập nhật" onAction="#handleSaveProfile" styleClass="btn-primary"/>
+                                </HBox>
+                            </VBox>
                         </VBox>
 
                     </VBox>
