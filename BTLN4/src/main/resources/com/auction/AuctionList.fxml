@@ -36,13 +36,13 @@
             <!-- Filters toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextField fx:id="searchField" promptText="🔍  Tìm kiếm sản phẩm..."
-                           styleClass="text-field" prefWidth="260"/>
+                           styleClass="text-field, filter-bar-input" prefWidth="260" minHeight="36" prefHeight="36" maxHeight="36"/>
                 <ComboBox fx:id="statusFilter" promptText="Trạng thái"
-                          styleClass="combo-box" prefWidth="150"/>
+                          styleClass="combo-box, filter-bar-input" prefWidth="150" minHeight="36" prefHeight="36" maxHeight="36"/>
                 <ComboBox fx:id="categoryFilter" promptText="Danh mục"
-                          styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary"/>
-                <Button text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary"/>
+                          styleClass="combo-box, filter-bar-input" prefWidth="150" minHeight="36" prefHeight="36" maxHeight="36"/>
+                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary, filter-bar-btn" minHeight="36" prefHeight="36" maxHeight="36"/>
+                <Button text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary, filter-bar-btn" minHeight="36" prefHeight="36" maxHeight="36"/>
             </HBox>
 
             <!-- Table -->

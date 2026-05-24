@@ -167,6 +167,37 @@
     -fx-border-color: -theme-primary;
 }
 
+/* ---------- Filter Bar (Search/Filter Toolbar) ---------- */
+/* Shared height token for TextField, ComboBox, and Buttons in the filter row */
+.filter-bar-input {
+    -fx-pref-height: 36px;
+    -fx-min-height: 36px;
+    -fx-max-height: 36px;
+    -fx-font-size: 13px;
+}
+
+/* Deep override: strip Modena's built-in ComboBox outer padding */
+.combo-box.filter-bar-input {
+    -fx-padding: 0;
+}
+
+/* Deep override: neutralize Modena's hidden minimum height, background insets, and alignment on the display cell */
+.combo-box.filter-bar-input > .list-cell {
+    -fx-padding: 0 8 0 8;
+    -fx-background-insets: 0;
+    -fx-min-height: 0;
+    -fx-alignment: CENTER_LEFT;
+}
+
+.filter-bar-btn {
+    -fx-pref-height: 36px;
+    -fx-min-height: 36px;
+    -fx-max-height: 36px;
+    -fx-padding: 0 20 0 20;
+    -fx-font-size: 13px;
+    -fx-font-weight: normal;
+}
+
 /* ---------- Top Bar ---------- */
 .topbar {
     -fx-background-color: #FFFFFF;

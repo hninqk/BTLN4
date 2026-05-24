@@ -63,11 +63,11 @@
             <!-- Filter bar -->
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <TextField fx:id="searchField" promptText="🔍 Tìm kiếm sản phẩm..."
-                           styleClass="text-field" prefWidth="240"/>
+                           styleClass="text-field, filter-bar-input" prefWidth="240" minHeight="36" prefHeight="36" maxHeight="36"/>
                 <ComboBox fx:id="resultFilter" promptText="Kết quả"
-                          styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
-                <Button text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary"/>
+                           styleClass="combo-box, filter-bar-input" prefWidth="150" minHeight="36" prefHeight="36" maxHeight="36"/>
+                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary, filter-bar-btn" minHeight="36" prefHeight="36" maxHeight="36"/>
+                <Button text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary, filter-bar-btn" minHeight="36" prefHeight="36" maxHeight="36"/>
             </HBox>
 
             <!-- History table -->
