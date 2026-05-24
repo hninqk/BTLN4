@@ -93,6 +93,12 @@ Sử dụng `AuctionWebSocketHandler` và `RestApiHandler` trên Javalin:
 *   **Thống Kê Trực Quan**: Biểu đồ đường thời gian thực (`AuctionChartHelper`) minh họa lịch sử giá của phiên đấu giá.
 *   **Quản Lý Đăng Xuất & Bộ Nhớ**: Độ trễ ngắt kết nối an toàn giải phóng tài nguyên mạng, ngăn memory leak rò rỉ bộ nhớ.
 
+### 7. Bảo Mật Tối Đa Với Thuật Toán Argon2id 🛡️
+Hệ thống sử dụng thuật toán băm mật khẩu **Argon2id** (thuật toán bảo mật hiện đại nhất, chiến thắng Password Hashing Competition) thông qua `PasswordHashService` để bảo vệ tài khoản người dùng:
+*   **Chống Tấn Công Brute-Force & Rainbow Tables**: Tự động sinh ngẫu nhiên Salt (muối) cho mỗi tài khoản, bảo vệ mật khẩu khỏi các cuộc tấn công dò mật khẩu và từ điển.
+*   **Kháng Tấn Công Bằng GPU/ASIC**: Cấu hình yêu cầu bộ nhớ cao (memory-hard) và chi phí tính toán của Argon2id làm cho việc bẻ khóa hàng loạt trở nên bất khả thi đối với tin tặc.
+*   **Xác Thực An Toàn**: Mật khẩu không bao giờ lưu trữ dưới dạng văn bản thô (plaintext), mọi quá trình đăng nhập và xác minh đều thông qua việc so khớp mã băm an toàn tuyệt đối.
+
 ---
 
 ## 🗄️ Sơ Đồ Lớp Mô Hình Hệ Thống
