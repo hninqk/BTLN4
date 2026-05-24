@@ -681,8 +681,11 @@
     -fx-padding: 6 12 6 12;
 }
 
+.combo-box-popup .list-cell:hover,
 .combo-box-popup .list-cell:filled:hover {
-    -fx-background-color: -theme-table-row-hover;
+    -fx-background-color: #3b4b6b;
+    -fx-text-fill: #FFFFFF;
+    -fx-cursor: hand;
 }
 
 .combo-box-popup .list-cell:filled:selected,
