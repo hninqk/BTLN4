@@ -10,6 +10,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
+import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -128,8 +131,17 @@ public class NavigationManager {
         Button minimizeButton = createWindowButton("fas-minus", "Thu nhỏ");
         minimizeButton.setOnAction(e -> primaryStage.setIconified(true));
 
-        Button maximizeButton = createWindowButton("fas-expand-alt", "Phóng to");
+        Button maximizeButton = createWindowButton(primaryStage.isMaximized() ? "fas-window-restore" : "fas-expand-alt", 
+                primaryStage.isMaximized() ? "Khôi phục" : "Phóng to");
         maximizeButton.setOnAction(e -> primaryStage.setMaximized(!primaryStage.isMaximized()));
+        
+        primaryStage.maximizedProperty().addListener((obs, oldVal, newVal) -> {
+            FontIcon icon = new FontIcon(newVal ? "fas-window-restore" : "fas-expand-alt");
+            icon.setIconSize(12);
+            icon.getStyleClass().add("window-button-icon");
+            maximizeButton.setGraphic(icon);
+            maximizeButton.setAccessibleText(newVal ? "Khôi phục" : "Phóng to");
+        });
 
         Button closeButton = createWindowButton("fas-times", "Đóng");
         closeButton.getStyleClass().add("window-close-button");
@@ -155,12 +167,25 @@ public class NavigationManager {
             }
         });
 
-        VBox frame = new VBox(titleBar, content);
+        StackPane frame = new StackPane();
         frame.getStyleClass().add("window-frame");
+
+        // Align titleBar to top
+        titleBar.setMaxHeight(38);
+        titleBar.setPrefHeight(38);
+        titleBar.setMinHeight(38);
+        StackPane.setAlignment(titleBar, Pos.TOP_CENTER);
+
+        // Set margin on content region so it does not overlap with the title bar
         if (content instanceof Region region) {
             region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            StackPane.setMargin(region, new Insets(38, 0, 0, 0));
         }
-        VBox.setVgrow(content, Priority.ALWAYS);
+
+        // Add content first, then titleBar on top
+        frame.getChildren().addAll(content, titleBar);
+        titleBar.toFront(); // Force title bar to the front of Z-ordering
+
         return frame;
     }
 

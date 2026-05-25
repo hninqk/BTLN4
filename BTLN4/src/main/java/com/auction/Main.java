@@ -95,6 +95,12 @@ public class Main extends Application {
             } catch (AWTException e) {
                 System.err.println("TrayIcon could not be added.");
             }
+        } else {
+            // Fallback for systems without system tray support to cleanly terminate the process
+            stage.setOnCloseRequest(event -> {
+                Platform.exit();
+                System.exit(0);
+            });
         }
     }
 
