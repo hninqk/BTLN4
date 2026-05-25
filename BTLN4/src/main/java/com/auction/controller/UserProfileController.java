@@ -328,7 +328,8 @@ public class UserProfileController {
                     cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
                     Tooltip tooltip = new Tooltip(
                             "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
-                            "Số phiên đấu giá đã chốt: " + closedDay);
+                            "Số phiên đã chốt: " + closedDay + "\n" +
+                            "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                     tooltip.setShowDelay(javafx.util.Duration.millis(50));
                     tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
                     Tooltip.install(cell, tooltip);
