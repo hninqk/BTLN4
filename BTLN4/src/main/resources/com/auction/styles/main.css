@@ -237,7 +237,7 @@
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
     -fx-border-color: transparent transparent transparent #3B82F6;
-    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.8), 10, 0.5, 0, 0);
+    /* -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.8), 10, 0.5, 0, 0); */
 }
 
 .active-tab:hover {
@@ -471,7 +471,7 @@
 
 .admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
     -fx-background-color: -theme-surface;
-    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.10), 10, 0.20, 0, 2);
+    /* -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.10), 10, 0.20, 0, 2); */
 }
 
 .admin-tab-pane .tab-label {
@@ -525,7 +525,7 @@
 
 .dark-mode .admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
     -fx-background-color: rgba(30, 41, 59, 0.96);
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 12, 0.18, 0, 2);
+    /* -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 12, 0.18, 0, 2); */
 }
 
 /* ---------- Disabled Button States ---------- */
@@ -785,7 +785,7 @@
     -fx-border-radius: 9999;
     -fx-border-color: rgba(255,255,255,0.06);
     -fx-border-width: 1.5;
-    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0.12, 0, 2);
+    /* -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0.12, 0, 2); */
     -fx-opacity: 0.98;
 }
 
@@ -836,7 +836,7 @@
 }
 
 .heatmap-cell:hover {
-    -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.3), 4, 0.0, 0, 0);
+    /* -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.3), 4, 0.0, 0, 0); */
 }
 
 /* Tone màu xanh dương cho heatmap (Light mode) */
@@ -1338,7 +1338,7 @@
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.45), 6, 0, 0, 2);
+    /* -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.45), 6, 0, 0, 2); */
 }
 
 .combo-box-popup .list-cell:filled:selected,
@@ -1717,7 +1717,7 @@
     -fx-border-radius: 6px;
     -fx-border-width: 1px;
     /* Hiệu ứng đổ bóng mờ cho hộp nhỏ */
-    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.5), 8, 0.0, 0, 3);
+    /* -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.5), 8, 0.0, 0, 3); */
 }
 
 /* ── Balance Pill ─────────────────────────── */

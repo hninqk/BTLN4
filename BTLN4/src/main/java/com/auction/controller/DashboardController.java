@@ -47,7 +47,9 @@ public class DashboardController {
 
     @FXML
     private Label welcomeLabel;
-    
+    @FXML
+    private Button exploreButton;
+
     // Bidder View Elements
     @FXML
     private VBox bidderView;
@@ -55,10 +57,14 @@ public class DashboardController {
     private Label newsLabel;
     @FXML
     private FlowPane hotItemsBox;
-    
+
     // Seller View Elements
     @FXML
     private VBox sellerView;
+    @FXML
+    private Label sellerNewsLabel;
+    @FXML
+    private FlowPane sellerHotItemsBox;
     @FXML
     private Label sellerEarningLabel;
     @FXML
@@ -91,12 +97,17 @@ public class DashboardController {
     };
     private int currentNewsIndex = 0;
     private javafx.animation.Timeline newsTimeline;
+    private javafx.animation.Timeline sellerNewsTimeline;
 
     private final HotItemCache hotCache = HotItemCache.getInstance();
     private Timeline hotRefreshTimeline;
     private Timeline hotCountdownTimeline;
+    private Timeline sellerHotRefreshTimeline;
+    private Timeline sellerHotCountdownTimeline;
     private final Map<String, Auction> visibleHotAuctions = new HashMap<>();
+    private final Map<String, Auction> visibleSellerHotAuctions = new HashMap<>();
     private volatile boolean isRefreshing = false;
+    private volatile boolean isSellerRefreshing = false;
 
     @FXML
     public void initialize() {
@@ -138,13 +149,41 @@ public class DashboardController {
         newsTimeline.play();
     }
 
+    private void startSellerNewsTicker() {
+        if (sellerNewsLabel == null)
+            return;
+        sellerNewsTimeline = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(Duration.seconds(8), event -> {
+                    javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(Duration.millis(400),
+                            sellerNewsLabel);
+                    fadeOut.setFromValue(1.0);
+                    fadeOut.setToValue(0.0);
+                    fadeOut.setOnFinished(e -> {
+                        currentNewsIndex = (currentNewsIndex + 1) % newsHeadlines.length;
+                        sellerNewsLabel.setText(newsHeadlines[currentNewsIndex]);
+                        javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(
+                                Duration.millis(400), sellerNewsLabel);
+                        fadeIn.setFromValue(0.0);
+                        fadeIn.setToValue(1.0);
+                        fadeIn.play();
+                    });
+                    fadeOut.play();
+                }));
+        sellerNewsTimeline.setCycleCount(javafx.animation.Timeline.INDEFINITE);
+        sellerNewsTimeline.play();
+    }
+
     private void loadData() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
             welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
-            
+
             if (user instanceof Seller) {
                 // Setup Seller View
+                if (exploreButton != null) {
+                    exploreButton.setVisible(false);
+                    exploreButton.setManaged(false);
+                }
                 if (bidderView != null) {
                     bidderView.setVisible(false);
                     bidderView.setManaged(false);
@@ -153,9 +192,38 @@ public class DashboardController {
                     sellerView.setVisible(true);
                     sellerView.setManaged(true);
                 }
+                startSellerNewsTicker();
+                startSellerHotCountdownRefresh();
                 loadSellerStats((Seller) user);
+
+                // Load hot items for seller view
+                javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
+                    private List<Auction> all;
+                    @Override
+                    protected Void call() {
+                        all = app.getAllAuctions();
+                        hotCache.seedFromList(all);
+                        return null;
+                    }
+                    @Override
+                    protected void succeeded() {
+                        refreshSellerHotItems(all);
+                        startSellerHotItemRefresh();
+                    }
+                    @Override
+                    protected void failed() {
+                        System.err.println("[Dashboard] loadData failed: " + getException().getMessage());
+                    }
+                };
+                Thread t = new Thread(task, "dashboard-seller-load");
+                t.setDaemon(true);
+                t.start();
             } else {
                 // Setup Bidder/Admin View
+                if (exploreButton != null) {
+                    exploreButton.setVisible(true);
+                    exploreButton.setManaged(true);
+                }
                 if (bidderView != null) {
                     bidderView.setVisible(true);
                     bidderView.setManaged(true);
@@ -166,7 +234,7 @@ public class DashboardController {
                 }
                 startNewsTicker();
                 startHotCountdownRefresh();
-                
+
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
                     @Override
@@ -196,7 +264,6 @@ public class DashboardController {
         if (sellerEarningLabel == null) return;
         sellerEarningLabel.setText("...");
         sellerRevenueLabel.setText("...");
-        sellerClosedLabel.setText("...");
 
         javafx.concurrent.Task<List<Auction>> task = new javafx.concurrent.Task<>() {
             @Override
@@ -211,23 +278,22 @@ public class DashboardController {
             Map<LocalDate, Double> revenueByDay = new HashMap<>();
             Map<LocalDate, Integer> closedByDay = new HashMap<>();
             Map<String, Integer> categoryCount = new HashMap<>();
-            
+
             double totalRevenue = 0;
             double monthRevenue = 0;
-            int closedCount = 0;
 
             for (Auction a : auctions) {
-                // Count category for all seller's items
-                    if (a.getItem() != null && a.getItem().getCategory() != null) {
+                if (a.getStatus() != AuctionStatus.CLOSED) continue;
+
+                // Count category for closed items only (sold items)
+                if (a.getItem() != null && a.getItem().getCategory() != null) {
                     String catName = a.getItem().getCategory();
                     categoryCount.merge(catName, 1, Integer::sum);
                 }
-                
-                if (a.getStatus() != AuctionStatus.CLOSED) continue;
+
                 double amount = Math.max(0, a.getHighestBid());
                 LocalDate day = a.getEndTime().toLocalDate();
                 totalRevenue += amount;
-                closedCount++;
                 if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
                     monthRevenue += amount;
                 if (!day.isBefore(firstDay) && !day.isAfter(today)) {
@@ -238,13 +304,11 @@ public class DashboardController {
 
             final double total = totalRevenue;
             final double month = monthRevenue;
-            final int closed = closedCount;
             final Map<LocalDate, Double> byDay = revenueByDay;
             final Map<LocalDate, Integer> closedMap = closedByDay;
 
             sellerEarningLabel.setText(String.format("%,.0f ₫", total));
             sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
-            sellerClosedLabel.setText(String.valueOf(closed));
 
             // Populate PieChart and apply theme-aware colors
             if (sellerCategoryPieChart != null) {
@@ -286,8 +350,8 @@ public class DashboardController {
             if (sellerRevenueHeatmap != null) {
                 sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
                 for (int i = 0; i < 35; i++) {
-                    int col = i % 7; 
-                    int row = i / 7; 
+                    int col = i % 7;
+                    int row = i / 7;
                     LocalDate day = firstDay.plusDays(i);
                     double amt = byDay.getOrDefault(day, 0.0);
                     int closedDay = closedMap.getOrDefault(day, 0);
@@ -308,7 +372,7 @@ public class DashboardController {
                         }
                         tooltip.show(cell, event.getScreenX() + 10, event.getScreenY() + 10);
                         activeHeatmapTooltip = tooltip;
-                        event.consume(); 
+                        event.consume();
                     });
 
                     cell.setOnMouseEntered(event -> {
@@ -325,7 +389,6 @@ public class DashboardController {
         task.setOnFailed(e -> {
             sellerEarningLabel.setText("?");
             sellerRevenueLabel.setText("?");
-            sellerClosedLabel.setText("?");
         });
         new Thread(task, "dashboard-seller-stats").start();
     }
@@ -368,9 +431,9 @@ public class DashboardController {
                 if (node != null) {
                     node.setStyle("-fx-pie-color: " + color + ";");
 
-                    // Tooltip: show name, count and percent
+                    // Simple Tooltip
                     String perc = total > 0 ? String.format("%.1f%%", d.getPieValue() * 100.0 / total) : "0%";
-                    Tooltip t = new Tooltip(d.getName() + "\nSố: " + (int) d.getPieValue() + "\n" + perc);
+                    Tooltip t = new Tooltip(d.getName() + "\nSố lượng: " + (int) d.getPieValue() + "\nTỷ lệ: " + perc);
                     Tooltip.install(node, t);
 
                     // Hover effect: slight pop-out
@@ -388,7 +451,7 @@ public class DashboardController {
                         if (newNode != null) {
                             newNode.setStyle("-fx-pie-color: " + color + ";");
                             String perc = total > 0 ? String.format("%.1f%%", d.getPieValue() * 100.0 / total) : "0%";
-                            Tooltip t = new Tooltip(d.getName() + "\nSố: " + (int) d.getPieValue() + "\n" + perc);
+                            Tooltip t = new Tooltip(d.getName() + "\nSố lượng: " + (int) d.getPieValue() + "\nTỷ lệ: " + perc);
                             Tooltip.install(newNode, t);
                             newNode.addEventHandler(MouseEvent.MOUSE_ENTERED, ev -> {
                                 newNode.setScaleX(1.06);
@@ -402,7 +465,7 @@ public class DashboardController {
                     });
                 }
 
-                // Add legend item (color swatch + label)
+                // Add legend item (color swatch + label) with proper text color
                 if (sellerPieLegend != null) {
                     HBox legendItem = new HBox(8);
                     legendItem.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -410,7 +473,7 @@ public class DashboardController {
                     swatch.setPrefSize(12, 12);
                     swatch.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 4; -fx-border-color: rgba(0,0,0,0.06); -fx-border-width: 1;");
                     Label lbl = new Label(d.getName() + " (" + (int) d.getPieValue() + ")");
-                    lbl.getStyleClass().add("chart-legend-item");
+                    lbl.setStyle("-fx-text-fill: -theme-text; -fx-font-size: 13px;");
                     legendItem.getChildren().addAll(swatch, lbl);
                     sellerPieLegend.getChildren().add(legendItem);
                 }
@@ -474,6 +537,63 @@ public class DashboardController {
         }
     }
 
+    private void refreshSellerHotItems(List<Auction> all) {
+        if (sellerHotItemsBox == null) return;
+
+        List<Auction> hotList = all.stream()
+                .filter(a -> a.getStatus() == AuctionStatus.OPEN
+                        || a.getStatus() == AuctionStatus.RUNNING)
+                .sorted(Comparator
+                        .comparing((Auction a) -> endTimeOrMax(a))
+                        .thenComparing(a -> a.getItem().getName()))
+                .limit(5)
+                .toList();
+
+        visibleSellerHotAuctions.clear();
+        hotList.forEach(a -> visibleSellerHotAuctions.put(a.getId(), a));
+
+        boolean changed = false;
+        if (sellerHotItemsBox.getChildren().size() != hotList.size()) {
+            changed = true;
+        } else {
+            for (int i = 0; i < hotList.size(); i++) {
+                VBox card = (VBox) sellerHotItemsBox.getChildren().get(i);
+                if (!hotList.get(i).getId().equals(card.getUserData())) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed) {
+            sellerHotItemsBox.getChildren().clear();
+            for (Auction a : hotList) {
+                VBox card = createHotItemCard(a);
+                card.setUserData(a.getId());
+                sellerHotItemsBox.getChildren().add(card);
+            }
+        } else {
+            for (int i = 0; i < hotList.size(); i++) {
+                Auction a = hotList.get(i);
+                VBox card = (VBox) sellerHotItemsBox.getChildren().get(i);
+                if (card.getChildren().size() >= 5) {
+                    Label price = (Label) card.getChildren().get(2);
+                    price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
+
+                    Label status = (Label) card.getChildren().get(3);
+                    status.setText(a.getStatusDisplay());
+
+                    status.getStyleClass().removeAll("badge-running", "badge-open");
+                    status.getStyleClass().add(
+                            a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
+
+                    Label countdown = (Label) card.getChildren().get(4);
+                    countdown.setText(formatCountdown(a));
+                }
+            }
+        }
+    }
+
     private LocalDateTime endTimeOrMax(Auction auction) {
         return auction.getEndTime() == null ? LocalDateTime.MAX : auction.getEndTime();
     }
@@ -481,7 +601,7 @@ public class DashboardController {
     private void startHotItemRefresh() {
         hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
             if (isRefreshing)
-                return; 
+                return;
             isRefreshing = true;
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
                 @Override
@@ -503,10 +623,41 @@ public class DashboardController {
         hotRefreshTimeline.play();
     }
 
+    private void startSellerHotItemRefresh() {
+        sellerHotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
+            if (isSellerRefreshing)
+                return;
+            isSellerRefreshing = true;
+            javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected List<Auction> call() {
+                    return app.getAllAuctions();
+                }
+            };
+            refreshTask.setOnSucceeded(ev -> {
+                isSellerRefreshing = false;
+                hotCache.seedFromList(refreshTask.getValue());
+                Platform.runLater(() -> refreshSellerHotItems(refreshTask.getValue()));
+            });
+            refreshTask.setOnFailed(ev -> isSellerRefreshing = false);
+            Thread t = new Thread(refreshTask, "seller-hot-refresh");
+            t.setDaemon(true);
+            t.start();
+        }));
+        sellerHotRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        sellerHotRefreshTimeline.play();
+    }
+
     private void startHotCountdownRefresh() {
         hotCountdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateHotCountdownLabels()));
         hotCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
         hotCountdownTimeline.play();
+    }
+
+    private void startSellerHotCountdownRefresh() {
+        sellerHotCountdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateSellerHotCountdownLabels()));
+        sellerHotCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        sellerHotCountdownTimeline.play();
     }
 
     private void updateHotCountdownLabels() {
@@ -515,6 +666,21 @@ public class DashboardController {
                 continue;
             }
             Auction auction = visibleHotAuctions.get(auctionId);
+            if (auction == null || card.getChildren().size() < 5) {
+                continue;
+            }
+            Label countdown = (Label) card.getChildren().get(4);
+            countdown.setText(formatCountdown(auction));
+        }
+    }
+
+    private void updateSellerHotCountdownLabels() {
+        if (sellerHotItemsBox == null) return;
+        for (javafx.scene.Node node : sellerHotItemsBox.getChildren()) {
+            if (!(node instanceof VBox card) || !(card.getUserData() instanceof String auctionId)) {
+                continue;
+            }
+            Auction auction = visibleSellerHotAuctions.get(auctionId);
             if (auction == null || card.getChildren().size() < 5) {
                 continue;
             }
@@ -627,9 +793,15 @@ public class DashboardController {
     public void cleanup() {
         if (newsTimeline != null)
             newsTimeline.stop();
+        if (sellerNewsTimeline != null)
+            sellerNewsTimeline.stop();
         if (hotRefreshTimeline != null)
             hotRefreshTimeline.stop();
         if (hotCountdownTimeline != null)
             hotCountdownTimeline.stop();
+        if (sellerHotRefreshTimeline != null)
+            sellerHotRefreshTimeline.stop();
+        if (sellerHotCountdownTimeline != null)
+            sellerHotCountdownTimeline.stop();
     }
 }
