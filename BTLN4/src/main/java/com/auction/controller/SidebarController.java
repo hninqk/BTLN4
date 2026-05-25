@@ -76,6 +76,7 @@ public class SidebarController {
     @FXML
     public void initialize() {
         setupIcons();
+        highlightActiveTab();
 
         if (sidebarRoot != null) {
             sidebarRoot.setMinWidth(EXPANDED_WIDTH);
@@ -141,6 +142,31 @@ public class SidebarController {
         button.setContentDisplay(ContentDisplay.LEFT);
         button.setGraphicTextGap(12);
         button.setTooltip(new Tooltip(text));
+    }
+
+    private void highlightActiveTab() {
+        String screen = NavigationManager.getInstance().getCurrentScreen();
+        if (screen == null) return;
+        
+        Button[] allBtns = {btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile, btnSettings, btnLogout};
+        for (Button b : allBtns) {
+            if (b != null) b.getStyleClass().remove("active-tab");
+        }
+        
+        Button activeBtn = switch (screen) {
+            case NavigationManager.DASHBOARD -> btnDashboard;
+            case NavigationManager.AUCTION_LIST, NavigationManager.AUCTION_DETAIL -> btnAuctionList;
+            case NavigationManager.HISTORY -> btnHistory;
+            case NavigationManager.SELLER_MGMT -> btnSeller;
+            case NavigationManager.ADMIN_MGMT -> btnAdmin;
+            case NavigationManager.USER_PROFILE -> btnProfile;
+            case NavigationManager.SETTINGS -> btnSettings;
+            default -> null;
+        };
+        
+        if (activeBtn != null) {
+            activeBtn.getStyleClass().add("active-tab");
+        }
     }
 
 

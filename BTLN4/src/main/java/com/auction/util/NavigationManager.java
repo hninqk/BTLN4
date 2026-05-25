@@ -32,6 +32,7 @@ public class NavigationManager {
     private static NavigationManager instance;
     private Stage primaryStage;
     private Object currentController; // tracks the active controller for cleanup
+    private String currentScreen = DASHBOARD; // tracks the active screen name
     private boolean isDarkMode = true; // Persistent theme state
     private double dragOffsetX;
     private double dragOffsetY;
@@ -70,6 +71,10 @@ public class NavigationManager {
         }
     }
 
+    public String getCurrentScreen() {
+        return currentScreen;
+    }
+
     /**
      * Navigate to the given FXML screen (without passing data).
      * 
@@ -96,6 +101,7 @@ public class NavigationManager {
             }
         }
 
+        this.currentScreen = fxmlName;
         FXMLLoader loader = createLoader(fxmlName);
         Parent root = loader.load();
         currentController = loader.getController();

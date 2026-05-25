@@ -119,11 +119,7 @@ public class UserProfileController {
             }
         });
 
-        UnaryOperator<javafx.scene.control.TextFormatter.Change> numericFilter = change -> {
-            String newText = change.getControlNewText();
-            return newText.matches("[0-9,.]*") ? change : null;
-        };
-        depositField.setTextFormatter(new javafx.scene.control.TextFormatter<>(numericFilter));
+        com.auction.util.CurrencyUtil.setupCurrencyTextField(depositField);
 
         if (currentUser != null) {
             populateProfile();
@@ -332,7 +328,8 @@ public class UserProfileController {
                     cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
                     Tooltip tooltip = new Tooltip(
                             "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
-                            "Số phiên đấu giá đã chốt: " + closedDay);
+                            "Số phiên đã chốt: " + closedDay + "\n" +
+                            "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                     tooltip.setShowDelay(javafx.util.Duration.millis(50));
                     tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
                     Tooltip.install(cell, tooltip);
@@ -419,7 +416,7 @@ public class UserProfileController {
         if (input.isEmpty())
             return;
         try {
-            double amount = Double.parseDouble(input.replace(",", ""));
+            double amount = com.auction.util.CurrencyUtil.parseCurrency(input);
             if (amount <= 0)
                 throw new NumberFormatException();
 
