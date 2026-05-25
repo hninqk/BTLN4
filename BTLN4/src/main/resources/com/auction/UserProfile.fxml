@@ -20,87 +20,136 @@
 
                 <Label text="Hồ sơ cá nhân" styleClass="page-title"/>
 
-                <HBox spacing="24" fillHeight="true">
+                <!-- ══ TOP: Avatar card (User Profile) + Thông tin cửa hàng — side-by-side ══ -->
+                <HBox spacing="20" alignment="TOP_LEFT">
 
-                    <VBox spacing="16" prefWidth="380" minWidth="340">
-
-                        <VBox styleClass="card" spacing="14" alignment="CENTER">
-                            <Label fx:id="avatarLabel" text="👤" style="-fx-font-size:56px;"/>
-                            <VBox alignment="CENTER" spacing="6">
-                                <Label fx:id="displayNameLabel" text="..."
-                                       style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
-                                <Label fx:id="roleLabel" text="..." styleClass="badge badge-open"/>
-                            </VBox>
-                            <Label fx:id="memberSinceLabel" text="" styleClass="label-subtle"/>
+                    <!-- ① User Profile Card (Avatar) -->
+                    <VBox styleClass="card" spacing="14" alignment="CENTER"
+                          prefWidth="260" minWidth="220" prefHeight="220">
+                        <Label fx:id="avatarLabel" text="👤" style="-fx-font-size:56px;"/>
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label fx:id="displayNameLabel" text="..."
+                                   style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
+                            <Label fx:id="roleLabel" text="..." styleClass="badge badge-open"/>
                         </VBox>
-
-                        <VBox fx:id="bidderStatsBox" styleClass="card" spacing="12">
-                            <Label text="Thống kê hoạt động" styleClass="section-title"/>
-                            <Separator/>
-                            <HBox spacing="12">
-                                <VBox HBox.hgrow="ALWAYS" alignment="CENTER" styleClass="stat-card" spacing="6">
-                                    <Label text="Số dư hiện tại" styleClass="stat-label"/>
-                                    <Label fx:id="balanceLabel" text="0 ₫"
-                                           style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:#16A34A;"/>
-                                </VBox>
-                                <VBox HBox.hgrow="ALWAYS" alignment="CENTER" styleClass="stat-card" spacing="6">
-                                    <Label text="Lượt đặt giá" styleClass="stat-label"/>
-                                    <Label fx:id="totalBidsLabel" text="0"
-                                           style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
-                                </VBox>
-                            </HBox>
-                        </VBox>
-
-                        <VBox fx:id="sellerStatsBox" styleClass="card" spacing="12" visible="false" managed="false">
-                            <Label text="Thông tin cửa hàng" styleClass="section-title"/>
-                            <Separator/>
-                            <GridPane hgap="12" vgap="10">
-                                <Label text="Tên cửa hàng:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                                <Label fx:id="shopNameLabel" text="" style="-fx-font-weight: bold;" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                                
-                                <Label text="Phiên đã tạo:" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                                <Label fx:id="auctionCountLabel" text="" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                            </GridPane>
-                        </VBox>
-
+                        <Label fx:id="memberSinceLabel" text="" styleClass="label-subtle"/>
                     </VBox>
 
-                    <VBox spacing="16" HBox.hgrow="ALWAYS">
-                        
-                        <VBox spacing="4">
-                            <Label fx:id="profileErrorLabel" text="" styleClass="label-error" wrapText="true"/>
-                            <Label fx:id="profileSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
-                        </VBox>
+                    <!-- ② Seller: Thông tin cửa hàng — parallel to Avatar card -->
+                    <VBox fx:id="sellerStatsBox" styleClass="card" spacing="12"
+                          visible="false" managed="false"
+                          HBox.hgrow="ALWAYS" prefHeight="220">
+                        <Label text="Thông tin cửa hàng" styleClass="section-title"/>
+                        <Separator/>
+                        <GridPane hgap="15" vgap="12">
+                            <Label text="Tên cửa hàng:" styleClass="form-label" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                            <Label fx:id="shopNameLabel" text=""
+                                   style="-fx-font-weight: bold; -fx-font-size: 14px;"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                            <Label text="Phiên đã tạo:" styleClass="form-label" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                            <Label fx:id="auctionCountLabel" text="" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        </GridPane>
+                    </VBox>
 
-                        <VBox fx:id="balanceBox" styleClass="card" spacing="14" visible="false" managed="false">
-                            <Label text="Quản lý số dư" styleClass="section-title"/>
-                            <Separator/>
-                            <VBox spacing="8">
-                                <Label text="Nạp tiền vào tài khoản (₫)" styleClass="form-label"/>
-                                <HBox spacing="10">
-                                    <TextField fx:id="depositField" promptText="VD: 500000"
-                                               styleClass="text-field" HBox.hgrow="ALWAYS"/>
-                                    <Button text="💳 Nạp ngay" onAction="#handleDeposit" styleClass="btn-success"/>
-                                </HBox>
+                    <!-- ② Bidder: activity stats — shown instead of sellerStatsBox for bidders -->
+                    <VBox fx:id="bidderStatsBox" styleClass="card" spacing="12"
+                          visible="false" managed="false"
+                          HBox.hgrow="ALWAYS" prefHeight="220">
+                        <Label text="Thống kê hoạt động" styleClass="section-title"/>
+                        <Separator/>
+                        <HBox spacing="12">
+                            <VBox HBox.hgrow="ALWAYS" alignment="CENTER"
+                                  styleClass="stat-card" spacing="6">
+                                <Label text="Số dư hiện tại" styleClass="stat-label"/>
+                                <Label fx:id="balanceLabel" text="0 ₫"
+                                       style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:#16A34A;"/>
                             </VBox>
-                        </VBox>
-
-                        <VBox fx:id="shopNameBox" styleClass="card" spacing="14" visible="false" managed="false">
-                            <Label text="Cài đặt cửa hàng" styleClass="section-title"/>
-                            <Separator/>
-                            <VBox spacing="8">
-                                <Label text="Tên cửa hàng" styleClass="form-label"/>
-                                <HBox spacing="10">
-                                    <TextField fx:id="shopNameField" promptText="Nhập tên cửa hàng mới..." 
-                                               styleClass="text-field" HBox.hgrow="ALWAYS"/>
-                                    <Button text="💾 Cập nhật" onAction="#handleSaveProfile" styleClass="btn-primary"/>
-                                </HBox>
+                            <VBox HBox.hgrow="ALWAYS" alignment="CENTER"
+                                  styleClass="stat-card" spacing="6">
+                                <Label text="Lượt đặt giá" styleClass="stat-label"/>
+                                <Label fx:id="totalBidsLabel" text="0"
+                                       style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:-theme-text;"/>
                             </VBox>
-                        </VBox>
-
+                        </HBox>
                     </VBox>
 
                 </HBox>
+
+                <!-- Feedback labels (below top cards) -->
+                <VBox spacing="4">
+                    <Label fx:id="profileErrorLabel"   text="" styleClass="label-error"   wrapText="true"/>
+                    <Label fx:id="profileSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
+                </VBox>
+
+                <!-- Bidder: balance deposit (below top cards) -->
+                <VBox fx:id="balanceBox" styleClass="card" spacing="14"
+                      visible="false" managed="false">
+                    <Label text="Quản lý số dư" styleClass="section-title"/>
+                    <Separator/>
+                    <VBox spacing="8">
+                        <Label text="Nạp tiền vào tài khoản (₫)" styleClass="form-label"/>
+                        <HBox spacing="10">
+                            <TextField fx:id="depositField" promptText="VD: 500000"
+                                       styleClass="text-field" HBox.hgrow="ALWAYS"/>
+                            <Button text="💳 Nạp ngay" onAction="#handleDeposit"
+                                    styleClass="btn-success"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+                <!-- ══ BOTTOM: Seller Activity Panel (stats + heatmap) ════════════════ -->
+                <VBox fx:id="sellerActivityBox" styleClass="card" spacing="16"
+                      visible="false" managed="false" maxWidth="Infinity">
+                    <Label text="Hoạt động &amp; Thống kê Tích hợp" styleClass="section-title"/>
+                    <Separator/>
+
+                    <HBox spacing="20" alignment="TOP_LEFT" VBox.vgrow="ALWAYS">
+
+                        <!-- LEFT: 3 stat cards stacked vertically -->
+                        <VBox spacing="15" minWidth="200" prefWidth="220">
+
+                            <VBox styleClass="stat-card-navy" spacing="6">
+                                <Label text="Tổng doanh thu" styleClass="stat-card-navy-title"/>
+                                <Label fx:id="sellerEarningLabel" text="0 ₫"
+                                       styleClass="stat-card-navy-value"/>
+                            </VBox>
+
+                            <VBox styleClass="stat-card-navy" spacing="6">
+                                <Label text="Doanh thu 30 ngày" styleClass="stat-card-navy-title"/>
+                                <Label fx:id="sellerRevenueLabel" text="0 ₫"
+                                       styleClass="stat-card-navy-value"/>
+                            </VBox>
+
+                            <VBox styleClass="stat-card-navy" spacing="6">
+                                <Label text="Phiên đã chốt" styleClass="stat-card-navy-title"/>
+                                <Label fx:id="sellerClosedLabel" text="0"
+                                       styleClass="stat-card-navy-value"/>
+                            </VBox>
+
+                        </VBox>
+
+                        <!-- RIGHT: Heatmap — 7 cols (days) × 5 rows (weeks) -->
+                        <VBox spacing="10" HBox.hgrow="ALWAYS">
+                            <Label text="Doanh thu 35 ngày gần nhất" styleClass="section-title" style="-fx-font-size: 15px;"/>
+
+                            <!-- Heatmap GridPane: compressed tight GitHub style -->
+                            <GridPane fx:id="sellerRevenueHeatmap" hgap="3" vgap="3" alignment="TOP_LEFT">
+                                <!-- Hàng 0: Tiêu đề cột các Thứ -->
+                                <Label text="Sun" styleClass="heatmap-day-label" GridPane.columnIndex="0" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Mon" styleClass="heatmap-day-label" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Tue" styleClass="heatmap-day-label" GridPane.columnIndex="2" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Wed" styleClass="heatmap-day-label" GridPane.columnIndex="3" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Thu" styleClass="heatmap-day-label" GridPane.columnIndex="4" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Fri" styleClass="heatmap-day-label" GridPane.columnIndex="5" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                                <Label text="Sat" styleClass="heatmap-day-label" GridPane.columnIndex="6" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
+                            </GridPane>
+                        </VBox>
+
+                    </HBox>
+                </VBox>
 
             </VBox>
         </ScrollPane>

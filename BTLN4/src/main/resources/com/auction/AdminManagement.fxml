@@ -94,12 +94,11 @@
                             <TableView fx:id="allAuctionTable" VBox.vgrow="ALWAYS"
                                        style="-fx-border-width:0; -fx-background-color:transparent;">
                                 <columns>
-                                    <TableColumn fx:id="colAuctionName"   text="Sản phẩm"     prefWidth="200"/>
-                                    <TableColumn fx:id="colAuctionSeller" text="Người bán"     prefWidth="120"/>
-                                    <TableColumn fx:id="colAuctionStatus" text="Trạng thái"    prefWidth="120"/>
-                                    <TableColumn fx:id="colAuctionPrice"  text="Giá hiện tại"  prefWidth="130"/>
-                                    <TableColumn fx:id="colAuctionBids"   text="Lượt đấu"      prefWidth="80"/>
-                                    <TableColumn fx:id="colAuctionEnd"    text="Kết thúc lúc"  prefWidth="150"/>
+                                     <TableColumn fx:id="colAuctionName"   text="Sản phẩm"     prefWidth="230"/>
+                                     <TableColumn fx:id="colAuctionSeller" text="Người bán"     prefWidth="130"/>
+                                     <TableColumn fx:id="colAuctionStatus" text="Trạng thái"    prefWidth="130"/>
+                                     <TableColumn fx:id="colAuctionPrice"  text="Giá hiện tại"  prefWidth="140"/>
+                                     <TableColumn fx:id="colAuctionEnd"    text="Kết thúc lúc"  prefWidth="170"/>
                                 </columns>
                                 <placeholder>
                                     <Label text="Không có phiên đấu giá nào." styleClass="label-subtle"/>

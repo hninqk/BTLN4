@@ -730,49 +730,87 @@
     -fx-border-width: 1;
 }
 
+/* Ô heatmap lớn hơn dùng trong UserProfile (32x32) */
+.heatmap-cell {
+    -fx-pref-width: 32;
+    -fx-pref-height: 32;
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: rgba(148, 163, 184, 0.15);
+    -fx-border-width: 1;
+}
+
+/* Tone màu xanh lá cho heatmap (Light mode) */
 .heatmap-level-0 {
-    -fx-background-color: #F1F5F9;
+    -fx-background-color: #e8f5e9; /* Không có doanh thu */
 }
 
 .heatmap-level-1 {
-    -fx-background-color: #DBEAFE;
+    -fx-background-color: #c8e6c9; /* Doanh thu thấp */
 }
 
 .heatmap-level-2 {
-    -fx-background-color: #93C5FD;
+    -fx-background-color: #81c784; /* Doanh thu trung bình */
 }
 
 .heatmap-level-3 {
-    -fx-background-color: #3B82F6;
+    -fx-background-color: #388e3c; /* Doanh thu cao */
 }
 
 .heatmap-level-4 {
-    -fx-background-color: #1D4ED8;
+    -fx-background-color: #1b5e20; /* Doanh thu rất cao (Đột phá) */
 }
 
-.dark-mode .seller-earnings-panel {
-    -fx-background-color: rgba(15, 23, 42, 0.62);
-    -fx-border-color: rgba(51, 65, 85, 0.86);
-}
-
+/* Tone màu xanh dương cho heatmap (Dark mode - Đảo ngược độ sáng giống nút bấm) */
 .dark-mode .heatmap-level-0 {
-    -fx-background-color: #1E293B;
+    -fx-background-color: #1e2b3c; /* Nền tối không hoạt động */
 }
 
 .dark-mode .heatmap-level-1 {
-    -fx-background-color: #1E3A5F;
+    -fx-background-color: #1e3a8a; /* Xanh dương tối */
 }
 
 .dark-mode .heatmap-level-2 {
-    -fx-background-color: #2563A8;
+    -fx-background-color: #2563eb; /* Xanh dương trung bình (Primary light) */
 }
 
 .dark-mode .heatmap-level-3 {
-    -fx-background-color: #3B82F6;
+    -fx-background-color: #3b82f6; /* Xanh dương sáng (Primary dark) */
 }
 
 .dark-mode .heatmap-level-4 {
-    -fx-background-color: #93C5FD;
+    -fx-background-color: #93c5fd; /* Xanh dương rất sáng */
+}
+
+/* Nhãn thứ trong tuần của heatmap */
+.heatmap-day-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -theme-text-muted;
+    -fx-alignment: CENTER;
+}
+
+/* ---------- Stat Cards Navy (Seller Activity Panel) ---------- */
+.stat-card-navy {
+    -fx-background-color: linear-gradient(to bottom right, #1d4ed8, #1e3a8a);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 15;
+}
+
+.stat-card-navy-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 12px;
+}
+
+.stat-card-navy-value {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
 }
 
 /* ---------- Login / Auth Screens ---------- */
@@ -1305,6 +1343,67 @@
 .date-picker>.text-field {
     -fx-background-color: transparent;
     -fx-border-width: 0;
+}
+
+/* Đổi nền của nút bấm lịch bên trong DatePicker */
+.date-picker > .arrow-button {
+    -fx-background-color: #2c3e50; /* Màu nền tối giản phối hợp với theme */
+    -fx-background-radius: 0 4 4 0; /* Bo góc bên phải */
+    -fx-cursor: hand;
+}
+
+.date-picker > .arrow-button:hover {
+    -fx-background-color: #34495e; /* Hiệu ứng hover tối sáng nhẹ */
+}
+
+/* Đổi màu biểu tượng icon lịch nhỏ bên trong nút sang màu trắng/xám nhạt */
+.date-picker > .arrow-button > .svg-path {
+    -fx-background-color: #ffffff; 
+}
+
+/* ---------- Spinner Styling ---------- */
+.spinner {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.spinner:focused {
+    -fx-border-color: -theme-primary;
+}
+
+.spinner > .text-field {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6 0 0 6;
+    -fx-border-width: 0;
+    -fx-text-fill: -theme-text;
+    -fx-padding: 8 12 8 12;
+}
+
+.spinner > .increment-arrow-button,
+.spinner > .decrement-arrow-button {
+    -fx-background-color: #2c3e50;
+    -fx-cursor: hand;
+}
+
+.spinner > .increment-arrow-button {
+    -fx-background-radius: 0 5 0 0;
+}
+
+.spinner > .decrement-arrow-button {
+    -fx-background-radius: 0 0 5 0;
+}
+
+.spinner > .increment-arrow-button:hover,
+.spinner > .decrement-arrow-button:hover {
+    -fx-background-color: #34495e;
+}
+
+.spinner > .increment-arrow-button > .increment-arrow,
+.spinner > .decrement-arrow-button > .decrement-arrow {
+    -fx-background-color: #ffffff;
 }
 
 .dark-mode .date-picker-popup {

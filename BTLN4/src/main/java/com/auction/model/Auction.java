@@ -17,7 +17,9 @@ public class Auction extends Entity implements Subject {
     private List<AutoBid> autoBids = new CopyOnWriteArrayList<>();
     private List<Observer> observers = new CopyOnWriteArrayList<>();
 
-    /** Seller creates a new auction — starts in PENDING, awaiting Admin approval. */
+    /**
+     * Seller creates a new auction — starts in PENDING, awaiting Admin approval.
+     */
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
         super();
         this.status = AuctionStatus.PENDING;
@@ -30,8 +32,8 @@ public class Auction extends Entity implements Subject {
 
     /** DB reconstruction constructor */
     public Auction(String id, LocalDateTime createdAt, Seller seller, Item item,
-                   AuctionStatus status, double highestBid,
-                   LocalDateTime startTime, LocalDateTime endTime) {
+            AuctionStatus status, double highestBid,
+            LocalDateTime startTime, LocalDateTime endTime) {
         super(id, createdAt);
         this.seller = seller;
         this.item = item;
@@ -44,14 +46,19 @@ public class Auction extends Entity implements Subject {
     // ------- Observer pattern -------
 
     @Override
-    public void addObserver(Observer observer) { observers.add(observer); }
+    public void addObserver(Observer observer) {
+        observers.add(observer);
+    }
 
     @Override
-    public void removeObserver(Observer observer) { observers.remove(observer); }
+    public void removeObserver(Observer observer) {
+        observers.remove(observer);
+    }
 
     @Override
     public void notifyObserver(BidTransaction newBid) {
-        for (Observer o : observers) o.update(newBid);
+        for (Observer o : observers)
+            o.update(newBid);
     }
 
     // ------- State transitions -------
@@ -100,30 +107,58 @@ public class Auction extends Entity implements Subject {
 
     // ------- Getters -------
 
-    public Seller getSeller()           { return seller; }
-    public Item getItem()               { return item; }
-    public AuctionStatus getStatus()    { return status; }
-    public LocalDateTime getStartTime() { return startTime; }
-    public LocalDateTime getEndTime()   { return endTime; }
+    public Seller getSeller() {
+        return seller;
+    }
+
+    public Item getItem() {
+        return item;
+    }
+
+    public AuctionStatus getStatus() {
+        return status;
+    }
+
+    public LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return endTime;
+    }
 
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
 
-    public double getHighestBid()       { return highestBid; }
-    public void setHighestBid(double highestBid) { this.highestBid = highestBid; }
+    public double getHighestBid() {
+        return highestBid;
+    }
+
+    public void setHighestBid(double highestBid) {
+        this.highestBid = highestBid;
+    }
 
     /**
      * Direct status setter for WebSocket sync only.
      * Bypasses state-machine guards — use ONLY to apply a server-broadcast status.
      * Business logic MUST still go through approveAuction/startAuction/etc.
      */
-    public void setStatus(AuctionStatus status) { this.status = status; }
+    public void setStatus(AuctionStatus status) {
+        this.status = status;
+    }
 
-    /** Direct startTime setter for WS sync (applied when server broadcasts RUNNING state). */
-    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    /**
+     * Direct startTime setter for WS sync (applied when server broadcasts RUNNING
+     * state).
+     */
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
 
-    public List<BidTransaction> getBidHistory() { return new java.util.ArrayList<>(bidHistory); }
+    public List<BidTransaction> getBidHistory() {
+        return new java.util.ArrayList<>(bidHistory);
+    }
 
     /**
      * DB-reconstruction only — injects a bid directly without status/amount checks.
@@ -143,16 +178,17 @@ public class Auction extends Entity implements Subject {
     }
 
     public BidTransaction getWinner() {
-        if (bidHistory.isEmpty()) return null;
+        if (bidHistory.isEmpty())
+            return null;
         return bidHistory.get(bidHistory.size() - 1);
     }
 
     public String getStatusDisplay() {
         return switch (status) {
-            case PENDING  -> "Chờ duyệt";
-            case OPEN     -> "Chờ bắt đầu";
-            case RUNNING  -> "Đang diễn ra";
-            case CLOSED   -> "Đã đóng";
+            case PENDING -> "Chờ duyệt";
+            case OPEN -> "Chờ bắt đầu";
+            case RUNNING -> "Đang diễn ra";
+            case CLOSED -> "Đã đóng";
             case CANCELED -> "Đã huỷ";
         };
     }

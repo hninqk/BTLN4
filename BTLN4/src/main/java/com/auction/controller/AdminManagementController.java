@@ -57,7 +57,6 @@ public class AdminManagementController {
     @FXML private TableColumn<Auction, String> colAuctionSeller;
     @FXML private TableColumn<Auction, String> colAuctionStatus;
     @FXML private TableColumn<Auction, String> colAuctionPrice;
-    @FXML private TableColumn<Auction, String> colAuctionBids;
     @FXML private TableColumn<Auction, String> colAuctionEnd;
 
     @FXML private Button btnApprove;
@@ -274,8 +273,6 @@ public class AdminManagementController {
                 new SimpleStringProperty(c.getValue().getStatusDisplay()));
         colAuctionPrice.setCellValueFactory(c ->
                 new SimpleStringProperty(String.format("%,.0f ₫", c.getValue().getHighestBid())));
-        colAuctionBids.setCellValueFactory(c ->
-                new SimpleStringProperty(String.valueOf(getBidCount(c.getValue()))));
         colAuctionEnd.setCellValueFactory(c ->
                 new SimpleStringProperty(c.getValue().getEndTime().format(FMT)));
     }

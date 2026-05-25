@@ -16,8 +16,6 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -26,9 +24,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
@@ -43,39 +39,54 @@ import java.util.stream.Collectors;
  * persists it and broadcasts AUCTION_CREATED to ALL clients (especially Admin).
  *
  * Listens for:
- *  – AUCTION_CREATED        → add new auction to own table (confirmation)
- *  – AUCTION_STATUS_CHANGED → update status badge in own table
- *  – FULL_SYNC              → initial load of seller's auctions from server
+ * – AUCTION_CREATED → add new auction to own table (confirmation)
+ * – AUCTION_STATUS_CHANGED → update status badge in own table
+ * – FULL_SYNC → initial load of seller's auctions from server
  */
 public class SellerManagementController {
 
-    @FXML private TextField        searchField;
-    @FXML private ComboBox<String> statusFilter;
-    @FXML private TableView<Auction> auctionTable;
-    @FXML private TableColumn<Auction, String> colName;
-    @FXML private TableColumn<Auction, String> colStatus;
-    @FXML private TableColumn<Auction, String> colPrice;
-    @FXML private TableColumn<Auction, String> colBids;
-    @FXML private TableColumn<Auction, String> colEndTime;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private ComboBox<String> statusFilter;
+    @FXML
+    private TableView<Auction> auctionTable;
+    @FXML
+    private TableColumn<Auction, String> colName;
+    @FXML
+    private TableColumn<Auction, String> colStatus;
+    @FXML
+    private TableColumn<Auction, String> colPrice;
+    @FXML
+    private TableColumn<Auction, String> colEndTime;
 
-    @FXML private Button btnCancel;
-    @FXML private Button btnDelete;
-    @FXML private Label sellerBalanceLabel;
-    @FXML private Label sellerMonthRevenueLabel;
-    @FXML private Label sellerClosedCountLabel;
-    @FXML private FlowPane sellerRevenueHeatmap;
+    @FXML
+    private Button btnCancel;
+    @FXML
+    private Button btnDelete;
 
-    @FXML private Label            formTitle;
-    @FXML private TextField        itemNameField;
-    @FXML private ComboBox<String> categoryCombo;
-    @FXML private TextArea         descriptionArea;
-    @FXML private TextField        itemImageField;
-    @FXML private TextField        startPriceField;
-    @FXML private Label            formErrorLabel;
-    @FXML private Label            formSuccessLabel;
-    @FXML private DatePicker       endDatePicker;
-    @FXML private ComboBox<String> hourCombo;
-    @FXML private ComboBox<String> minuteCombo;
+    @FXML
+    private Label formTitle;
+    @FXML
+    private TextField itemNameField;
+    @FXML
+    private ComboBox<String> categoryCombo;
+    @FXML
+    private TextArea descriptionArea;
+    @FXML
+    private TextField itemImageField;
+    @FXML
+    private TextField startPriceField;
+    @FXML
+    private Label formErrorLabel;
+    @FXML
+    private Label formSuccessLabel;
+    @FXML
+    private DatePicker endDatePicker;
+    @FXML
+    private Spinner<Integer> hourSpinner;
+    @FXML
+    private Spinner<Integer> minuteSpinner;
 
     private final AppFacade app = AppFacade.getInstance();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -95,15 +106,27 @@ public class SellerManagementController {
         loadSellerAuctionsFromServer(); // async load from server REST API
         disableActionButtons();
 
-        for (int i = 0; i < 24; i++)
-            hourCombo.getItems().add(String.format("%02d", i));
-        for (int i = 0; i < 60; i++)
-            minuteCombo.getItems().add(String.format("%02d", i));
-        hourCombo.getSelectionModel().select("12");
-        minuteCombo.getSelectionModel().select("00");
+        // Cấu hình Spinner Giờ (0–23, mặc định 20)
+        SpinnerValueFactory<Integer> hourFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, 20);
+        hourSpinner.setValueFactory(hourFactory);
 
-        UnaryOperator<TextFormatter.Change> numericFilter = change ->
-                change.getControlNewText().matches("[0-9,.]*") ? change : null;
+        // Cấu hình Spinner Phút (0–59, mặc định 30)
+        SpinnerValueFactory<Integer> minuteFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, 30);
+        minuteSpinner.setValueFactory(minuteFactory);
+
+        // Commit text khi mất focus (editable spinner)
+        hourSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) hourSpinner.increment(0);
+        });
+        minuteSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) minuteSpinner.increment(0);
+        });
+
+        UnaryOperator<TextFormatter.Change> numericFilter = change -> change.getControlNewText().matches("[0-9,.]*")
+                ? change
+                : null;
         startPriceField.setTextFormatter(new TextFormatter<>(numericFilter));
 
         connectWebSocket();
@@ -123,8 +146,7 @@ public class SellerManagementController {
                     () -> {
                         wsConnected = true;
                         System.out.println("[SellerMgmt] WS connected.");
-                    }
-            );
+                    });
         }, "Seller-WS");
         t.setDaemon(true);
         t.start();
@@ -133,7 +155,8 @@ public class SellerManagementController {
     private void handleWsMessage(String msg) {
         try {
             com.google.gson.JsonElement element = gson.fromJson(msg, com.google.gson.JsonElement.class);
-            if (!element.isJsonObject()) return;
+            if (!element.isJsonObject())
+                return;
             JsonObject json = element.getAsJsonObject();
             if (json.has("error")) {
                 showFormError("Lỗi server: " + json.get("error").getAsString());
@@ -141,28 +164,32 @@ public class SellerManagementController {
             }
             String type = json.has("type") ? json.get("type").getAsString() : "";
             switch (type) {
-                case "AUCTION_CREATED"        -> onAuctionCreated(json);
+                case "AUCTION_CREATED" -> onAuctionCreated(json);
                 case "AUCTION_STATUS_CHANGED" -> onStatusChanged(json);
-                case "FULL_SYNC"              -> onFullSync(json);
+                case "FULL_SYNC" -> onFullSync(json);
             }
         } catch (Exception e) {
             System.err.println("[SellerMgmt] WS parse error: " + e.getMessage());
         }
     }
 
-    /** Server confirmed the auction was created (triggered by this seller's CREATE_AUCTION). */
+    /**
+     * Server confirmed the auction was created (triggered by this seller's
+     * CREATE_AUCTION).
+     */
     private void onAuctionCreated(JsonObject json) {
         User me = SessionManager.getInstance().getCurrentUser();
-        if (!(me instanceof Seller mySeller)) return;
+        if (!(me instanceof Seller mySeller))
+            return;
 
         String sellerId = json.has("sellerId") ? json.get("sellerId").getAsString() : "";
-        if (!sellerId.equals(mySeller.getId())) return; // not my auction
+        if (!sellerId.equals(mySeller.getId()))
+            return; // not my auction
 
         // Build from WS JSON snapshot — do NOT try local DB, it won't have server data
         buildMinimalAuction(json, mySeller).ifPresent(a -> {
             sellerAuctions.add(0, a);
             auctionTable.refresh();
-            updateSellerEarningsDashboard();
             showFormSuccess("Đã gửi lên server thành công! Đang chờ Admin duyệt.");
             System.out.println("[SellerMgmt] Auction created confirmed: " + a.getId());
         });
@@ -170,28 +197,34 @@ public class SellerManagementController {
 
     /** An auction status changed on server. Patch in-memory directly. */
     private void onStatusChanged(JsonObject json) {
-        String auctionId    = json.get("auctionId").getAsString();
+        String auctionId = json.get("auctionId").getAsString();
         String newStatusStr = json.get("newStatus").getAsString();
-        double highestBid   = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
-        String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
+        double highestBid = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
+        String startTimeStr = json.has("startTime") ? json.get("startTime").getAsString() : "";
 
         AuctionStatus newStatus;
-        try { newStatus = AuctionStatus.valueOf(newStatusStr); }
-        catch (IllegalArgumentException e) { return; }
+        try {
+            newStatus = AuctionStatus.valueOf(newStatusStr);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
 
         // DO NOT reload from local DB — local DB is stale on remote machines.
         for (Auction a : sellerAuctions) {
             if (a.getId().equals(auctionId)) {
                 a.setStatus(newStatus);
-                if (highestBid >= 0) a.setHighestBid(highestBid);
+                if (highestBid >= 0)
+                    a.setHighestBid(highestBid);
                 if (!startTimeStr.isEmpty()) {
-                    try { a.setStartTime(LocalDateTime.parse(startTimeStr)); } catch (Exception ignored) {}
+                    try {
+                        a.setStartTime(LocalDateTime.parse(startTimeStr));
+                    } catch (Exception ignored) {
+                    }
                 }
                 break;
             }
         }
         auctionTable.refresh();
-        updateSellerEarningsDashboard();
     }
 
     /** Full sync: reload seller's auctions from REST API. */
@@ -214,8 +247,6 @@ public class SellerManagementController {
         colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatusDisplay()));
         colPrice.setCellValueFactory(c -> new SimpleStringProperty(
                 String.format("%,.0f ₫", c.getValue().getHighestBid())));
-        colBids.setCellValueFactory(c -> new SimpleStringProperty(
-                String.valueOf(c.getValue().getBidHistory().size())));
         colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getEndTime().format(FMT)));
     }
@@ -223,10 +254,12 @@ public class SellerManagementController {
     /** Async: fetch this seller's auctions from the server REST API. */
     private void loadSellerAuctionsFromServer() {
         User user = SessionManager.getInstance().getCurrentUser();
-        if (!(user instanceof Seller seller)) return;
+        if (!(user instanceof Seller seller))
+            return;
         formSuccessLabel.setText("Đang tải dữ liệu...");
         Task<List<Auction>> task = new Task<>() {
-            @Override protected List<Auction> call() {
+            @Override
+            protected List<Auction> call() {
                 return app.getAuctionsBySeller(seller);
             }
         };
@@ -234,10 +267,9 @@ public class SellerManagementController {
             sellerAuctions.setAll(task.getValue());
             auctionTable.setItems(sellerAuctions);
             formSuccessLabel.setText("");
-            updateSellerEarningsDashboard();
         });
-        task.setOnFailed(e -> Platform.runLater(() ->
-                showFormError("Lỗi tải dữ liệu: " + task.getException().getMessage())));
+        task.setOnFailed(
+                e -> Platform.runLater(() -> showFormError("Lỗi tải dữ liệu: " + task.getException().getMessage())));
         new Thread(task, "seller-auctions").start();
     }
 
@@ -249,7 +281,10 @@ public class SellerManagementController {
     @FXML
     private void handleRowSelect(MouseEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { disableActionButtons(); return; }
+        if (sel == null) {
+            disableActionButtons();
+            return;
+        }
         AuctionStatus status = sel.getStatus();
         btnCancel.setDisable(status != AuctionStatus.PENDING && status != AuctionStatus.OPEN);
         btnDelete.setDisable(status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN
@@ -259,12 +294,13 @@ public class SellerManagementController {
     @FXML
     private void handleSearch(ActionEvent event) {
         User user = SessionManager.getInstance().getCurrentUser();
-        if (!(user instanceof Seller)) return;
-        String keyword   = searchField.getText().trim().toLowerCase();
+        if (!(user instanceof Seller))
+            return;
+        String keyword = searchField.getText().trim().toLowerCase();
         String statusSel = statusFilter.getValue();
         List<Auction> filtered = sellerAuctions.stream()
                 .filter(a -> {
-                    boolean matchName   = keyword.isEmpty() || a.getItem().getName().toLowerCase().contains(keyword);
+                    boolean matchName = keyword.isEmpty() || a.getItem().getName().toLowerCase().contains(keyword);
                     boolean matchStatus = statusSel == null || statusSel.equals("Tất cả")
                             || a.getStatusDisplay().equals(statusSel);
                     return matchName && matchStatus;
@@ -275,7 +311,8 @@ public class SellerManagementController {
     @FXML
     private void handleCancel(ActionEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null)
+            return;
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                 "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?",
                 ButtonType.YES, ButtonType.NO);
@@ -285,8 +322,8 @@ public class SellerManagementController {
                 if (wsConnected && wsClient != null) {
                     // Send cancel via WS so server persists and broadcasts to all clients
                     JsonObject req = new JsonObject();
-                    req.addProperty("type",      "ADMIN_ACTION");
-                    req.addProperty("action",    "cancel");
+                    req.addProperty("type", "ADMIN_ACTION");
+                    req.addProperty("action", "cancel");
                     req.addProperty("auctionId", sel.getId());
                     wsClient.send(req.toString());
                 } else {
@@ -300,22 +337,24 @@ public class SellerManagementController {
     @FXML
     private void handleDelete(ActionEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null)
+            return;
         Task<Boolean> task = new Task<>() {
-            @Override protected Boolean call() { return app.removeAuction(sel.getId()); }
+            @Override
+            protected Boolean call() {
+                return app.removeAuction(sel.getId());
+            }
         };
         task.setOnSucceeded(e -> {
             if (Boolean.TRUE.equals(task.getValue())) {
                 sellerAuctions.remove(sel);
                 disableActionButtons();
                 showFormSuccess("Đã xoá phiên đấu giá.");
-                updateSellerEarningsDashboard();
             } else {
                 showFormError("Không thể xoá phiên đấu giá.");
             }
         });
-        task.setOnFailed(e -> Platform.runLater(() ->
-                showFormError("Lỗi xoá: " + task.getException().getMessage())));
+        task.setOnFailed(e -> Platform.runLater(() -> showFormError("Lỗi xoá: " + task.getException().getMessage())));
         new Thread(task, "delete-auction").start();
     }
 
@@ -333,9 +372,11 @@ public class SellerManagementController {
                 new FileChooser.ExtensionFilter("Image files",
                         "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
         Window owner = itemImageField.getScene() != null
-                ? itemImageField.getScene().getWindow() : null;
+                ? itemImageField.getScene().getWindow()
+                : null;
         File selected = chooser.showOpenDialog(owner);
-        if (selected == null) return;
+        if (selected == null)
+            return;
 
         // Show upload progress in the field while uploading
         itemImageField.setText("Đang tải ảnh lên máy chủ...");
@@ -375,54 +416,60 @@ public class SellerManagementController {
         clearFormMessages();
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Seller seller)) {
-            showFormError("Bạn không có quyền tạo phiên đấu giá."); return;
+            showFormError("Bạn không có quyền tạo phiên đấu giá.");
+            return;
         }
 
-        String name       = itemNameField.getText().trim();
-        String category   = categoryCombo.getValue();
-        String description= descriptionArea.getText().trim();
+        String name = itemNameField.getText().trim();
+        String category = categoryCombo.getValue();
+        String description = descriptionArea.getText().trim();
         String imageUrl = itemImageField.getText().trim();
         // imageUrl is now always a public https:// URL from CatboxUploader
         // (local path fallback removed – every client must be able to load it)
 
-        String priceStr   = startPriceField.getText().trim();
+        String priceStr = startPriceField.getText().trim();
         LocalDate selDate = endDatePicker.getValue();
-        String hour       = hourCombo.getValue();
-        String minute     = minuteCombo.getValue();
+        Integer hour   = hourSpinner.getValue();
+        Integer minute = minuteSpinner.getValue();
 
         if (name.isEmpty() || priceStr.isEmpty() || selDate == null || hour == null || minute == null) {
-            showFormError("Vui lòng điền đầy đủ các trường bắt buộc (*)."); return;
+            showFormError("Vui lòng điền đầy đủ các trường bắt buộc (*)");
+            return;
         }
 
         double startPrice;
         try {
             startPrice = Double.parseDouble(priceStr.replace(",", ""));
-            if (startPrice <= 0) throw new NumberFormatException();
+            if (startPrice <= 0)
+                throw new NumberFormatException();
         } catch (NumberFormatException e) {
-            showFormError("Giá khởi điểm không hợp lệ (phải là số dương)."); return;
+            showFormError("Giá khởi điểm không hợp lệ (phải là số dương).");
+            return;
         }
 
         LocalDateTime endTime;
         try {
-            LocalTime time = LocalTime.of(Integer.parseInt(hour), Integer.parseInt(minute));
+            LocalTime time = LocalTime.of(hour, minute);
             endTime = LocalDateTime.of(selDate, time);
-            if (endTime.isBefore(TimeSyncManager.getNow())) throw new Exception("past");
+            if (endTime.isBefore(TimeSyncManager.getNow()))
+                throw new Exception("past");
         } catch (Exception e) {
-            showFormError("Thời gian kết thúc không hợp lệ hoặc đã qua."); return;
+            showFormError("Thời gian kết thúc không hợp lệ hoặc đã qua.");
+            return;
         }
 
         if (wsConnected && wsClient != null) {
             // ── Send CREATE_AUCTION via WebSocket ──
             // Server saves to its DB and broadcasts AUCTION_CREATED to all clients
             JsonObject req = new JsonObject();
-            req.addProperty("type",        "CREATE_AUCTION");
-            req.addProperty("sellerId",    seller.getId());
-            req.addProperty("itemName",    name);
-            req.addProperty("category",    category);
+            req.addProperty("type", "CREATE_AUCTION");
+            req.addProperty("sellerId", seller.getId());
+            req.addProperty("itemName", name);
+            req.addProperty("category", category);
             req.addProperty("description", description);
-            req.addProperty("imageUrl",    imageUrl);
-            req.addProperty("startPrice",  startPrice);
-            req.addProperty("endTime",     endTime.toString());
+            req.addProperty("imageUrl", imageUrl);
+            req.addProperty("startPrice", startPrice);
+            req.addProperty("endTime", endTime.toString());
             wsClient.send(req.toString());
             handleClearForm(event);
             showFormSuccess("Đang gửi lên server...");
@@ -434,92 +481,56 @@ public class SellerManagementController {
 
     @FXML
     private void handleClearForm(ActionEvent event) {
-        itemNameField.clear(); descriptionArea.clear(); itemImageField.clear();
-        startPriceField.clear(); categoryCombo.getSelectionModel().selectFirst();
+        itemNameField.clear();
+        descriptionArea.clear();
+        itemImageField.clear();
+        startPriceField.clear();
+        categoryCombo.getSelectionModel().selectFirst();
         endDatePicker.setValue(null);
-        hourCombo.getSelectionModel().clearSelection();
-        minuteCombo.getSelectionModel().clearSelection();
+        hourSpinner.getValueFactory().setValue(20);
+        minuteSpinner.getValueFactory().setValue(30);
         clearFormMessages();
     }
 
-    private void showFormError(String msg)   { formErrorLabel.setText(msg);   formSuccessLabel.setText(""); }
-    private void showFormSuccess(String msg) { formSuccessLabel.setText(msg); formErrorLabel.setText(""); }
-    private void clearFormMessages()          { formErrorLabel.setText("");    formSuccessLabel.setText(""); }
-
-    private void updateSellerEarningsDashboard() {
-        if (sellerBalanceLabel == null || sellerRevenueHeatmap == null) {
-            return;
-        }
-
-        LocalDate today = TimeSyncManager.getNow().toLocalDate();
-        LocalDate firstDay = today.minusDays(34);
-        Map<LocalDate, Double> revenueByDay = new HashMap<>();
-        double totalRevenue = 0;
-        double monthRevenue = 0;
-        int closedCount = 0;
-
-        for (Auction auction : sellerAuctions) {
-            if (auction.getStatus() != AuctionStatus.CLOSED) {
-                continue;
-            }
-            double amount = Math.max(0, auction.getHighestBid());
-            LocalDate day = auction.getEndTime().toLocalDate();
-            totalRevenue += amount;
-            closedCount++;
-            if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today)) {
-                monthRevenue += amount;
-            }
-            if (!day.isBefore(firstDay) && !day.isAfter(today)) {
-                revenueByDay.merge(day, amount, Double::sum);
-            }
-        }
-
-        sellerBalanceLabel.setText(String.format("%,.0f ₫", totalRevenue));
-        sellerMonthRevenueLabel.setText(String.format("%,.0f ₫", monthRevenue));
-        sellerClosedCountLabel.setText(String.valueOf(closedCount));
-
-        double maxDayRevenue = revenueByDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
-        sellerRevenueHeatmap.getChildren().clear();
-        for (int i = 0; i < 35; i++) {
-            LocalDate day = firstDay.plusDays(i);
-            double amount = revenueByDay.getOrDefault(day, 0.0);
-            Region square = new Region();
-            square.getStyleClass().addAll("heatmap-square", heatmapLevel(amount, maxDayRevenue));
-            Tooltip.install(square, new Tooltip(day.format(DateTimeFormatter.ofPattern("dd/MM"))
-                    + " - " + String.format("%,.0f ₫", amount)));
-            sellerRevenueHeatmap.getChildren().add(square);
-        }
+    private void showFormError(String msg) {
+        formErrorLabel.setText(msg);
+        formSuccessLabel.setText("");
     }
 
-    private String heatmapLevel(double amount, double maxDayRevenue) {
-        if (amount <= 0 || maxDayRevenue <= 0) {
-            return "heatmap-level-0";
-        }
-        double ratio = amount / maxDayRevenue;
-        if (ratio < 0.25) return "heatmap-level-1";
-        if (ratio < 0.50) return "heatmap-level-2";
-        if (ratio < 0.75) return "heatmap-level-3";
-        return "heatmap-level-4";
+    private void showFormSuccess(String msg) {
+        formSuccessLabel.setText(msg);
+        formErrorLabel.setText("");
     }
 
-    /** Build a minimal Auction from a WS JSON snapshot (for display while local DB syncs). */
+    private void clearFormMessages() {
+        formErrorLabel.setText("");
+        formSuccessLabel.setText("");
+    }
+
+
+
+    /**
+     * Build a minimal Auction from a WS JSON snapshot (for display while local DB
+     * syncs).
+     */
     private java.util.Optional<Auction> buildMinimalAuction(JsonObject json, Seller seller) {
         try {
-            String auctionId  = json.get("auctionId").getAsString();
-            String itemName   = json.get("itemName").getAsString();
+            String auctionId = json.get("auctionId").getAsString();
+            String itemName = json.get("itemName").getAsString();
             String endTimeStr = json.get("endTime").getAsString();
             double highestBid = json.get("highestBid").getAsDouble();
-            String statusStr  = json.get("status").getAsString();
-            String createdStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString() : TimeSyncManager.getNow().toString();
+            String statusStr = json.get("status").getAsString();
+            String createdStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString()
+                    : TimeSyncManager.getNow().toString();
             double startPrice = json.has("startPrice") ? json.get("startPrice").getAsDouble() : highestBid;
-            String category   = json.has("itemCategory") ? json.get("itemCategory").getAsString() : "Điện tử";
-            String desc       = json.has("itemDesc")     ? json.get("itemDesc").getAsString()     : "";
-            String imageUrl   = json.has("itemImageUrl") ? json.get("itemImageUrl").getAsString() : "";
+            String category = json.has("itemCategory") ? json.get("itemCategory").getAsString() : "Điện tử";
+            String desc = json.has("itemDesc") ? json.get("itemDesc").getAsString() : "";
+            String imageUrl = json.has("itemImageUrl") ? json.get("itemImageUrl").getAsString() : "";
 
             Item item = switch (category) {
                 case "Nghệ thuật" -> new Art(itemName, desc, startPrice, seller);
-                case "Xe cộ"      -> new Vehicle(itemName, desc, startPrice, seller);
-                default           -> new Electronics(itemName, desc, startPrice, seller);
+                case "Xe cộ" -> new Vehicle(itemName, desc, startPrice, seller);
+                default -> new Electronics(itemName, desc, startPrice, seller);
             };
             item.setImageUrl(imageUrl);
 
@@ -538,6 +549,7 @@ public class SellerManagementController {
 
     /** Clean up WS connection when navigating away from this screen. */
     public void cleanup() {
-        if (wsClient != null) wsClient.disconnect();
+        if (wsClient != null)
+            wsClient.disconnect();
     }
 }

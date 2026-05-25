@@ -151,18 +151,20 @@
                             <HBox spacing="8">
                                 <Button fx:id="placeBidButton" text="Đặt giá ngay"
                                         onAction="#handlePlaceBid"
+                                        graphicTextGap="6"
                                         style="-fx-background-color: #16A34A; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
                                         HBox.hgrow="ALWAYS" maxWidth="Infinity">
                                     <graphic>
-                                        <FontIcon iconLiteral="fas-gavel" iconSize="13" style="-fx-icon-color: white;"/>
+                                        <Label text="&#x1f528;" style="-fx-text-fill: white; -fx-font-size: 13px;"/>
                                     </graphic>
                                 </Button>
-                                <Button fx:id="autoBidToggleButton" text="Auto"
+                                <Button fx:id="autoBidToggleButton" text="Đấu giá tự động"
                                         onAction="#handleToggleAutoBid"
+                                        graphicTextGap="6"
                                         style="-fx-background-color: -theme-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 9 12 9 12;"
                                         HBox.hgrow="ALWAYS" maxWidth="Infinity">
                                     <graphic>
-                                        <FontIcon iconLiteral="fas-bolt" iconSize="13" style="-fx-icon-color: white;"/>
+                                        <Label text="&#x26a1;" style="-fx-text-fill: white; -fx-font-size: 13px;"/>
                                     </graphic>
                                 </Button>
                             </HBox>

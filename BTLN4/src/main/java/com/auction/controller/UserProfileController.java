@@ -1,11 +1,13 @@
 package com.auction.controller;
 
 import com.auction.model.Auction;
+import com.auction.model.AuctionStatus;
 import com.auction.model.Bidder;
 import com.auction.model.Seller;
 import com.auction.model.User;
 import com.auction.service.AppFacade;
 import com.auction.util.SessionManager;
+import com.auction.util.TimeSyncManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -13,6 +15,9 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.function.UnaryOperator;
@@ -36,6 +41,12 @@ import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Priority;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class UserProfileController {
 
@@ -74,6 +85,18 @@ public class UserProfileController {
     private Label profileErrorLabel;
     @FXML
     private Label profileSuccessLabel;
+
+    // ── Seller activity panel ──────────────────────────────────────────────────
+    @FXML
+    private VBox sellerActivityBox;
+    @FXML
+    private Label sellerEarningLabel;
+    @FXML
+    private Label sellerRevenueLabel;
+    @FXML
+    private Label sellerClosedLabel;
+    @FXML
+    private GridPane sellerRevenueHeatmap;
 
     private User currentUser;
     private final AppFacade app = AppFacade.getInstance();
@@ -155,9 +178,14 @@ public class UserProfileController {
                 shopNameBox.setVisible(true);
                 shopNameBox.setManaged(true);
             }
+            if (sellerActivityBox != null) {
+                sellerActivityBox.setVisible(true);
+                sellerActivityBox.setManaged(true);
+            }
             shopNameLabel.setText(seller.getShopName());
-            shopNameField.setText(seller.getShopName());
+            if (shopNameField != null) shopNameField.setText(seller.getShopName());
             loadSellerAuctionCount(seller);
+            loadSellerStats(seller);
         }
     }
 
@@ -223,6 +251,90 @@ public class UserProfileController {
         new Thread(task, "profile-auction-count").start();
     }
 
+    /** Load seller revenue stats & heatmap async. */
+    private void loadSellerStats(Seller seller) {
+        if (sellerEarningLabel == null) return;
+        sellerEarningLabel.setText("...");
+        sellerRevenueLabel.setText("...");
+        sellerClosedLabel.setText("...");
+
+        Task<List<Auction>> task = new Task<>() {
+            @Override
+            protected List<Auction> call() {
+                return app.getAuctionsBySeller(seller);
+            }
+        };
+        task.setOnSucceeded(e -> {
+            List<Auction> auctions = task.getValue();
+            LocalDate today = TimeSyncManager.getNow().toLocalDate();
+            LocalDate firstDay = today.minusDays(34);
+            Map<LocalDate, Double> revenueByDay = new HashMap<>();
+            double totalRevenue = 0;
+            double monthRevenue = 0;
+            int closedCount = 0;
+
+            for (Auction a : auctions) {
+                if (a.getStatus() != AuctionStatus.CLOSED) continue;
+                double amount = Math.max(0, a.getHighestBid());
+                LocalDate day = a.getEndTime().toLocalDate();
+                totalRevenue += amount;
+                closedCount++;
+                if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
+                    monthRevenue += amount;
+                if (!day.isBefore(firstDay) && !day.isAfter(today))
+                    revenueByDay.merge(day, amount, Double::sum);
+            }
+
+            final double total = totalRevenue;
+            final double month = monthRevenue;
+            final int closed = closedCount;
+            final Map<LocalDate, Double> byDay = revenueByDay;
+
+            sellerEarningLabel.setText(String.format("%,.0f ₫", total));
+            sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
+            sellerClosedLabel.setText(String.valueOf(closed));
+
+            double maxDay = byDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+            if (sellerRevenueHeatmap != null) {
+                // Giữ nguyên Hàng 0 chứa Label. Chỉ xóa các ô vuông cũ
+                sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
+                // 7 columns (days of week) × 5 rows (weeks) — GitHub-style horizontal grid
+                for (int i = 0; i < 35; i++) {
+                    int col = i % 7;  // 0=Sun … 6=Sat
+                    int row = i / 7;  // 0=oldest week … 4=current week
+                    LocalDate day = firstDay.plusDays(i);
+                    double amt = byDay.getOrDefault(day, 0.0);
+                    Region cell = new Region();
+                    
+                    // Vô hiệu hóa Stretch để giữ chuẩn kích thước 24x24 đã khai báo trong CSS
+                    
+                    cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
+                    Tooltip.install(cell, new Tooltip(
+                            day.format(DateTimeFormatter.ofPattern("dd/MM"))
+                            + " - " + String.format("%,.0f ₫", amt)));
+                    
+                    // Bắt đầu nhồi dữ liệu từ Hàng 1 (Row = row + 1)
+                    sellerRevenueHeatmap.add(cell, col, row + 1);
+                }
+            }
+        });
+        task.setOnFailed(e -> {
+            sellerEarningLabel.setText("?");
+            sellerRevenueLabel.setText("?");
+            sellerClosedLabel.setText("?");
+        });
+        new Thread(task, "profile-seller-stats").start();
+    }
+
+    private String heatmapLevel(double amount, double maxDayRevenue) {
+        if (amount <= 0 || maxDayRevenue <= 0) return "heatmap-level-0";
+        double ratio = amount / maxDayRevenue;
+        if (ratio < 0.25) return "heatmap-level-1";
+        if (ratio < 0.50) return "heatmap-level-2";
+        if (ratio < 0.75) return "heatmap-level-3";
+        return "heatmap-level-4";
+    }
+
     @FXML
     private void handleSaveProfile(ActionEvent event) {
         profileErrorLabel.setText("");
@@ -232,6 +344,7 @@ public class UserProfileController {
             @Override
             protected Void call() {
                 if (currentUser instanceof Seller seller
+                        && shopNameField != null
                         && !shopNameField.getText().trim().isEmpty()) {
                     seller.setShopName(shopNameField.getText().trim());
                 }

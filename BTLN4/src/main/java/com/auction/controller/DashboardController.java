@@ -9,6 +9,7 @@ import com.auction.util.TimeSyncManager;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -56,8 +57,9 @@ public class DashboardController {
     private final AppFacade app = AppFacade.getInstance();
 
     private final String[] newsHeadlines = {
+            "Sự kiện đặc biệt: Đấu giá thượng lưu có sự góp mặt của tỷ phú Trương Xuân Hiếu vào chiều thứ 6 tuần này.",
             "Tuần lễ vàng đấu giá siêu xe và nghệ thuật đương đại đang diễn ra. Đừng bỏ lỡ!",
-            "Sự kiện đặc biệt: Đấu giá từ thiện ủng hộ quỹ bảo trợ trẻ em vào tối thứ 7 tuần này.",
+            "Sự kiện đặc biệt: Đấu giá thượng lưu có sự góp mặt của tỷ phú Trương Xuân Hiếu vào chiều thứ 6 tuần này.",
             "Phiên đấu giá tác phẩm điêu khắc cổ điển vừa thiết lập kỷ lục giá trị mới!",
             "Hãy liên hệ bộ phận hỗ trợ trực tuyến nếu bạn gặp bất kỳ sự cố giao dịch nào."
     };
@@ -113,7 +115,8 @@ public class DashboardController {
         totalAuctionsLabel.setText("...");
         totalUsersLabel.setText("...");
         openAuctionsLabel.setText("...");
-        if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText("...");
+        if (pendingAuctionsLabel != null)
+            pendingAuctionsLabel.setText("...");
 
         javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
             private List<Auction> all;
@@ -131,14 +134,15 @@ public class DashboardController {
             @Override
             protected void succeeded() {
                 long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                long open = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
                 long pending = all.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
 
                 activeAuctionsLabel.setText(String.valueOf(running));
                 totalAuctionsLabel.setText(String.valueOf(all.size()));
                 totalUsersLabel.setText(String.valueOf(userCount));
                 openAuctionsLabel.setText(String.valueOf(open));
-                if (pendingAuctionsLabel != null) pendingAuctionsLabel.setText(String.valueOf(pending));
+                if (pendingAuctionsLabel != null)
+                    pendingAuctionsLabel.setText(String.valueOf(pending));
 
                 refreshHotItems(all);
             }
@@ -198,18 +202,20 @@ public class DashboardController {
             for (int i = 0; i < hotList.size(); i++) {
                 Auction a = hotList.get(i);
                 VBox card = (VBox) hotItemsBox.getChildren().get(i);
-                
-                // createHotItemCard structure: [0] image, [1] title, [2] price, [3] status, [4] countdown
+
+                // createHotItemCard structure: [0] image, [1] title, [2] price, [3] status, [4]
+                // countdown
                 if (card.getChildren().size() >= 5) {
                     Label price = (Label) card.getChildren().get(2);
                     price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
-                    
+
                     Label status = (Label) card.getChildren().get(3);
                     status.setText(a.getStatusDisplay());
-                    
+
                     // Update badge color
                     status.getStyleClass().removeAll("badge-running", "badge-open");
-                    status.getStyleClass().add(a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
+                    status.getStyleClass().add(
+                            a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
 
                     Label countdown = (Label) card.getChildren().get(4);
                     countdown.setText(formatCountdown(a));
@@ -223,17 +229,23 @@ public class DashboardController {
     }
 
     /**
-     * Schedules a lightweight hot-item re-sort every 30 seconds on a background thread.
-     * No DB query – purely reads the in-memory HotItemCache and existing auction list.
+     * Schedules a lightweight hot-item re-sort every 30 seconds on a background
+     * thread.
+     * No DB query – purely reads the in-memory HotItemCache and existing auction
+     * list.
      */
     private void startHotItemRefresh() {
         // 30 s interval – reduced from 15 s to cut DB load and CPU usage.
         // isRefreshing guard ensures only one background query runs at a time.
         hotRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(30), e -> {
-            if (isRefreshing) return; // skip if previous query still in progress
+            if (isRefreshing)
+                return; // skip if previous query still in progress
             isRefreshing = true;
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
-                @Override protected List<Auction> call() { return app.getAllAuctions(); }
+                @Override
+                protected List<Auction> call() {
+                    return app.getAllAuctions();
+                }
             };
             refreshTask.setOnSucceeded(ev -> {
                 isRefreshing = false;
@@ -305,8 +317,11 @@ public class DashboardController {
                     protected javafx.scene.image.Image call() {
                         return ImageLoaderUtil.loadItemImage(imgUrl, 200, 120);
                     }
+
                     @Override
-                    protected void succeeded() { iv.setImage(getValue()); }
+                    protected void succeeded() {
+                        iv.setImage(getValue());
+                    }
                 };
                 Thread imgThread = new Thread(imgTask, "img-load-dashboard");
                 imgThread.setDaemon(true);
@@ -339,7 +354,8 @@ public class DashboardController {
             };
             fetchTask.setOnSucceeded(ev -> {
                 try {
-                    NavigationManager.getInstance().navigateTo(NavigationManager.AUCTION_DETAIL, "Chi tiết", fetchTask.getValue());
+                    NavigationManager.getInstance().navigateTo(NavigationManager.AUCTION_DETAIL, "Chi tiết",
+                            fetchTask.getValue());
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -353,7 +369,8 @@ public class DashboardController {
     }
 
     private String formatCountdown(Auction auction) {
-        if (auction.getEndTime() == null) return "Chưa có hạn kết thúc";
+        if (auction.getEndTime() == null)
+            return "Chưa có hạn kết thúc";
 
         java.time.Duration remaining = java.time.Duration.between(TimeSyncManager.getNow(), auction.getEndTime());
         if (remaining.isNegative() || remaining.isZero()) {
@@ -372,8 +389,11 @@ public class DashboardController {
     }
 
     public void cleanup() {
-        if (newsTimeline != null) newsTimeline.stop();
-        if (hotRefreshTimeline != null) hotRefreshTimeline.stop();
-        if (hotCountdownTimeline != null) hotCountdownTimeline.stop();
+        if (newsTimeline != null)
+            newsTimeline.stop();
+        if (hotRefreshTimeline != null)
+            hotRefreshTimeline.stop();
+        if (hotCountdownTimeline != null)
+            hotCountdownTimeline.stop();
     }
 }
