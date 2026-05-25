@@ -1131,24 +1131,31 @@
     -fx-background-color: -theme-surface;
     -fx-border-color: -theme-border;
     -fx-border-width: 1;
-    -fx-border-radius: 4;
-    -fx-background-radius: 4;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4;
 }
 
 .combo-box-popup .list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: -theme-text;
-    -fx-padding: 6 12 6 12;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 5;
 }
 
-.combo-box-popup .list-cell:filled:hover {
-    -fx-background-color: -theme-table-row-hover;
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #3b82f6; /* Use the exact primary bright blue hex from the design */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.45), 6, 0, 0, 2);
 }
 
 .combo-box-popup .list-cell:filled:selected,
 .combo-box-popup .list-cell:filled:selected:hover {
     -fx-background-color: -theme-primary;
     -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 5;
 }
 
 /* ---------- Progress Bar ---------- */
