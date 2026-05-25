@@ -6,8 +6,6 @@ import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.SequentialTransition;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
@@ -15,31 +13,21 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 public class SplashController {
     @FXML private StackPane splashRoot;
-    @FXML private Rectangle sq1;
-    @FXML private Rectangle sq2;
-    @FXML private Rectangle sq3;
 
     @FXML private Label lblStatus;
     @FXML private Label animatedWordLabel;
     @FXML private Label logStreamLabel;
-    
-    private final java.util.List<SequentialTransition> animations = new java.util.ArrayList<>();
-    
+
     private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
     private int wordIndex = 0;
     private Timeline wordCycler;
 
     @FXML
     public void initialize() {
-        animateSquare(sq1, 0);
-        animateSquare(sq2, 150);
-        animateSquare(sq3, 300);
-
         startWordCycle();
 
         Platform.runLater(() -> {
@@ -130,10 +118,7 @@ public class SplashController {
 
         bootTask.setOnSucceeded(e -> {
             if (wordCycler != null) wordCycler.stop();
-            // Dọn dẹp hiệu ứng lặp vô tận (khắc phục rò rỉ RAM)
-            animations.forEach(SequentialTransition::stop);
-            animations.clear();
-            
+
             Platform.runLater(() -> {
                 try {
                     NavigationManager.getInstance().navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);
@@ -146,22 +131,6 @@ public class SplashController {
         Thread t = new Thread(bootTask);
         t.setDaemon(true);
         t.start();
-    }
-
-    private void animateSquare(Rectangle sq, int delay) {
-        ScaleTransition stUp = new ScaleTransition(Duration.millis(300), sq);
-        stUp.setToY(1.5);
-        stUp.setToX(1.5);
-        
-        ScaleTransition stDown = new ScaleTransition(Duration.millis(300), sq);
-        stDown.setToY(1.0);
-        stDown.setToX(1.0);
-
-        SequentialTransition seq = new SequentialTransition(stUp, stDown);
-        seq.setDelay(Duration.millis(delay));
-        seq.setCycleCount(SequentialTransition.INDEFINITE);
-        seq.play();
-        animations.add(seq);
     }
 
     private void startWordCycle() {

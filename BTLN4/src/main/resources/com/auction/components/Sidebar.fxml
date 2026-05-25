@@ -13,9 +13,16 @@
       fillWidth="true">
 
     <!-- Brand header -->
-    <VBox fx:id="brandBox" styleClass="sidebar-header" spacing="2">
-        <Label fx:id="brandTitleLabel" text="AuctionSys" styleClass="sidebar-title"/>
-        <Label fx:id="brandSubtitleLabel" text="Hệ thống Đấu giá" styleClass="sidebar-subtitle"/>
+    <VBox fx:id="brandBox" styleClass="sidebar-header" spacing="8" alignment="CENTER">
+        <javafx.scene.image.ImageView fitWidth="60" fitHeight="60" preserveRatio="true">
+            <image>
+                <javafx.scene.image.Image url="@../images/logo.png"/>
+            </image>
+        </javafx.scene.image.ImageView>
+        <VBox spacing="2" alignment="CENTER">
+            <Label fx:id="brandTitleLabel" text="AuctionSys" styleClass="sidebar-title"/>
+            <Label fx:id="brandSubtitleLabel" text="Hệ thống Đấu giá" styleClass="sidebar-subtitle"/>
+        </VBox>
     </VBox>
 
     <!-- Navigation -->
