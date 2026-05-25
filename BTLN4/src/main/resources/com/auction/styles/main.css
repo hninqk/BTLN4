@@ -213,7 +213,7 @@
 }
 
 .nav-button:hover .nav-icon,
-.nav-button-active .nav-icon {
+.active-tab .nav-icon {
     -fx-icon-color: #FFFFFF;
 }
 
@@ -232,15 +232,16 @@
     -fx-icon-color: #2563EB;
 }
 
-.nav-button-active {
-    -fx-background-color: rgba(37, 99, 235, 0.1);
+.active-tab {
+    -fx-background-color: rgba(37, 99, 235, 0.15);
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
-    -fx-border-color: #3B82F6;
+    -fx-border-color: transparent transparent transparent #3B82F6;
+    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.8), 10, 0.5, 0, 0);
 }
 
-.nav-button-active:hover {
-    -fx-background-color: rgba(37, 99, 235, 0.2);
+.active-tab:hover {
+    -fx-background-color: rgba(37, 99, 235, 0.25);
 }
 
 .pagination-bar {
@@ -340,7 +341,10 @@
     -fx-text-fill: #FFFFFF;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-padding: 9 20 9 20;
+    -fx-padding: 0 20 0 20;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-max-height: 36;
     -fx-background-radius: 6;
     -fx-cursor: hand;
     -fx-border-width: 0;
@@ -358,7 +362,10 @@
     -fx-background-color: -theme-surface;
     -fx-text-fill: -theme-text;
     -fx-font-size: 13px;
-    -fx-padding: 9 20 9 20;
+    -fx-padding: 0 20 0 20;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-max-height: 36;
     -fx-background-radius: 6;
     -fx-border-color: -theme-border;
     -fx-border-width: 1;
@@ -554,8 +561,21 @@
 
 .text-field,
 .password-field,
-.text-area,
 .combo-box {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 0 12 0 12;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-max-height: 36;
+    -fx-font-size: 13px;
+    -fx-text-fill: -theme-text;
+}
+
+.text-area {
     -fx-background-color: -theme-surface;
     -fx-border-color: -theme-border;
     -fx-border-width: 1;

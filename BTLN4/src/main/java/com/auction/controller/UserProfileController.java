@@ -119,11 +119,7 @@ public class UserProfileController {
             }
         });
 
-        UnaryOperator<javafx.scene.control.TextFormatter.Change> numericFilter = change -> {
-            String newText = change.getControlNewText();
-            return newText.matches("[0-9,.]*") ? change : null;
-        };
-        depositField.setTextFormatter(new javafx.scene.control.TextFormatter<>(numericFilter));
+        com.auction.util.CurrencyUtil.setupCurrencyTextField(depositField);
 
         if (currentUser != null) {
             populateProfile();
@@ -419,7 +415,7 @@ public class UserProfileController {
         if (input.isEmpty())
             return;
         try {
-            double amount = Double.parseDouble(input.replace(",", ""));
+            double amount = com.auction.util.CurrencyUtil.parseCurrency(input);
             if (amount <= 0)
                 throw new NumberFormatException();
 

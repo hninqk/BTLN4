@@ -29,7 +29,7 @@
                     <Label fx:id="welcomeLabel" text="Chào mừng bạn trở lại!" styleClass="label-subtle"/>
                 </VBox>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
+                <Button text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 0 24;"/>
             </HBox>
 
             <!-- News Banner -->
@@ -44,9 +44,9 @@
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Đang diễn ra" styleClass="stat-label"/>
                     <Label fx:id="activeAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" RUNNING" styleClass="label-subtle" style="-fx-text-fill: #DC2626;">
+                    <Label text=" RUNNING" styleClass="label-subtle" style="-fx-text-fill: #22C55E;">
                         <graphic>
-                            <javafx.scene.shape.Circle radius="5" fill="#DC2626"/>
+                            <javafx.scene.shape.Circle radius="5" fill="#22C55E"/>
                         </graphic>
                     </Label>
                 </VBox>
@@ -54,9 +54,9 @@
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Chờ bắt đầu" styleClass="stat-label"/>
                     <Label fx:id="openAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" OPEN" styleClass="label-subtle" style="-fx-text-fill: #10B981;">
+                    <Label text=" OPEN" styleClass="label-subtle" style="-fx-text-fill: #3B82F6;">
                         <graphic>
-                            <javafx.scene.shape.SVGPath content="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#10B981" scaleX="0.75" scaleY="0.75"/>
+                            <javafx.scene.shape.SVGPath content="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#3B82F6" scaleX="0.75" scaleY="0.75"/>
                         </graphic>
                     </Label>
                 </VBox>
@@ -64,9 +64,9 @@
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Chờ duyệt" styleClass="stat-label"/>
                     <Label fx:id="pendingAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text=" PENDING" styleClass="label-subtle" style="-fx-text-fill: #D97706;">
+                    <Label text=" PENDING" styleClass="label-subtle" style="-fx-text-fill: #F59E0B;">
                         <graphic>
-                            <javafx.scene.shape.SVGPath content="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z" fill="#D97706" scaleX="0.65" scaleY="0.65"/>
+                            <javafx.scene.shape.SVGPath content="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z" fill="#F59E0B" scaleX="0.65" scaleY="0.65"/>
                         </graphic>
                     </Label>
                 </VBox>
@@ -74,13 +74,21 @@
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Tổng phiên" styleClass="stat-label"/>
                     <Label fx:id="totalAuctionsLabel" text="0" styleClass="stat-value"/>
-                    <Label text="Tất cả trạng thái" styleClass="label-subtle"/>
+                    <Label text=" Tất cả trạng thái" styleClass="label-subtle" style="-fx-text-fill: #8B5CF6;">
+                        <graphic>
+                            <javafx.scene.shape.SVGPath content="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16zm0-11.47L17.74 9 12 13.47 6.26 9 12 4.53z" fill="#8B5CF6" scaleX="0.7" scaleY="0.7"/>
+                        </graphic>
+                    </Label>
                 </VBox>
                 <!-- Card 5 -->
                 <VBox styleClass="stat-card" spacing="8" HBox.hgrow="ALWAYS">
                     <Label text="Người dùng" styleClass="stat-label"/>
                     <Label fx:id="totalUsersLabel" text="0" styleClass="stat-value"/>
-                    <Label text="Bidder + Seller + Admin" styleClass="label-subtle"/>
+                    <Label text=" Bidder + Seller + Admin" styleClass="label-subtle" style="-fx-text-fill: #06B6D4;">
+                        <graphic>
+                            <javafx.scene.shape.SVGPath content="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="#06B6D4" scaleX="0.75" scaleY="0.75"/>
+                        </graphic>
+                    </Label>
                 </VBox>
             </HBox>
 

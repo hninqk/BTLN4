@@ -124,10 +124,7 @@ public class SellerManagementController {
             if (!isNowFocused) minuteSpinner.increment(0);
         });
 
-        UnaryOperator<TextFormatter.Change> numericFilter = change -> change.getControlNewText().matches("[0-9,.]*")
-                ? change
-                : null;
-        startPriceField.setTextFormatter(new TextFormatter<>(numericFilter));
+        com.auction.util.CurrencyUtil.setupCurrencyTextField(startPriceField);
 
         connectWebSocket();
     }
@@ -439,7 +436,7 @@ public class SellerManagementController {
 
         double startPrice;
         try {
-            startPrice = Double.parseDouble(priceStr.replace(",", ""));
+            startPrice = com.auction.util.CurrencyUtil.parseCurrency(priceStr);
             if (startPrice <= 0)
                 throw new NumberFormatException();
         } catch (NumberFormatException e) {
