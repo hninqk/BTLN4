@@ -75,21 +75,34 @@ public final class AnimationUtil {
         
         javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
             private long startTime = -1;
-            
+            private long lastUpdate = 0;
+            private static final long FRAME_INTERVAL = 33_000_000; // ~30 FPS (33ms between frames)
+
             @Override
             public void handle(long now) {
+                // Throttle to ~30 FPS instead of 60 FPS
+                if (now - lastUpdate < FRAME_INTERVAL) {
+                    return;
+                }
+                lastUpdate = now;
+
                 if (startTime < 0) startTime = now;
                 double t = (now - startTime) / 1_000_000_000.0;
-                
+
                 double w = canvas.getWidth();
                 double h = canvas.getHeight();
-                
+
+                // Skip rendering if canvas is too small or not visible
+                if (w < 10 || h < 10 || !canvas.isVisible()) {
+                    return;
+                }
+
                 // Determine theme by checking if parent or scene root has "dark-mode"
                 boolean isDark = parent.getStyleClass().contains("dark-mode");
                 if (!isDark && parent.getScene() != null && parent.getScene().getRoot() != null) {
                     isDark = parent.getScene().getRoot().getStyleClass().contains("dark-mode");
                 }
-                
+
                 // Set background and wave colors based on theme
                 if (isDark) {
                     gc.setFill(javafx.scene.paint.Color.web("#0F172A")); // Match -theme-bg
@@ -116,12 +129,12 @@ public final class AnimationUtil {
         });
     }
     
-    private static void drawWave(javafx.scene.canvas.GraphicsContext gc, double w, double h, double time, 
+    private static void drawWave(javafx.scene.canvas.GraphicsContext gc, double w, double h, double time,
                                  double speed, double frequency, double amplitude, javafx.scene.paint.Color color) {
         gc.setStroke(color);
         gc.setLineWidth(2.0);
         gc.beginPath();
-        for (int x = 0; x <= w; x += 15) { // step by 15 pixels for performance
+        for (int x = 0; x <= w; x += 20) { // step by 20 pixels for better performance
             double y = h / 2.0 + Math.sin(x * frequency + time * speed) * amplitude;
             if (x == 0) gc.moveTo(x, y);
             else gc.lineTo(x, y);
