@@ -437,32 +437,32 @@
     -fx-tab-min-height: 36px;
 }
 
-.admin-tab-pane > .tab-header-area {
+.admin-tab-pane>.tab-header-area {
     -fx-padding: 0 0 8 0;
 }
 
-.admin-tab-pane > .tab-header-area > .tab-header-background {
+.admin-tab-pane>.tab-header-area>.tab-header-background {
     -fx-background-color: transparent;
 }
 
-.admin-tab-pane > .tab-header-area > .headers-region {
+.admin-tab-pane>.tab-header-area>.headers-region {
     -fx-background-color: rgba(226, 232, 240, 0.70);
     -fx-background-radius: 10;
     -fx-padding: 4;
 }
 
-.admin-tab-pane > .tab-header-area > .headers-region > .tab {
+.admin-tab-pane>.tab-header-area>.headers-region>.tab {
     -fx-background-color: transparent;
     -fx-background-radius: 8;
     -fx-border-width: 0;
     -fx-padding: 8 14 8 14;
 }
 
-.admin-tab-pane > .tab-header-area > .headers-region > .tab:hover {
+.admin-tab-pane>.tab-header-area>.headers-region>.tab:hover {
     -fx-background-color: rgba(255, 255, 255, 0.58);
 }
 
-.admin-tab-pane > .tab-header-area > .headers-region > .tab:selected {
+.admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
     -fx-background-color: -theme-surface;
     -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.10), 10, 0.20, 0, 2);
 }
@@ -505,18 +505,18 @@
     -fx-min-width: 72;
 }
 
-.dark-mode .admin-tab-pane > .tab-header-area > .headers-region {
+.dark-mode .admin-tab-pane>.tab-header-area>.headers-region {
     -fx-background-color: rgba(15, 23, 42, 0.72);
     -fx-border-color: rgba(51, 65, 85, 0.78);
     -fx-border-width: 1;
     -fx-border-radius: 10;
 }
 
-.dark-mode .admin-tab-pane > .tab-header-area > .headers-region > .tab:hover {
+.dark-mode .admin-tab-pane>.tab-header-area>.headers-region>.tab:hover {
     -fx-background-color: rgba(51, 65, 85, 0.74);
 }
 
-.dark-mode .admin-tab-pane > .tab-header-area > .headers-region > .tab:selected {
+.dark-mode .admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
     -fx-background-color: rgba(30, 41, 59, 0.96);
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 12, 0.18, 0, 2);
 }
@@ -742,48 +742,65 @@
     -fx-border-radius: 4;
     -fx-border-color: rgba(148, 163, 184, 0.15);
     -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-focus-color: transparent; /* Khử viền xanh/trắng khi click/focus */
+    -fx-faint-focus-color: transparent; /* Khử viền mờ khi click/focus */
 }
 
-/* Tone màu xanh lá cho heatmap (Light mode) */
+.heatmap-cell:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.3), 4, 0.0, 0, 0);
+}
+
+/* Tone màu xanh dương cho heatmap (Light mode) */
 .heatmap-level-0 {
-    -fx-background-color: #e8f5e9; /* Không có doanh thu */
+    -fx-background-color: #f1f5f9;
+    /* Không có doanh thu */
 }
 
 .heatmap-level-1 {
-    -fx-background-color: #c8e6c9; /* Doanh thu thấp */
+    -fx-background-color: #bfdbfe;
+    /* Doanh thu thấp */
 }
 
 .heatmap-level-2 {
-    -fx-background-color: #81c784; /* Doanh thu trung bình */
+    -fx-background-color: #60a5fa;
+    /* Doanh thu trung bình */
 }
 
 .heatmap-level-3 {
-    -fx-background-color: #388e3c; /* Doanh thu cao */
+    -fx-background-color: #2563eb;
+    /* Doanh thu cao */
 }
 
 .heatmap-level-4 {
-    -fx-background-color: #1b5e20; /* Doanh thu rất cao (Đột phá) */
+    -fx-background-color: #1e3a8a;
+    /* Doanh thu rất cao (Đột phá) */
 }
 
 /* Tone màu xanh dương cho heatmap (Dark mode - Đảo ngược độ sáng giống nút bấm) */
 .dark-mode .heatmap-level-0 {
-    -fx-background-color: #1e2b3c; /* Nền tối không hoạt động */
+    -fx-background-color: #1e2b3c;
+    /* Nền tối không hoạt động */
 }
 
 .dark-mode .heatmap-level-1 {
-    -fx-background-color: #1e3a8a; /* Xanh dương tối */
+    -fx-background-color: #1e3a8a;
+    /* Xanh dương tối */
 }
 
 .dark-mode .heatmap-level-2 {
-    -fx-background-color: #2563eb; /* Xanh dương trung bình (Primary light) */
+    -fx-background-color: #2563eb;
+    /* Xanh dương trung bình (Primary light) */
 }
 
 .dark-mode .heatmap-level-3 {
-    -fx-background-color: #3b82f6; /* Xanh dương sáng (Primary dark) */
+    -fx-background-color: #3b82f6;
+    /* Xanh dương sáng (Primary dark) */
 }
 
 .dark-mode .heatmap-level-4 {
-    -fx-background-color: #93c5fd; /* Xanh dương rất sáng */
+    -fx-background-color: #93c5fd;
+    /* Xanh dương rất sáng */
 }
 
 /* Nhãn thứ trong tuần của heatmap */
@@ -1182,7 +1199,8 @@
 }
 
 .combo-box-popup .list-cell:hover {
-    -fx-background-color: #3b82f6; /* Use the exact primary bright blue hex from the design */
+    -fx-background-color: #3b82f6;
+    /* Use the exact primary bright blue hex from the design */
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-cursor: hand;
@@ -1346,19 +1364,22 @@
 }
 
 /* Đổi nền của nút bấm lịch bên trong DatePicker */
-.date-picker > .arrow-button {
-    -fx-background-color: #2c3e50; /* Màu nền tối giản phối hợp với theme */
-    -fx-background-radius: 0 4 4 0; /* Bo góc bên phải */
+.date-picker>.arrow-button {
+    -fx-background-color: #2c3e50;
+    /* Màu nền tối giản phối hợp với theme */
+    -fx-background-radius: 0 4 4 0;
+    /* Bo góc bên phải */
     -fx-cursor: hand;
 }
 
-.date-picker > .arrow-button:hover {
-    -fx-background-color: #34495e; /* Hiệu ứng hover tối sáng nhẹ */
+.date-picker>.arrow-button:hover {
+    -fx-background-color: #34495e;
+    /* Hiệu ứng hover tối sáng nhẹ */
 }
 
 /* Đổi màu biểu tượng icon lịch nhỏ bên trong nút sang màu trắng/xám nhạt */
-.date-picker > .arrow-button > .svg-path {
-    -fx-background-color: #ffffff; 
+.date-picker>.arrow-button>.svg-path {
+    -fx-background-color: #ffffff;
 }
 
 /* ---------- Spinner Styling ---------- */
@@ -1374,7 +1395,7 @@
     -fx-border-color: -theme-primary;
 }
 
-.spinner > .text-field {
+.spinner>.text-field {
     -fx-background-color: transparent;
     -fx-background-radius: 6 0 0 6;
     -fx-border-width: 0;
@@ -1382,27 +1403,27 @@
     -fx-padding: 8 12 8 12;
 }
 
-.spinner > .increment-arrow-button,
-.spinner > .decrement-arrow-button {
+.spinner>.increment-arrow-button,
+.spinner>.decrement-arrow-button {
     -fx-background-color: #2c3e50;
     -fx-cursor: hand;
 }
 
-.spinner > .increment-arrow-button {
+.spinner>.increment-arrow-button {
     -fx-background-radius: 0 5 0 0;
 }
 
-.spinner > .decrement-arrow-button {
+.spinner>.decrement-arrow-button {
     -fx-background-radius: 0 0 5 0;
 }
 
-.spinner > .increment-arrow-button:hover,
-.spinner > .decrement-arrow-button:hover {
+.spinner>.increment-arrow-button:hover,
+.spinner>.decrement-arrow-button:hover {
     -fx-background-color: #34495e;
 }
 
-.spinner > .increment-arrow-button > .increment-arrow,
-.spinner > .decrement-arrow-button > .decrement-arrow {
+.spinner>.increment-arrow-button>.increment-arrow,
+.spinner>.decrement-arrow-button>.decrement-arrow {
     -fx-background-color: #ffffff;
 }
 
@@ -1546,4 +1567,21 @@
 .badge-result-active {
     -fx-background-color: #DBEAFE;
     -fx-text-fill: #1E3A8A;
+}
+
+/* Custom giao diện Tooltip giống các nền tảng Online Judge / GitHub */
+.tooltip {
+    -fx-background-color: #1e293b; /* Nền tối đồng bộ màu Navy */
+    -fx-background-insets: 0; /* Khử hoàn toàn insets mặc định của Modena để xóa góc trắng */
+    -fx-background-radius: 6px; /* Bo góc mượt mà */
+    -fx-text-fill: #ffffff; /* Màu chữ trắng tinh */
+    -fx-font-size: 12px; /* Cỡ chữ nhỏ gọn, vừa vặn */
+    -fx-font-family: "Segoe UI", Arial;
+    -fx-font-weight: normal;
+    -fx-padding: 8px 12px; /* Khoảng cách đệm bên trong hộp */
+    -fx-border-color: #334155; /* Viền mờ tinh tế bao quanh */
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+    /* Hiệu ứng đổ bóng mờ cho hộp nhỏ */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.5), 8, 0.0, 0, 3);
 }

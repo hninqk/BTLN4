@@ -100,12 +100,24 @@ public class UserProfileController {
 
     private User currentUser;
     private final AppFacade app = AppFacade.getInstance();
+    private Tooltip activeHeatmapTooltip;
 
     @FXML
     public void initialize() {
         currentUser = SessionManager.getInstance().getCurrentUser();
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
+
+        Platform.runLater(() -> {
+            if (sellerRevenueHeatmap != null && sellerRevenueHeatmap.getScene() != null) {
+                sellerRevenueHeatmap.getScene().addEventHandler(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
+                    if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
+                        activeHeatmapTooltip.hide();
+                        activeHeatmapTooltip = null;
+                    }
+                });
+            }
+        });
 
         UnaryOperator<javafx.scene.control.TextFormatter.Change> numericFilter = change -> {
             String newText = change.getControlNewText();
@@ -183,7 +195,8 @@ public class UserProfileController {
                 sellerActivityBox.setManaged(true);
             }
             shopNameLabel.setText(seller.getShopName());
-            if (shopNameField != null) shopNameField.setText(seller.getShopName());
+            if (shopNameField != null)
+                shopNameField.setText(seller.getShopName());
             loadSellerAuctionCount(seller);
             loadSellerStats(seller);
         }
@@ -203,14 +216,14 @@ public class UserProfileController {
     private void loadBidCount(Bidder bidder) {
         if (totalBidsLabel == null)
             return;
-            
+
         Long cached = bidCountCache.get(bidder.getId());
         if (cached != null) {
             totalBidsLabel.setText(String.valueOf(cached));
         } else {
             totalBidsLabel.setText("...");
         }
-        
+
         Task<Long> task = new Task<>() {
             @Override
             protected Long call() {
@@ -231,7 +244,8 @@ public class UserProfileController {
             totalBidsLabel.setText(String.valueOf(task.getValue()));
         });
         task.setOnFailed(e -> {
-            if (bidCountCache.get(bidder.getId()) == null) totalBidsLabel.setText("?");
+            if (bidCountCache.get(bidder.getId()) == null)
+                totalBidsLabel.setText("?");
         });
         new Thread(task, "profile-bid-count").start();
     }
@@ -253,7 +267,8 @@ public class UserProfileController {
 
     /** Load seller revenue stats & heatmap async. */
     private void loadSellerStats(Seller seller) {
-        if (sellerEarningLabel == null) return;
+        if (sellerEarningLabel == null)
+            return;
         sellerEarningLabel.setText("...");
         sellerRevenueLabel.setText("...");
         sellerClosedLabel.setText("...");
@@ -269,26 +284,31 @@ public class UserProfileController {
             LocalDate today = TimeSyncManager.getNow().toLocalDate();
             LocalDate firstDay = today.minusDays(34);
             Map<LocalDate, Double> revenueByDay = new HashMap<>();
+            Map<LocalDate, Integer> closedByDay = new HashMap<>();
             double totalRevenue = 0;
             double monthRevenue = 0;
             int closedCount = 0;
 
             for (Auction a : auctions) {
-                if (a.getStatus() != AuctionStatus.CLOSED) continue;
+                if (a.getStatus() != AuctionStatus.CLOSED)
+                    continue;
                 double amount = Math.max(0, a.getHighestBid());
                 LocalDate day = a.getEndTime().toLocalDate();
                 totalRevenue += amount;
                 closedCount++;
                 if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
                     monthRevenue += amount;
-                if (!day.isBefore(firstDay) && !day.isAfter(today))
+                if (!day.isBefore(firstDay) && !day.isAfter(today)) {
                     revenueByDay.merge(day, amount, Double::sum);
+                    closedByDay.merge(day, 1, Integer::sum);
+                }
             }
 
             final double total = totalRevenue;
             final double month = monthRevenue;
             final int closed = closedCount;
             final Map<LocalDate, Double> byDay = revenueByDay;
+            final Map<LocalDate, Integer> closedMap = closedByDay;
 
             sellerEarningLabel.setText(String.format("%,.0f ₫", total));
             sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
@@ -300,19 +320,41 @@ public class UserProfileController {
                 sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
                 // 7 columns (days of week) × 5 rows (weeks) — GitHub-style horizontal grid
                 for (int i = 0; i < 35; i++) {
-                    int col = i % 7;  // 0=Sun … 6=Sat
-                    int row = i / 7;  // 0=oldest week … 4=current week
+                    int col = i % 7; // 0=Sun … 6=Sat
+                    int row = i / 7; // 0=oldest week … 4=current week
                     LocalDate day = firstDay.plusDays(i);
                     double amt = byDay.getOrDefault(day, 0.0);
+                    int closedDay = closedMap.getOrDefault(day, 0);
                     Region cell = new Region();
-                    
+
                     // Vô hiệu hóa Stretch để giữ chuẩn kích thước 24x24 đã khai báo trong CSS
-                    
+
                     cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
-                    Tooltip.install(cell, new Tooltip(
-                            day.format(DateTimeFormatter.ofPattern("dd/MM"))
-                            + " - " + String.format("%,.0f ₫", amt)));
-                    
+                    Tooltip tooltip = new Tooltip(
+                            "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
+                            "Số phiên đấu giá đã chốt: " + closedDay);
+                    tooltip.setShowDelay(javafx.util.Duration.millis(50));
+                    tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
+                    Tooltip.install(cell, tooltip);
+
+                    // Khi click chuột vào ô vuông heatmap, hiển thị Tooltip ngay tại vị trí con trỏ chuột
+                    cell.setOnMousePressed(event -> {
+                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
+                            activeHeatmapTooltip.hide();
+                        }
+                        tooltip.show(cell, event.getScreenX() + 10, event.getScreenY() + 10);
+                        activeHeatmapTooltip = tooltip;
+                        event.consume(); // Ngăn không cho sự kiện lan lên Scene để tránh bị tự động ẩn
+                    });
+
+                    // Khi rê chuột sang ô khác, tự động ẩn Tooltip cũ đang mở
+                    cell.setOnMouseEntered(event -> {
+                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing() && activeHeatmapTooltip != tooltip) {
+                            activeHeatmapTooltip.hide();
+                            activeHeatmapTooltip = null;
+                        }
+                    });
+
                     // Bắt đầu nhồi dữ liệu từ Hàng 1 (Row = row + 1)
                     sellerRevenueHeatmap.add(cell, col, row + 1);
                 }
@@ -327,11 +369,15 @@ public class UserProfileController {
     }
 
     private String heatmapLevel(double amount, double maxDayRevenue) {
-        if (amount <= 0 || maxDayRevenue <= 0) return "heatmap-level-0";
+        if (amount <= 0 || maxDayRevenue <= 0)
+            return "heatmap-level-0";
         double ratio = amount / maxDayRevenue;
-        if (ratio < 0.25) return "heatmap-level-1";
-        if (ratio < 0.50) return "heatmap-level-2";
-        if (ratio < 0.75) return "heatmap-level-3";
+        if (ratio < 0.25)
+            return "heatmap-level-1";
+        if (ratio < 0.50)
+            return "heatmap-level-2";
+        if (ratio < 0.75)
+            return "heatmap-level-3";
         return "heatmap-level-4";
     }
 
@@ -470,7 +516,7 @@ public class UserProfileController {
         new Thread(loadQRTask, "vietqr-load").start();
 
         // ── Details grid ─────────────────────────────────────────────────────────
-        // Col 0 (label): fixed ~130px  |  Col 1 (value): grows to fill remaining
+        // Col 0 (label): fixed ~130px | Col 1 (value): grows to fill remaining
         GridPane detailsGrid = new GridPane();
         detailsGrid.setHgap(12);
         detailsGrid.setVgap(10);
@@ -488,16 +534,16 @@ public class UserProfileController {
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setMinWidth(0);
         col1.setPrefWidth(200);
-        col1.setHgrow(Priority.ALWAYS);   // value column stretches to fill
+        col1.setHgrow(Priority.ALWAYS); // value column stretches to fill
         col1.setFillWidth(true);
 
         detailsGrid.getColumnConstraints().addAll(col0, col1);
 
-        addDetailRow(detailsGrid, 0, "Ngân hàng:",      "MB Bank (Ngân hàng Quân Đội)");
-        addDetailRow(detailsGrid, 1, "Số tài khoản:",  "0974894480");
+        addDetailRow(detailsGrid, 0, "Ngân hàng:", "MB Bank (Ngân hàng Quân Đội)");
+        addDetailRow(detailsGrid, 1, "Số tài khoản:", "0974894480");
         addDetailRow(detailsGrid, 2, "Chủ tài khoản:", "HE THONG DAU GIA BTLN4");
-        addDetailRow(detailsGrid, 3, "Số tiền:",       String.format("%,.0f ₫", amount));
-        addDetailRow(detailsGrid, 4, "Nội dung:",       "BTLN4 NAPTIEN " + bidder.getUsername());
+        addDetailRow(detailsGrid, 3, "Số tiền:", String.format("%,.0f ₫", amount));
+        addDetailRow(detailsGrid, 4, "Nội dung:", "BTLN4 NAPTIEN " + bidder.getUsername());
 
         // ── Status + Buttons ─────────────────────────────────────────────────────
         VBox statusBox = new VBox(10);
@@ -576,7 +622,7 @@ public class UserProfileController {
         dialogRoot.getChildren().addAll(titleLabel, subtitleLabel, qrFrame, detailsGrid, statusBox);
 
         ScrollPane scrollPane = new ScrollPane(dialogRoot);
-        scrollPane.setFitToWidth(true);     // dialogRoot stretches to scroll width
+        scrollPane.setFitToWidth(true); // dialogRoot stretches to scroll width
         scrollPane.setFitToHeight(false);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -606,8 +652,8 @@ public class UserProfileController {
 
         Label val = new Label(valueText);
         val.getStyleClass().add("label");
-        val.setWrapText(true);              // long values wrap instead of being clipped
-        val.setMaxWidth(Double.MAX_VALUE);  // stretch to fill column 1
+        val.setWrapText(true); // long values wrap instead of being clipped
+        val.setMaxWidth(Double.MAX_VALUE); // stretch to fill column 1
         GridPane.setHgrow(val, Priority.ALWAYS);
         GridPane.setFillWidth(val, true);
 
