@@ -8,6 +8,8 @@ import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.Animation;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -21,6 +23,9 @@ public class SplashController {
     @FXML private Label lblStatus;
     @FXML private Label animatedWordLabel;
     @FXML private Label logStreamLabel;
+    @FXML private javafx.scene.image.ImageView logoImageView;
+
+    private ScaleTransition logoPulse;
 
     private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
     private int wordIndex = 0;
@@ -35,6 +40,34 @@ public class SplashController {
                 com.auction.util.AnimationUtil.createWaveBackground(splashRoot);
             }
         });
+
+            if (logoImageView != null) {
+                ScaleTransition scale = new ScaleTransition(Duration.millis(1200), logoImageView);
+                scale.setFromX(0.0);
+                scale.setFromY(0.0);
+                scale.setToX(1.0);
+                scale.setToY(1.0);
+                scale.setInterpolator(Interpolator.EASE_OUT);
+
+                FadeTransition fade = new FadeTransition(Duration.millis(1200), logoImageView);
+                fade.setFromValue(0.0);
+                fade.setToValue(1.0);
+
+                ParallelTransition entrance = new ParallelTransition(scale, fade);
+                entrance.setOnFinished(ev -> {
+                    // start a smooth pulsing scale animation after entrance
+                    logoPulse = new ScaleTransition(Duration.millis(1400), logoImageView);
+                    logoPulse.setFromX(1.0);
+                    logoPulse.setFromY(1.0);
+                    logoPulse.setToX(1.06);
+                    logoPulse.setToY(1.06);
+                    logoPulse.setAutoReverse(true);
+                    logoPulse.setCycleCount(Animation.INDEFINITE);
+                    logoPulse.setInterpolator(Interpolator.EASE_BOTH);
+                    logoPulse.play();
+                });
+                entrance.play();
+            }
 
         Task<Void> bootTask = new Task<>() {
             @Override

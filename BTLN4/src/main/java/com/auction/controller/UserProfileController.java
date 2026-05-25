@@ -86,40 +86,16 @@ public class UserProfileController {
     @FXML
     private Label profileSuccessLabel;
 
-    // ── Seller activity panel ──────────────────────────────────────────────────
-    @FXML
-    private VBox sellerActivityBox;
-    @FXML
-    private Label sellerEarningLabel;
-    @FXML
-    private Label sellerRevenueLabel;
-    @FXML
-    private Label sellerClosedLabel;
-    @FXML
-    private GridPane sellerRevenueHeatmap;
-
     private User currentUser;
     private final AppFacade app = AppFacade.getInstance();
-    private Tooltip activeHeatmapTooltip;
+
+    // ── Seller activity panel (Migrated to dashboard) ──────────────────────────
 
     @FXML
     public void initialize() {
         currentUser = SessionManager.getInstance().getCurrentUser();
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
-
-        Platform.runLater(() -> {
-            if (sellerRevenueHeatmap != null && sellerRevenueHeatmap.getScene() != null) {
-                sellerRevenueHeatmap.getScene().addEventHandler(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
-                    if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
-                        activeHeatmapTooltip.hide();
-                        activeHeatmapTooltip = null;
-                    }
-                });
-            }
-        });
-
-        com.auction.util.CurrencyUtil.setupCurrencyTextField(depositField);
 
         if (currentUser != null) {
             populateProfile();
@@ -186,15 +162,9 @@ public class UserProfileController {
                 shopNameBox.setVisible(true);
                 shopNameBox.setManaged(true);
             }
-            if (sellerActivityBox != null) {
-                sellerActivityBox.setVisible(true);
-                sellerActivityBox.setManaged(true);
-            }
-            shopNameLabel.setText(seller.getShopName());
             if (shopNameField != null)
                 shopNameField.setText(seller.getShopName());
             loadSellerAuctionCount(seller);
-            loadSellerStats(seller);
         }
     }
 
@@ -261,122 +231,7 @@ public class UserProfileController {
         new Thread(task, "profile-auction-count").start();
     }
 
-    /** Load seller revenue stats & heatmap async. */
-    private void loadSellerStats(Seller seller) {
-        if (sellerEarningLabel == null)
-            return;
-        sellerEarningLabel.setText("...");
-        sellerRevenueLabel.setText("...");
-        sellerClosedLabel.setText("...");
 
-        Task<List<Auction>> task = new Task<>() {
-            @Override
-            protected List<Auction> call() {
-                return app.getAuctionsBySeller(seller);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            List<Auction> auctions = task.getValue();
-            LocalDate today = TimeSyncManager.getNow().toLocalDate();
-            LocalDate firstDay = today.minusDays(34);
-            Map<LocalDate, Double> revenueByDay = new HashMap<>();
-            Map<LocalDate, Integer> closedByDay = new HashMap<>();
-            double totalRevenue = 0;
-            double monthRevenue = 0;
-            int closedCount = 0;
-
-            for (Auction a : auctions) {
-                if (a.getStatus() != AuctionStatus.CLOSED)
-                    continue;
-                double amount = Math.max(0, a.getHighestBid());
-                LocalDate day = a.getEndTime().toLocalDate();
-                totalRevenue += amount;
-                closedCount++;
-                if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
-                    monthRevenue += amount;
-                if (!day.isBefore(firstDay) && !day.isAfter(today)) {
-                    revenueByDay.merge(day, amount, Double::sum);
-                    closedByDay.merge(day, 1, Integer::sum);
-                }
-            }
-
-            final double total = totalRevenue;
-            final double month = monthRevenue;
-            final int closed = closedCount;
-            final Map<LocalDate, Double> byDay = revenueByDay;
-            final Map<LocalDate, Integer> closedMap = closedByDay;
-
-            sellerEarningLabel.setText(String.format("%,.0f ₫", total));
-            sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
-            sellerClosedLabel.setText(String.valueOf(closed));
-
-            double maxDay = byDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
-            if (sellerRevenueHeatmap != null) {
-                // Giữ nguyên Hàng 0 chứa Label. Chỉ xóa các ô vuông cũ
-                sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
-                // 7 columns (days of week) × 5 rows (weeks) — GitHub-style horizontal grid
-                for (int i = 0; i < 35; i++) {
-                    int col = i % 7; // 0=Sun … 6=Sat
-                    int row = i / 7; // 0=oldest week … 4=current week
-                    LocalDate day = firstDay.plusDays(i);
-                    double amt = byDay.getOrDefault(day, 0.0);
-                    int closedDay = closedMap.getOrDefault(day, 0);
-                    Region cell = new Region();
-
-                    // Vô hiệu hóa Stretch để giữ chuẩn kích thước 24x24 đã khai báo trong CSS
-
-                    cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
-                    Tooltip tooltip = new Tooltip(
-                            "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
-                            "Số phiên đã chốt: " + closedDay + "\n" +
-                            "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-                    tooltip.setShowDelay(javafx.util.Duration.millis(50));
-                    tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
-                    Tooltip.install(cell, tooltip);
-
-                    // Khi click chuột vào ô vuông heatmap, hiển thị Tooltip ngay tại vị trí con trỏ chuột
-                    cell.setOnMousePressed(event -> {
-                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
-                            activeHeatmapTooltip.hide();
-                        }
-                        tooltip.show(cell, event.getScreenX() + 10, event.getScreenY() + 10);
-                        activeHeatmapTooltip = tooltip;
-                        event.consume(); // Ngăn không cho sự kiện lan lên Scene để tránh bị tự động ẩn
-                    });
-
-                    // Khi rê chuột sang ô khác, tự động ẩn Tooltip cũ đang mở
-                    cell.setOnMouseEntered(event -> {
-                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing() && activeHeatmapTooltip != tooltip) {
-                            activeHeatmapTooltip.hide();
-                            activeHeatmapTooltip = null;
-                        }
-                    });
-
-                    // Bắt đầu nhồi dữ liệu từ Hàng 1 (Row = row + 1)
-                    sellerRevenueHeatmap.add(cell, col, row + 1);
-                }
-            }
-        });
-        task.setOnFailed(e -> {
-            sellerEarningLabel.setText("?");
-            sellerRevenueLabel.setText("?");
-            sellerClosedLabel.setText("?");
-        });
-        new Thread(task, "profile-seller-stats").start();
-    }
-
-    private String heatmapLevel(double amount, double maxDayRevenue) {
-        if (amount <= 0 || maxDayRevenue <= 0)
-            return "heatmap-level-0";
-        double ratio = amount / maxDayRevenue;
-        if (ratio < 0.25)
-            return "heatmap-level-1";
-        if (ratio < 0.50)
-            return "heatmap-level-2";
-        if (ratio < 0.75)
-            return "heatmap-level-3";
-        return "heatmap-level-4";
-    }
 
     @FXML
     private void handleSaveProfile(ActionEvent event) {

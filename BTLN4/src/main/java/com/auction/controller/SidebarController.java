@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.HBox;
 import javafx.util.Duration;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -35,7 +36,7 @@ public class SidebarController {
     @FXML
     private VBox sidebarRoot;
     @FXML
-    private VBox brandBox;
+    private HBox brandBox;
     @FXML
     private VBox userBox;
     @FXML
@@ -46,6 +47,10 @@ public class SidebarController {
     private Label userNameLabel;
     @FXML
     private Label userRoleLabel;
+    @FXML
+    private HBox balancePill;
+    @FXML
+    private Label userBalanceLabel;
     @FXML
     private Button btnDashboard;
     @FXML
@@ -112,6 +117,20 @@ public class SidebarController {
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
             btnHistory.setManaged(isBidder);
+            
+            // Show Balance Pill for Bidder
+            if (isBidder && user instanceof com.auction.model.Bidder bidder) {
+                if (balancePill != null && userBalanceLabel != null) {
+                    balancePill.setVisible(true);
+                    balancePill.setManaged(true);
+                    userBalanceLabel.setText(String.format("Số dư: %,.0f ₫", bidder.getAccountBalance()));
+                }
+            } else {
+                if (balancePill != null) {
+                    balancePill.setVisible(false);
+                    balancePill.setManaged(false);
+                }
+            }
         }
     }
 

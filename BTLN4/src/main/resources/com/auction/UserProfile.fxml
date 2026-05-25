@@ -100,56 +100,7 @@
                     </VBox>
                 </VBox>
 
-                <!-- ══ BOTTOM: Seller Activity Panel (stats + heatmap) ════════════════ -->
-                <VBox fx:id="sellerActivityBox" styleClass="card" spacing="16"
-                      visible="false" managed="false" maxWidth="Infinity">
-                    <Label text="Hoạt động &amp; Thống kê Tích hợp" styleClass="section-title"/>
-                    <Separator/>
-
-                    <HBox spacing="20" alignment="TOP_LEFT" VBox.vgrow="ALWAYS">
-
-                        <!-- LEFT: 3 stat cards stacked vertically -->
-                        <VBox spacing="15" minWidth="200" prefWidth="220">
-
-                            <VBox styleClass="stat-card-navy" spacing="6">
-                                <Label text="Tổng doanh thu" styleClass="stat-card-navy-title"/>
-                                <Label fx:id="sellerEarningLabel" text="0 ₫"
-                                       styleClass="stat-card-navy-value"/>
-                            </VBox>
-
-                            <VBox styleClass="stat-card-navy" spacing="6">
-                                <Label text="Doanh thu 30 ngày" styleClass="stat-card-navy-title"/>
-                                <Label fx:id="sellerRevenueLabel" text="0 ₫"
-                                       styleClass="stat-card-navy-value"/>
-                            </VBox>
-
-                            <VBox styleClass="stat-card-navy" spacing="6">
-                                <Label text="Phiên đã chốt" styleClass="stat-card-navy-title"/>
-                                <Label fx:id="sellerClosedLabel" text="0"
-                                       styleClass="stat-card-navy-value"/>
-                            </VBox>
-
-                        </VBox>
-
-                        <!-- RIGHT: Heatmap — 7 cols (days) × 5 rows (weeks) -->
-                        <VBox spacing="10" HBox.hgrow="ALWAYS">
-                            <Label text="Doanh thu 35 ngày gần nhất" styleClass="section-title" style="-fx-font-size: 15px;"/>
-
-                            <!-- Heatmap GridPane: compressed tight GitHub style -->
-                            <GridPane fx:id="sellerRevenueHeatmap" hgap="3" vgap="3" alignment="TOP_LEFT">
-                                <!-- Hàng 0: Tiêu đề cột các Thứ -->
-                                <Label text="Sun" styleClass="heatmap-day-label" GridPane.columnIndex="0" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Mon" styleClass="heatmap-day-label" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Tue" styleClass="heatmap-day-label" GridPane.columnIndex="2" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Wed" styleClass="heatmap-day-label" GridPane.columnIndex="3" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Thu" styleClass="heatmap-day-label" GridPane.columnIndex="4" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Fri" styleClass="heatmap-day-label" GridPane.columnIndex="5" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                                <Label text="Sat" styleClass="heatmap-day-label" GridPane.columnIndex="6" GridPane.rowIndex="0" prefWidth="32" alignment="CENTER"/>
-                            </GridPane>
-                        </VBox>
-
-                    </HBox>
-                </VBox>
+                <!-- ══ BOTTOM: Removed Seller Activity Panel (migrated to dashboard) ════════════════ -->
 
             </VBox>
         </ScrollPane>

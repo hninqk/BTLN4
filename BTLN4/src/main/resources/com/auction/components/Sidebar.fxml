@@ -13,17 +13,17 @@
       fillWidth="true">
 
     <!-- Brand header -->
-    <VBox fx:id="brandBox" styleClass="sidebar-header" spacing="8" alignment="CENTER">
-        <javafx.scene.image.ImageView fitWidth="60" fitHeight="60" preserveRatio="true">
+    <HBox fx:id="brandBox" styleClass="sidebar-header" spacing="12" alignment="CENTER_LEFT">
+        <javafx.scene.image.ImageView fitWidth="40" fitHeight="40" preserveRatio="true">
             <image>
                 <javafx.scene.image.Image url="@../images/logo.png"/>
             </image>
         </javafx.scene.image.ImageView>
-        <VBox spacing="2" alignment="CENTER">
+        <VBox spacing="2" alignment="CENTER_LEFT">
             <Label fx:id="brandTitleLabel" text="AuctionSys" styleClass="sidebar-title"/>
             <Label fx:id="brandSubtitleLabel" text="Hệ thống Đấu giá" styleClass="sidebar-subtitle"/>
         </VBox>
-    </VBox>
+    </HBox>
 
     <!-- Navigation -->
     <Label fx:id="lblMain" text="CHÍNH" styleClass="sidebar-section-label"/>
@@ -51,8 +51,10 @@
 
     <Region VBox.vgrow="ALWAYS"/>
 
-    <!-- User info -->
-    <VBox fx:id="userBox" styleClass="sidebar-user-box" spacing="2">
+    <!-- Bottom Section: User Info, Balance, Logout -->
+    <VBox spacing="8" style="-fx-padding: 12 16 12 16; -fx-background-color: #0F172A;">
+        
+        <!-- User info -->
         <HBox alignment="CENTER_LEFT" spacing="10">
             <javafx.scene.shape.SVGPath content="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-4-8-4z" fill="#b0c4de" scaleX="1.2" scaleY="1.2"/>
             <VBox spacing="2">
@@ -62,19 +64,19 @@
                        style="-fx-text-fill: #8a9ba8; -fx-font-size: 12px;"/>
             </VBox>
         </HBox>
-        <VBox.margin>
-            <Insets bottom="6.0" top="6.0"/>
-        </VBox.margin>
-    </VBox>
 
-    <!-- Logout -->
-    <Button fx:id="btnLogout" text="Đăng xuất" onAction="#handleLogout"
-            styleClass="nav-button"
-            style="-fx-text-fill: #F87171;"
-            maxWidth="Infinity">
-        <VBox.margin>
-            <Insets bottom="8.0" />
-        </VBox.margin>
-    </Button>
+        <!-- Balance Pill -->
+        <HBox fx:id="balancePill" alignment="CENTER_LEFT" spacing="8" styleClass="balance-pill"
+              visible="false" managed="false">
+            <Label fx:id="userBalanceLabel" text="Số dư: 0 ₫" style="-fx-text-fill: #E2E8F0; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+        </HBox>
+
+        <!-- Logout -->
+        <Button fx:id="btnLogout" text="Đăng xuất" onAction="#handleLogout"
+                styleClass="nav-button"
+                style="-fx-text-fill: #F87171; -fx-padding: 8 0 8 0;"
+                maxWidth="Infinity">
+        </Button>
+    </VBox>
 
 </VBox>

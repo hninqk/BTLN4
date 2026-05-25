@@ -98,8 +98,6 @@
                                         <FontIcon iconLiteral="fas-chart-line" iconSize="14" styleClass="button-icon"/>
                                     </graphic>
                                 </Label>
-                                <ComboBox fx:id="chartRangeFilter" prefWidth="140" styleClass="combo-box"
-                                          onAction="#handleChartRangeChanged"/>
                             </HBox>
                             <Separator/>
                             <LineChart fx:id="priceChart" VBox.vgrow="ALWAYS" minHeight="160"

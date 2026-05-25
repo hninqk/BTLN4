@@ -737,6 +737,74 @@
     -fx-padding: 14;
 }
 
+/* ---------- Seller Summary Card (grouped metrics) ---------- */
+.seller-summary-card {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 14;
+}
+
+.seller-summary-card .stat-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: -theme-text-muted;
+}
+
+.seller-summary-card .stat-value {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -theme-text;
+}
+
+.dark-mode .seller-summary-card {
+    -fx-background-color: rgba(30, 41, 59, 0.64);
+    -fx-border-color: rgba(71, 85, 105, 0.56);
+}
+
+/* ---------- Pie Card and Donut Hole ---------- */
+.pie-card {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 12 16;
+}
+
+.pie-card .chart {
+    -fx-background-color: transparent;
+}
+
+.pie-donut-hole {
+    /* Make center transparent so the navy card gradient shows through (donut look)
+       and only render a subtle inner ring for separation. */
+    -fx-background-color: transparent;
+    -fx-background-radius: 9999;
+    -fx-border-radius: 9999;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1.5;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0.12, 0, 2);
+    -fx-opacity: 0.98;
+}
+
+.dark-mode .pie-donut-hole {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(0,0,0,0.18);
+}
+
+/* Legend styling when placed on the navy pie card */
+.stat-card-navy .chart-legend {
+    -fx-padding: 6 10 0 10;
+}
+.stat-card-navy .chart-legend .label {
+    -fx-text-fill: #FFFFFF;
+}
+.stat-card-navy .chart-legend-item {
+    -fx-text-fill: #FFFFFF;
+}
+
 .heatmap-square {
     -fx-min-width: 13;
     -fx-pref-width: 13;
@@ -848,6 +916,52 @@
     -fx-text-fill: #ffffff;
     -fx-font-size: 20px;
     -fx-font-weight: bold;
+}
+
+/* ---------- Dashboard Split Cards (50/50) ---------- */
+.dashboard-left-card, .dashboard-right-card {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-padding: 18;
+}
+
+.dashboard-left-card {
+    /* left card keeps internal navy badges; use subtle surface for card */
+    -fx-background-color: -theme-surface;
+}
+
+.dashboard-right-card {
+    /* right card for pie chart */
+    -fx-background-color: -theme-surface;
+}
+
+/* Make badges full-width inside the left card */
+.dashboard-left-card .stat-card-navy {
+    -fx-min-width: 220;
+    -fx-max-width: 320;
+    -fx-pref-width: 100%;
+}
+
+/* Ensure both cards try to match height and stretch */
+.card.dashboard-left-card, .card.dashboard-right-card {
+    -fx-pref-height: 360; /* reasonable default; allows visual parity */
+}
+
+/* Pie card tweaks: center chart and legend */
+.pie-card .chart, .pie-card .chart-plot-background {
+    -fx-background-color: transparent;
+}
+.pie-card .chart-legend {
+    -fx-padding: 6 0 0 0;
+}
+
+/* Legend items (custom) */
+.chart-legend-item {
+    -fx-text-fill: -theme-text;
+    -fx-font-size: 13px;
 }
 
 /* ---------- Login / Auth Screens ---------- */
@@ -1604,4 +1718,19 @@
     -fx-border-width: 1px;
     /* Hiệu ứng đổ bóng mờ cho hộp nhỏ */
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.5), 8, 0.0, 0, 3);
+}
+
+/* ── Balance Pill ─────────────────────────── */
+.balance-pill {
+    -fx-background-color: rgba(22, 163, 74, 0.15); /* light green tint */
+    -fx-border-color: rgba(22, 163, 74, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+    -fx-background-radius: 20;
+    -fx-padding: 6 12;
+}
+
+.dark-mode .balance-pill {
+    -fx-background-color: rgba(74, 222, 128, 0.15);
+    -fx-border-color: rgba(74, 222, 128, 0.3);
 }

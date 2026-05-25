@@ -4,22 +4,54 @@ import com.auction.model.BidTransaction;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Tooltip;
 import javafx.util.StringConverter;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Encapsulates the configuration and update logic for the real-time bid chart.
+ * Implements data-clustering tooltip logic (collapse overlapping nodes).
  */
 public class AuctionChartHelper {
 
     private final XYChart.Series<Number, Number> priceSeries;
     private final LineChart<Number, Number> priceChart;
     private final NumberAxis timeAxis;
-    private DateTimeFormatter axisFormatter = DateTimeFormatter.ofPattern("HH:mm");
+    private DateTimeFormatter axisFormatter = DateTimeFormatter.ofPattern("dd/MM HH:mm");
+    
+    private final long CLUSTER_THRESHOLD_MS = 60_000; // 1 minute clustering
+
+    private static class ClusterData {
+        long epochMillis;
+        double maxPrice;
+        int count;
+        XYChart.Data<Number, Number> dataNode;
+        Tooltip tooltip;
+
+        public ClusterData(long epochMillis, double maxPrice, XYChart.Data<Number, Number> dataNode) {
+            this.epochMillis = epochMillis;
+            this.maxPrice = maxPrice;
+            this.count = 1;
+            this.dataNode = dataNode;
+        }
+        
+        public void updateTooltip() {
+            if (tooltip != null) {
+                String timeStr = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh"))
+                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                String text = String.format("Thời gian: %s\nGiá cao nhất: %,.0f ₫\nSố lượt đặt: %d", timeStr, maxPrice, count);
+                tooltip.setText(text);
+            }
+        }
+    }
+    
+    private final List<ClusterData> clusters = new ArrayList<>();
 
     public AuctionChartHelper(LineChart<Number, Number> priceChart, NumberAxis timeAxis) {
         this.priceChart = priceChart;
@@ -54,37 +86,55 @@ public class AuctionChartHelper {
 
     /** Adds a fully-formed BidTransaction to the chart. */
     public void addBid(BidTransaction bid) {
-        long epochMillis = bid.getTimestamp().atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        priceSeries.getData().add(new XYChart.Data<>(epochMillis, bid.getAmount()));
+        addRawBid(bid.getAmount(), bid.getTimestamp());
     }
 
-    /** Adds raw amount and timestamp to the chart. */
+    /** Adds raw amount and timestamp to the chart, applying clustering logic. */
     public void addRawBid(double amount, LocalDateTime ts) {
         long epochMillis = ts.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        priceSeries.getData().add(new XYChart.Data<>(epochMillis, amount));
+        
+        if (!clusters.isEmpty()) {
+            ClusterData lastCluster = clusters.get(clusters.size() - 1);
+            if (Math.abs(epochMillis - lastCluster.epochMillis) <= CLUSTER_THRESHOLD_MS) {
+                lastCluster.count++;
+                if (amount > lastCluster.maxPrice) {
+                    lastCluster.maxPrice = amount;
+                    lastCluster.dataNode.setYValue(amount);
+                }
+                lastCluster.updateTooltip();
+                return;
+            }
+        }
+        
+        XYChart.Data<Number, Number> data = new XYChart.Data<>(epochMillis, amount);
+        ClusterData cluster = new ClusterData(epochMillis, amount, data);
+        clusters.add(cluster);
+        
+        data.nodeProperty().addListener((obs, oldNode, newNode) -> {
+            if (newNode != null) {
+                Tooltip tooltip = new Tooltip();
+                cluster.tooltip = tooltip;
+                cluster.updateTooltip();
+                Tooltip.install(newNode, tooltip);
+                
+                // Add hover effect
+                newNode.setOnMouseEntered(e -> newNode.setStyle("-fx-scale-x: 1.5; -fx-scale-y: 1.5; -fx-cursor: hand;"));
+                newNode.setOnMouseExited(e -> newNode.setStyle("-fx-scale-x: 1.0; -fx-scale-y: 1.0;"));
+            }
+        });
+        
+        priceSeries.getData().add(data);
     }
 
     public void setTimeWindow(LocalDateTime start, LocalDateTime end, String format, long tickMillis) {
-        if (timeAxis == null) {
-            return;
-        }
+        if (timeAxis == null) return;
         axisFormatter = DateTimeFormatter.ofPattern(format);
-        if (start == null || end == null) {
-            timeAxis.setAutoRanging(true);
-            return;
-        }
-
-        long lower = start.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        long upper = end.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-        timeAxis.setAutoRanging(false);
-        timeAxis.setForceZeroInRange(false);
-        timeAxis.setLowerBound(lower);
-        timeAxis.setUpperBound(Math.max(lower + tickMillis, upper));
-        timeAxis.setTickUnit(tickMillis);
+        timeAxis.setAutoRanging(true);
     }
 
     /** Clears all data from the chart. */
     public void clear() {
         priceSeries.getData().clear();
+        clusters.clear();
     }
 }

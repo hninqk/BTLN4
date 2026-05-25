@@ -15,7 +15,7 @@
                style="-fx-text-fill: #F8FAFC; -fx-font-size: 46px; -fx-font-weight: bold; -fx-opacity: 0;"/>
 
         <!-- Logo Image -->
-        <javafx.scene.image.ImageView fitWidth="120" fitHeight="120" preserveRatio="true">
+        <javafx.scene.image.ImageView fx:id="logoImageView" fitWidth="120" fitHeight="120" preserveRatio="true">
             <image>
                 <javafx.scene.image.Image url="@images/logo.png"/>
             </image>

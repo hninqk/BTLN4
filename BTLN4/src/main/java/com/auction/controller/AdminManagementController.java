@@ -64,6 +64,9 @@ public class AdminManagementController {
     @FXML private Button btnFinish;
     @FXML private Button btnCancel;
 
+    // ── Activity Log tab ──────────────────────────────────────────────────────
+    @FXML private ListView<String> adminActivityLogList;
+
     // ── Stats tab ─────────────────────────────────────────────────────────────
     @FXML private Label statTotalUsers;
     @FXML private Label statTotalAuctions;
@@ -158,6 +161,18 @@ public class AdminManagementController {
         }
     }
 
+    private void logActivity(String msg) {
+        if (adminActivityLogList == null) return;
+        String time = com.auction.util.TimeSyncManager.getNow().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String entry = String.format("[%s] %s", time, msg);
+        Platform.runLater(() -> {
+            adminActivityLogList.getItems().add(0, entry);
+            if (adminActivityLogList.getItems().size() > 200) {
+                adminActivityLogList.getItems().remove(200, adminActivityLogList.getItems().size());
+            }
+        });
+    }
+
     /** Server sent all auctions. Replace local list. */
     private void onFullSync(JsonObject json) {
         if (!json.has("auctions")) return;
@@ -182,7 +197,9 @@ public class AdminManagementController {
             auctionCountLabel.setText("Tổng: " + auctionList.size() + " phiên");
             updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
             refreshStats();
-            System.out.println("[AdminMgmt] New auction: " + a.getItem().getName());
+            String msg = "Sản phẩm mới được tạo: " + a.getItem().getName();
+            System.out.println("[AdminMgmt] " + msg);
+            logActivity(msg);
         });
     }
 
@@ -213,6 +230,7 @@ public class AdminManagementController {
         allAuctionTable.refresh();
         updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
         refreshStats();
+        logActivity(String.format("Trạng thái phiên %s đổi thành %s", auctionId, newStatusStr));
     }
 
     /** A new bid was placed — update bid count & highest price in the table row. */
@@ -243,6 +261,7 @@ public class AdminManagementController {
         }
         allAuctionTable.refresh();
         updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
+        logActivity(String.format("Đấu giá mới: %,.0f ₫ (Phiên: %s)", amount, auctionId));
     }
 
     // ── Setup ─────────────────────────────────────────────────────────────────

@@ -181,6 +181,14 @@
                     </ScrollPane>
                 </Tab>
 
+                <!-- ══════════════════ Tab 4: Activity Log ══════════════════ -->
+                <Tab text="Nhật ký hoạt động">
+                    <VBox spacing="12" style="-fx-padding: 16 0 0 0;" VBox.vgrow="ALWAYS">
+                        <Label text="Hoạt động hệ thống (Live)" styleClass="section-title"/>
+                        <ListView fx:id="adminActivityLogList" VBox.vgrow="ALWAYS" styleClass="list-view feed-list"/>
+                    </VBox>
+                </Tab>
+
             </TabPane>
 
         </VBox>

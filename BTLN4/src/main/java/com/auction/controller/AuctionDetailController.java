@@ -115,7 +115,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     // ── Price chart ───────────────────────────────────────────────────────────
     @FXML private LineChart<Number, Number> priceChart;
     @FXML private NumberAxis timeAxis;
-    @FXML private ComboBox<String> chartRangeFilter;
 
     // ── Winner box ────────────────────────────────────────────────────────────
     @FXML private VBox  winnerBox;
@@ -146,11 +145,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     private static final DateTimeFormatter FMT      = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter FMT_SEC  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final String RANGE_1H = "1 giờ";
-    private static final String RANGE_24H = "24 giờ";
-    private static final String RANGE_7D = "7 ngày";
-    private static final String RANGE_30D = "30 ngày";
-    private static final String RANGE_ALL = "Tất cả";
 
     // ══════════════════════════════════════════════════════════════════════════
     // JavaFX UPDATE GUARDS
@@ -258,7 +252,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     public void initialize() {
         bidErrorLabel.setText("");
         chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
-        setupChartRangeFilter();
+        applyChartWindow();
         setupLiveFeedList();
 
         com.auction.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
@@ -278,14 +272,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         }
     }
 
-    private void setupChartRangeFilter() {
-        if (chartRangeFilter == null) {
-            return;
-        }
-        chartRangeFilter.getItems().setAll(RANGE_1H, RANGE_24H, RANGE_7D, RANGE_30D, RANGE_ALL);
-        chartRangeFilter.getSelectionModel().select(RANGE_24H);
-        applyChartWindow();
-    }
+
 
     private void setupLiveFeedList() {
         if (liveFeedList == null) {
@@ -308,10 +295,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         });
     }
 
-    @FXML
-    private void handleChartRangeChanged(ActionEvent event) {
-        rebuildChartAndFeed();
-    }
+
 
     private Node createFeedEntry(String entry) {
         FeedEntry parsed = parseFeedEntry(entry);
@@ -475,9 +459,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
-        if (isBidInSelectedRange(ts)) {
-            chartHelper.addRawBid(amount, ts);
-        }
+        chartHelper.addRawBid(amount, ts);
 
         setTextIfChanged(bidErrorLabel, "");
 
@@ -700,9 +682,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         liveFeedList.getItems().clear();
         List<BidTransaction> history = currentAuction.getBidHistory();
         for (BidTransaction bt : history) {
-            if (isBidInSelectedRange(bt.getTimestamp())) {
-                chartHelper.addBid(bt);
-            }
+            chartHelper.addBid(bt);
             addBidToFeed(bt);
         }
     }
@@ -799,9 +779,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         List<BidTransaction> history = currentAuction.getBidHistory();
         System.out.println("[AuctionDetail] REST data: " + history.size() + " bids for auction " + currentAuction.getId());
         for (BidTransaction bid : history) {
-            if (isBidInSelectedRange(bid.getTimestamp())) {
-                chartHelper.addBid(bid);
-            }
+            chartHelper.addBid(bid);
             addBidToFeed(bid);
         }
     }
@@ -810,38 +788,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         if (chartHelper == null) {
             return;
         }
-        String selected = chartRangeFilter == null ? RANGE_24H : chartRangeFilter.getValue();
-        LocalDateTime now = TimeSyncManager.getNow();
-        if (RANGE_1H.equals(selected)) {
-            chartHelper.setTimeWindow(now.minusHours(1), now, "HH:mm", Duration.ofMinutes(10).toMillis());
-        } else if (RANGE_7D.equals(selected)) {
-            chartHelper.setTimeWindow(now.minusDays(7), now, "dd/MM HH:mm", Duration.ofDays(1).toMillis());
-        } else if (RANGE_30D.equals(selected)) {
-            chartHelper.setTimeWindow(now.minusDays(30), now, "dd/MM", Duration.ofDays(5).toMillis());
-        } else if (RANGE_ALL.equals(selected)) {
-            chartHelper.setTimeWindow(null, null, "dd/MM HH:mm", Duration.ofHours(6).toMillis());
-        } else {
-            chartHelper.setTimeWindow(now.minusHours(24), now, "HH:mm", Duration.ofHours(4).toMillis());
-        }
-    }
-
-    private boolean isBidInSelectedRange(LocalDateTime timestamp) {
-        String selected = chartRangeFilter == null ? RANGE_24H : chartRangeFilter.getValue();
-        if (RANGE_ALL.equals(selected)) {
-            return true;
-        }
-        LocalDateTime now = TimeSyncManager.getNow();
-        LocalDateTime start;
-        if (RANGE_1H.equals(selected)) {
-            start = now.minusHours(1);
-        } else if (RANGE_7D.equals(selected)) {
-            start = now.minusDays(7);
-        } else if (RANGE_30D.equals(selected)) {
-            start = now.minusDays(30);
-        } else {
-            start = now.minusHours(24);
-        }
-        return !timestamp.isBefore(start) && !timestamp.isAfter(now.plusMinutes(1));
+        chartHelper.setTimeWindow(null, null, "dd/MM HH:mm", Duration.ofHours(6).toMillis());
     }
 
     // ══════════════════════════════════════════════════════════════════════════
