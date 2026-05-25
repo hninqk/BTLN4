@@ -247,7 +247,7 @@
     -fx-padding: 4 0 0 0;
 }
 
-.page-button {
+.button.page-button {
     -fx-min-width: 34;
     -fx-pref-width: 34;
     -fx-min-height: 32;
@@ -258,7 +258,7 @@
     -fx-font-weight: bold;
 }
 
-.page-button-active {
+.button.page-button-active {
     -fx-background-color: #2563EB;
     -fx-text-fill: #FFFFFF;
     -fx-border-color: #2563EB;

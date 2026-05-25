@@ -13,8 +13,12 @@ import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
+import javafx.geometry.Rectangle2D;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
@@ -31,6 +35,11 @@ public class NavigationManager {
     private boolean isDarkMode = true; // Persistent theme state
     private double dragOffsetX;
     private double dragOffsetY;
+    private double normalX;
+    private double normalY;
+    private double normalWidth;
+    private double normalHeight;
+    private final BooleanProperty customMaximized = new SimpleBooleanProperty(false);
 
     private NavigationManager() {
     }
@@ -131,12 +140,32 @@ public class NavigationManager {
         Button minimizeButton = createWindowButton("fas-minus", "Thu nhỏ");
         minimizeButton.setOnAction(e -> primaryStage.setIconified(true));
 
-        Button maximizeButton = createWindowButton(primaryStage.isMaximized() ? "fas-window-restore" : "fas-expand-alt", 
-                primaryStage.isMaximized() ? "Khôi phục" : "Phóng to");
-        maximizeButton.setOnAction(e -> primaryStage.setMaximized(!primaryStage.isMaximized()));
+        Button maximizeButton = createWindowButton(customMaximized.get() ? "fas-window-restore" : "fas-window-maximize", 
+                customMaximized.get() ? "Khôi phục" : "Phóng to");
+        maximizeButton.setOnAction(e -> {
+            if (customMaximized.get()) {
+                primaryStage.setX(normalX);
+                primaryStage.setY(normalY);
+                primaryStage.setWidth(normalWidth);
+                primaryStage.setHeight(normalHeight);
+                customMaximized.set(false);
+            } else {
+                normalX = primaryStage.getX();
+                normalY = primaryStage.getY();
+                normalWidth = primaryStage.getWidth();
+                normalHeight = primaryStage.getHeight();
+
+                Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+                primaryStage.setX(bounds.getMinX());
+                primaryStage.setY(bounds.getMinY());
+                primaryStage.setWidth(bounds.getWidth());
+                primaryStage.setHeight(bounds.getHeight());
+                customMaximized.set(true);
+            }
+        });
         
-        primaryStage.maximizedProperty().addListener((obs, oldVal, newVal) -> {
-            FontIcon icon = new FontIcon(newVal ? "fas-window-restore" : "fas-expand-alt");
+        customMaximized.addListener((obs, oldVal, newVal) -> {
+            FontIcon icon = new FontIcon(newVal ? "fas-window-restore" : "fas-window-maximize");
             icon.setIconSize(12);
             icon.getStyleClass().add("window-button-icon");
             maximizeButton.setGraphic(icon);
@@ -157,7 +186,7 @@ public class NavigationManager {
             dragOffsetY = e.getSceneY();
         });
         titleBar.setOnMouseDragged(e -> {
-            if (e.getButton() != MouseButton.PRIMARY || primaryStage.isMaximized()) return;
+            if (e.getButton() != MouseButton.PRIMARY || customMaximized.get()) return;
             primaryStage.setX(e.getScreenX() - dragOffsetX);
             primaryStage.setY(e.getScreenY() - dragOffsetY);
         });
