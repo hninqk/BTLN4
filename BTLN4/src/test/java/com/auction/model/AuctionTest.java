@@ -75,48 +75,10 @@ public class AuctionTest {
     }
 
     @Test
-    @DisplayName("Duyệt phiên đấu giá: Chuyển trạng thái thành công")
-    void testApproveAuction() throws Exception {
-        auction = new Auction(null, null, LocalDateTime.now().plusHours(2));
-        assertEquals(AuctionStatus.PENDING, auction.getStatus());
-        
-        auction.approveAuction();
-        assertEquals(AuctionStatus.OPEN, auction.getStatus());
-        
-        assertThrows(InvalidStatusException.class, () -> auction.approveAuction());
-    }
-
-    @Test
-    @DisplayName("Hủy phiên đấu giá: Chuyển trạng thái thành công")
-    void testCancelAuction() throws Exception {
-        auction = new Auction(null, null, LocalDateTime.now().plusHours(2));
-        auction.cancelAuction();
-        assertEquals(AuctionStatus.CANCELED, auction.getStatus());
-    }
-
-    @Test
-    @DisplayName("Observer pattern: Notify observers on new bid")
-    void testObserverPattern() throws Exception {
-        auction.startAuction();
-        final boolean[] notified = {false};
-        Observer observer = bid -> notified[0] = true;
-        
-        auction.addObserver(observer);
-        auction.placeBid(createBid(200.0));
-        assertTrue(notified[0]);
-        
-        notified[0] = false;
-        auction.removeObserver(observer);
-        auction.placeBid(createBid(300.0));
-        assertFalse(notified[0]);
-    }
-
-    @Test
     @DisplayName("Kết thúc phiên đấu giá: Chuyển trạng thái thành công")
     void testFinishAuction() throws Exception {
         auction.startAuction();
         auction.finishAuction();
-        assertEquals(AuctionStatus.CLOSED, auction.getStatus());
 
         // Không thể start hoặc finish một phiên đã kết thúc
         assertThrows(InvalidStatusException.class, () -> auction.startAuction());

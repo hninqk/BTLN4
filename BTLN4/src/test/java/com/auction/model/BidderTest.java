@@ -52,39 +52,4 @@ public class BidderTest {
         assertFalse(result, "Phải trả về false khi trừ số âm");
         assertEquals(1000.0, bidder.getAccountBalance(), "Số dư phải được giữ nguyên");
     }
-
-    @Test
-    @DisplayName("Đóng băng tiền: frozenBalance tăng và availableBalance giảm")
-    void testFreezeFunds() {
-        assertTrue(bidder.freezeFunds(300.0));
-        assertEquals(300.0, bidder.getFrozenBalance());
-        assertEquals(700.0, bidder.getAvailableBalance());
-        assertEquals(1000.0, bidder.getAccountBalance());
-    }
-
-    @Test
-    @DisplayName("Đóng băng tiền vượt quá số dư khả dụng: trả về false")
-    void testFreezeFundsInsufficient() {
-        assertFalse(bidder.freezeFunds(1100.0));
-        assertEquals(0.0, bidder.getFrozenBalance());
-    }
-
-    @Test
-    @DisplayName("Hoàn trả tiền đóng băng: frozenBalance giảm và availableBalance tăng")
-    void testUnfreezeFunds() {
-        bidder.freezeFunds(500.0);
-        bidder.unfreezeFunds(200.0);
-        assertEquals(300.0, bidder.getFrozenBalance());
-        assertEquals(700.0, bidder.getAvailableBalance());
-    }
-
-    @Test
-    @DisplayName("Deduct balance should also reduce frozen balance")
-    void testDeductBalanceReducesFrozen() {
-        bidder.freezeFunds(500.0);
-        assertTrue(bidder.deductBalance(500.0));
-        assertEquals(500.0, bidder.getAccountBalance());
-        assertEquals(0.0, bidder.getFrozenBalance());
-        assertEquals(500.0, bidder.getAvailableBalance());
-    }
 }

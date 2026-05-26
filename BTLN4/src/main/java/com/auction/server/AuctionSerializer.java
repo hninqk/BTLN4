@@ -32,34 +32,28 @@ public final class AuctionSerializer {
      */
     public static JsonObject auctionToJson(String type, Auction a, boolean includeBids) {
         JsonObject o = new JsonObject();
-        if (a == null) return o;
         if (type != null && !type.isEmpty()) o.addProperty("type", type);
         o.addProperty("auctionId",        a.getId());
-        o.addProperty("auctionCreatedAt", a.getCreatedAt() != null ? a.getCreatedAt().toString() : LocalDateTime.now().toString());
-        if (a.getItem() != null) {
-            o.addProperty("itemName",         a.getItem().getName());
-            o.addProperty("itemId",           a.getItem().getId());
-            o.addProperty("itemDesc",         a.getItem().getDescription());
-            o.addProperty("itemCategory",     a.getItem().getCategory());
-            o.addProperty("itemImageUrl",     a.getItem().getImageUrl());
-            o.addProperty("startPrice",       a.getItem().getStartingPrice());
-        }
-        if (a.getSeller() != null) {
-            o.addProperty("sellerId",         a.getSeller().getId());
-            o.addProperty("sellerUsername",   a.getSeller().getUsername());
-        }
-        o.addProperty("category", a.getItem() != null ? a.getItem().getCategory() : "");
-        o.addProperty("status",           a.getStatus() != null ? a.getStatus().name() : "");
+        o.addProperty("auctionCreatedAt", a.getCreatedAt().toString());
+        o.addProperty("itemName",         a.getItem().getName());
+        o.addProperty("itemId",           a.getItem().getId());
+        o.addProperty("itemDesc",         a.getItem().getDescription());
+        o.addProperty("itemCategory",     a.getItem().getCategory());
+        o.addProperty("itemImageUrl",     a.getItem().getImageUrl());
+        o.addProperty("startPrice",       a.getItem().getStartingPrice());
+        o.addProperty("sellerId",         a.getSeller().getId());
+        o.addProperty("sellerUsername",   a.getSeller().getUsername());
+        o.addProperty("status",           a.getStatus().name());
         o.addProperty("highestBid",       a.getHighestBid());
-        o.addProperty("bidCount",         a.getBidHistory() != null ? a.getBidHistory().size() : 0);
+        o.addProperty("bidCount",         a.getBidHistory().size());
         BidTransaction winner = a.getWinner();
         o.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
         o.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
         o.addProperty("startTime",        a.getStartTime() != null
                 ? a.getStartTime().toString() : "");
-        o.addProperty("endTime",          a.getEndTime() != null ? a.getEndTime().toString() : "");
+        o.addProperty("endTime",          a.getEndTime().toString());
 
-        if (includeBids && a.getBidHistory() != null) {
+        if (includeBids) {
             JsonArray bids = new JsonArray();
             for (BidTransaction bt : a.getBidHistory()) {
                 JsonObject bid = new JsonObject();
@@ -73,17 +67,15 @@ public final class AuctionSerializer {
             o.add("bidHistory", bids);
 
             JsonArray autoBidsJson = new JsonArray();
-            if (a.getAutoBids() != null) {
-                for (com.auction.model.AutoBid ab : a.getAutoBids()) {
-                    JsonObject abJson = new JsonObject();
-                    abJson.addProperty("id", ab.getId());
-                    abJson.addProperty("auctionId", ab.getAuctionId());
-                    abJson.addProperty("bidderId", ab.getBidderId());
-                    abJson.addProperty("maxBid", ab.getMaxBid());
-                    abJson.addProperty("increment", ab.getIncrement());
-                    abJson.addProperty("createdAt", ab.getCreatedAt().toString());
-                    autoBidsJson.add(abJson);
-                }
+            for (com.auction.model.AutoBid ab : a.getAutoBids()) {
+                JsonObject abJson = new JsonObject();
+                abJson.addProperty("id", ab.getId());
+                abJson.addProperty("auctionId", ab.getAuctionId());
+                abJson.addProperty("bidderId", ab.getBidderId());
+                abJson.addProperty("maxBid", ab.getMaxBid());
+                abJson.addProperty("increment", ab.getIncrement());
+                abJson.addProperty("createdAt", ab.getCreatedAt().toString());
+                autoBidsJson.add(abJson);
             }
             o.add("autoBids", autoBidsJson);
         }
@@ -109,11 +101,10 @@ public final class AuctionSerializer {
      */
     public static JsonObject userToJson(User user) {
         JsonObject o = new JsonObject();
-        if (user == null) return o;
         o.addProperty("id",        user.getId());
         o.addProperty("username",  user.getUsername());
         o.addProperty("role",      user.getRole());        // "Bidder" | "Seller" | "Admin"
-        o.addProperty("createdAt", user.getCreatedAt() != null ? user.getCreatedAt().toString() : LocalDateTime.now().toString());
+        o.addProperty("createdAt", user.getCreatedAt().toString());
 
         if (user instanceof Bidder bidder) {
             o.addProperty("balance",          bidder.getAccountBalance());
