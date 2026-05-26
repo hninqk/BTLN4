@@ -192,12 +192,14 @@
 
                                     <VBox spacing="8">
                                         <Label text="Tổng doanh thu" styleClass="label-subtle"/>
-                                        <Label fx:id="sellerEarningLabel" text="0 ₫" styleClass="stat-value"/>
+                                        <Label fx:id="sellerEarningLabel" text="0 ₫" styleClass="stat-value"
+                                               style="-fx-text-fill: #22c55e;"/>
                                     </VBox>
 
                                     <VBox spacing="8">
                                         <Label text="Doanh thu 30 ngày" styleClass="label-subtle"/>
-                                        <Label fx:id="sellerRevenueLabel" text="0 ₫" styleClass="stat-value"/>
+                                        <Label fx:id="sellerRevenueLabel" text="0 ₫" styleClass="stat-value"
+                                               style="-fx-text-fill: #22c55e;"/>
                                     </VBox>
 
                                     <VBox spacing="8" VBox.vgrow="ALWAYS">

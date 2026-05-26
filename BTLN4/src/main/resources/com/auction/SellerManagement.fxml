@@ -53,6 +53,9 @@
                             <TableView fx:id="auctionTable" VBox.vgrow="ALWAYS"
                                        style="-fx-border-width:0; -fx-background-color:transparent;"
                                        onMouseClicked="#handleRowSelect">
+                                <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                                </columnResizePolicy>
                                 <columns>
                                     <TableColumn fx:id="colName"    text="Sản phẩm"     prefWidth="220"/>
                                     <TableColumn fx:id="colStatus"  text="Trạng thái"   prefWidth="130"/>

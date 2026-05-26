@@ -51,6 +51,15 @@
                                    GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                             <Label fx:id="auctionCountLabel" text="" style="-fx-font-size: 14px;"
                                    GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                            <Label text="Phiên đã chốt:" styleClass="form-label" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                            <Label fx:id="closedAuctionCountLabel" text="" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                            <Label text="Tổng doanh thu:" styleClass="form-label" style="-fx-font-size: 14px;"
+                                   GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                            <Label fx:id="totalRevenueLabel" text=""
+                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #16A34A;"
+                                   GridPane.columnIndex="1" GridPane.rowIndex="3"/>
                         </GridPane>
                     </VBox>
 

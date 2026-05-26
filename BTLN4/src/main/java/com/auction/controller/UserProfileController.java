@@ -72,6 +72,10 @@ public class UserProfileController {
     private Label shopNameLabel;
     @FXML
     private Label auctionCountLabel;
+    @FXML
+    private Label closedAuctionCountLabel;
+    @FXML
+    private Label totalRevenueLabel;
 
     @FXML
     private VBox shopNameBox;
@@ -162,9 +166,12 @@ public class UserProfileController {
                 shopNameBox.setVisible(true);
                 shopNameBox.setManaged(true);
             }
+            if (shopNameLabel != null)
+                shopNameLabel.setText(seller.getShopName() != null ? seller.getShopName() : "");
             if (shopNameField != null)
                 shopNameField.setText(seller.getShopName());
             loadSellerAuctionCount(seller);
+            loadSellerStats(seller);
         }
     }
 
@@ -229,6 +236,38 @@ public class UserProfileController {
         task.setOnSucceeded(e -> auctionCountLabel.setText(String.valueOf(task.getValue())));
         task.setOnFailed(e -> auctionCountLabel.setText("?"));
         new Thread(task, "profile-auction-count").start();
+    }
+
+    private void loadSellerStats(Seller seller) {
+        if (closedAuctionCountLabel != null) closedAuctionCountLabel.setText("...");
+        if (totalRevenueLabel != null)       totalRevenueLabel.setText("...");
+
+        Task<long[]> task = new Task<>() {
+            @Override
+            protected long[] call() {
+                List<Auction> auctions = app.getAuctionsBySeller(seller);
+                long closed = auctions.stream()
+                        .filter(a -> a.getStatus() == AuctionStatus.CLOSED)
+                        .count();
+                double revenue = auctions.stream()
+                        .filter(a -> a.getStatus() == AuctionStatus.CLOSED)
+                        .mapToDouble(Auction::getHighestBid)
+                        .sum();
+                return new long[]{ closed, (long) revenue };
+            }
+        };
+        task.setOnSucceeded(e -> {
+            long[] result = task.getValue();
+            if (closedAuctionCountLabel != null)
+                closedAuctionCountLabel.setText(String.valueOf(result[0]));
+            if (totalRevenueLabel != null)
+                totalRevenueLabel.setText(String.format("%,.0f ₫", (double) result[1]));
+        });
+        task.setOnFailed(e -> {
+            if (closedAuctionCountLabel != null) closedAuctionCountLabel.setText("?");
+            if (totalRevenueLabel != null)       totalRevenueLabel.setText("?");
+        });
+        new Thread(task, "profile-seller-stats").start();
     }
 
 

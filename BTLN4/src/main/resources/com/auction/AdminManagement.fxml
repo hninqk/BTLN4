@@ -55,6 +55,9 @@
                         <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
                             <TableView fx:id="userTable" VBox.vgrow="ALWAYS"
                                        style="-fx-border-width:0; -fx-background-color:transparent;">
+                                <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                                </columnResizePolicy>
                                 <columns>
                                     <TableColumn fx:id="colUserId"      text="ID"           prefWidth="220"/>
                                     <TableColumn fx:id="colUsername"    text="Tên đăng nhập" prefWidth="140"/>
@@ -93,6 +96,9 @@
                         <VBox styleClass="card-no-padding" VBox.vgrow="ALWAYS">
                             <TableView fx:id="allAuctionTable" VBox.vgrow="ALWAYS"
                                        style="-fx-border-width:0; -fx-background-color:transparent;">
+                                <columnResizePolicy>
+                                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                                </columnResizePolicy>
                                 <columns>
                                      <TableColumn fx:id="colAuctionName"   text="Sản phẩm"     prefWidth="230"/>
                                      <TableColumn fx:id="colAuctionSeller" text="Người bán"     prefWidth="130"/>

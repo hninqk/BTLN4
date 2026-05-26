@@ -783,7 +783,7 @@
     -fx-background-color: transparent;
     -fx-background-radius: 9999;
     -fx-border-radius: 9999;
-    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-color: rgba(255, 255, 255, 0.06);
     -fx-border-width: 1.5;
     /* -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.08), 8, 0.12, 0, 2); */
     -fx-opacity: 0.98;
@@ -791,16 +791,18 @@
 
 .dark-mode .pie-donut-hole {
     -fx-background-color: transparent;
-    -fx-border-color: rgba(0,0,0,0.18);
+    -fx-border-color: rgba(0, 0, 0, 0.18);
 }
 
 /* Legend styling when placed on the navy pie card */
 .stat-card-navy .chart-legend {
     -fx-padding: 6 10 0 10;
 }
+
 .stat-card-navy .chart-legend .label {
     -fx-text-fill: #FFFFFF;
 }
+
 .stat-card-navy .chart-legend-item {
     -fx-text-fill: #FFFFFF;
 }
@@ -831,8 +833,10 @@
     -fx-border-color: rgba(148, 163, 184, 0.15);
     -fx-border-width: 1;
     -fx-cursor: hand;
-    -fx-focus-color: transparent; /* Khử viền xanh/trắng khi click/focus */
-    -fx-faint-focus-color: transparent; /* Khử viền mờ khi click/focus */
+    -fx-focus-color: transparent;
+    /* Khử viền xanh/trắng khi click/focus */
+    -fx-faint-focus-color: transparent;
+    /* Khử viền mờ khi click/focus */
 }
 
 .heatmap-cell:hover {
@@ -893,10 +897,13 @@
 
 /* Nhãn thứ trong tuần của heatmap */
 .heatmap-day-label {
-    -fx-font-size: 13px;
+    -fx-font-size: 11px;
     -fx-font-weight: bold;
     -fx-text-fill: -theme-text-muted;
     -fx-alignment: CENTER;
+    -fx-pref-width: 32;
+    -fx-min-width: 32;
+    -fx-max-width: 32;
 }
 
 /* ---------- Stat Cards Navy (Seller Activity Panel) ---------- */
@@ -919,7 +926,8 @@
 }
 
 /* ---------- Dashboard Split Cards (50/50) ---------- */
-.dashboard-left-card, .dashboard-right-card {
+.dashboard-left-card,
+.dashboard-right-card {
     -fx-background-color: -theme-surface;
     -fx-border-color: -theme-border;
     -fx-border-width: 1;
@@ -946,14 +954,18 @@
 }
 
 /* Ensure both cards try to match height and stretch */
-.card.dashboard-left-card, .card.dashboard-right-card {
-    -fx-pref-height: 360; /* reasonable default; allows visual parity */
+.card.dashboard-left-card,
+.card.dashboard-right-card {
+    -fx-pref-height: 360;
+    /* reasonable default; allows visual parity */
 }
 
 /* Pie card tweaks: center chart and legend */
-.pie-card .chart, .pie-card .chart-plot-background {
+.pie-card .chart,
+.pie-card .chart-plot-background {
     -fx-background-color: transparent;
 }
+
 .pie-card .chart-legend {
     -fx-padding: 6 0 0 0;
 }
@@ -1705,15 +1717,22 @@
 
 /* Custom giao diện Tooltip giống các nền tảng Online Judge / GitHub */
 .tooltip {
-    -fx-background-color: #1e293b; /* Nền tối đồng bộ màu Navy */
-    -fx-background-insets: 0; /* Khử hoàn toàn insets mặc định của Modena để xóa góc trắng */
-    -fx-background-radius: 6px; /* Bo góc mượt mà */
-    -fx-text-fill: #ffffff; /* Màu chữ trắng tinh */
-    -fx-font-size: 12px; /* Cỡ chữ nhỏ gọn, vừa vặn */
+    -fx-background-color: #1e293b;
+    /* Nền tối đồng bộ màu Navy */
+    -fx-background-insets: 0;
+    /* Khử hoàn toàn insets mặc định của Modena để xóa góc trắng */
+    -fx-background-radius: 6px;
+    /* Bo góc mượt mà */
+    -fx-text-fill: #ffffff;
+    /* Màu chữ trắng tinh */
+    -fx-font-size: 12px;
+    /* Cỡ chữ nhỏ gọn, vừa vặn */
     -fx-font-family: "Segoe UI", Arial;
     -fx-font-weight: normal;
-    -fx-padding: 8px 12px; /* Khoảng cách đệm bên trong hộp */
-    -fx-border-color: #334155; /* Viền mờ tinh tế bao quanh */
+    -fx-padding: 8px 12px;
+    /* Khoảng cách đệm bên trong hộp */
+    -fx-border-color: #334155;
+    /* Viền mờ tinh tế bao quanh */
     -fx-border-radius: 6px;
     -fx-border-width: 1px;
     /* Hiệu ứng đổ bóng mờ cho hộp nhỏ */
@@ -1722,7 +1741,8 @@
 
 /* ── Balance Pill ─────────────────────────── */
 .balance-pill {
-    -fx-background-color: rgba(22, 163, 74, 0.15); /* light green tint */
+    -fx-background-color: rgba(22, 163, 74, 0.15);
+    /* light green tint */
     -fx-border-color: rgba(22, 163, 74, 0.3);
     -fx-border-width: 1;
     -fx-border-radius: 20;

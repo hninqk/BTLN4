@@ -1,9 +1,11 @@
 package com.auction.controller;
 
+import com.auction.model.Bidder;
 import com.auction.model.User;
 import com.auction.util.NavigationManager;
 import com.auction.util.SessionManager;
 
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -69,6 +71,11 @@ public class SidebarController {
     private Label lblManagement;
     @FXML
     private Label lblAccount;
+    @FXML
+    private Label balanceLabel;
+
+    /** Kept so we can unregister if ever needed. */
+    private Runnable sessionChangeListener;
 
     private final Map<Button, String> navButtonTexts = new HashMap<>();
 
@@ -112,6 +119,58 @@ public class SidebarController {
             // BIDDER strictly sees Bid History
             btnHistory.setVisible(isBidder);
             btnHistory.setManaged(isBidder);
+        }
+
+        // Show balance pill for Bidder; update whenever session changes
+        refreshBalance();
+        sessionChangeListener = () -> Platform.runLater(this::refreshBalance);
+        SessionManager.getInstance().addChangeListener(sessionChangeListener);
+
+        // Set active tab based on current screen
+        String currentScreen = NavigationManager.getInstance().getCurrentScreen();
+        setActiveTab(currentScreen);
+    }
+
+    private void setActiveTab(String screen) {
+        Button[] allButtons = {btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile, btnSettings};
+        for (Button b : allButtons) {
+            if (b != null) {
+                b.getStyleClass().remove("active-tab");
+            }
+        }
+
+        Button activeBtn = switch (screen) {
+            case NavigationManager.DASHBOARD -> btnDashboard;
+            case NavigationManager.AUCTION_LIST -> btnAuctionList;
+            case NavigationManager.HISTORY -> btnHistory;
+            case NavigationManager.SELLER_MGMT -> btnSeller;
+            case NavigationManager.ADMIN_MGMT -> btnAdmin;
+            case NavigationManager.USER_PROFILE -> btnProfile;
+            case NavigationManager.SETTINGS -> btnSettings;
+            default -> null;
+        };
+
+        if (activeBtn != null) {
+            activeBtn.getStyleClass().add("active-tab");
+        }
+    }
+
+    /**
+     * Refreshes the balance pill from the current session.
+     * Safe to call from any thread (internally dispatches to FX thread if needed).
+     * Shows the pill only for Bidder accounts; hides it for Seller / Admin.
+     */
+    public void refreshBalance() {
+        if (balanceLabel == null) return;
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user instanceof Bidder bidder) {
+            String formatted = String.format("💰 %,.0f ₫", bidder.getAccountBalance());
+            balanceLabel.setText(formatted);
+            balanceLabel.setVisible(true);
+            balanceLabel.setManaged(true);
+        } else {
+            balanceLabel.setVisible(false);
+            balanceLabel.setManaged(false);
         }
     }
 

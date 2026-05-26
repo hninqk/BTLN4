@@ -69,6 +69,13 @@ public class DashboardController {
     @FXML
     private VBox cardTotalUsers;
 
+    // Bidder stat value labels
+    @FXML private Label dashStatRunning;
+    @FXML private Label dashStatOpen;
+    @FXML private Label dashStatPending;
+    @FXML private Label dashStatTotalAuctions;
+    @FXML private Label dashStatTotalUsers;
+
     // Seller View Elements
     @FXML
     private VBox sellerView;
@@ -99,6 +106,9 @@ public class DashboardController {
     private VBox sellerCardTotalAuctions;
     @FXML
     private VBox sellerCardTotalUsers;
+    // Seller stat value labels
+    @FXML private Label sellerDashStatRunning;
+    @FXML private Label sellerDashStatOpen;
 
     @FXML
     private FlowPane sellerPieLegend;
@@ -106,9 +116,17 @@ public class DashboardController {
     private final AppFacade app = AppFacade.getInstance();
     private Tooltip activeHeatmapTooltip;
 
-    // Pie chart color palettes (blue-focused for light and dark themes)
-    private final String[] lightPieColors = new String[] { "#93C5FD", "#60A5FA", "#3B82F6", "#2563EB", "#1E3A8A" };
-    private final String[] darkPieColors = new String[] { "#60A5FA", "#3B82F6", "#2563EB", "#1E40AF", "#1E3A8A" };
+    // Pie chart color palettes — 3 distinct categorical colors
+    private final String[] lightPieColors = new String[] {
+            "#3B82F6", // Blue
+            "#22C55E", // Green
+            "#F97316"  // Orange
+    };
+    private final String[] darkPieColors = new String[] {
+            "#60A5FA", // Blue
+            "#4ADE80", // Green
+            "#FB923C"  // Orange
+    };
 
     private final String[] newsHeadlines = {
             "Sự kiện đặc biệt: Đấu giá thượng lưu có sự góp mặt của tỷ phú Trương Xuân Hiếu vào chiều thứ 6 tuần này.",
@@ -233,6 +251,10 @@ public class DashboardController {
 
                     @Override
                     protected void succeeded() {
+                        long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
+                        long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                        if (sellerDashStatRunning != null) sellerDashStatRunning.setText(String.valueOf(running));
+                        if (sellerDashStatOpen    != null) sellerDashStatOpen.setText(String.valueOf(open));
                         refreshSellerHotItems(all);
                         startSellerHotItemRefresh();
                     }
@@ -261,16 +283,28 @@ public class DashboardController {
 
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
+                    private int totalUsers = 0;
 
                     @Override
                     protected Void call() {
                         all = app.getAllAuctions();
                         hotCache.seedFromList(all);
+                        if (user.getRole().equalsIgnoreCase("Admin")) {
+                            totalUsers = app.getAllUsers().size();
+                        }
                         return null;
                     }
 
                     @Override
                     protected void succeeded() {
+                        long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
+                        long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                        long pending = all.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
+                        if (dashStatRunning      != null) dashStatRunning.setText(String.valueOf(running));
+                        if (dashStatOpen         != null) dashStatOpen.setText(String.valueOf(open));
+                        if (dashStatPending       != null) dashStatPending.setText(String.valueOf(pending));
+                        if (dashStatTotalAuctions != null) dashStatTotalAuctions.setText(String.valueOf(all.size()));
+                        if (dashStatTotalUsers    != null) dashStatTotalUsers.setText(String.valueOf(totalUsers));
                         refreshHotItems(all);
                         startHotItemRefresh();
                     }
@@ -379,8 +413,8 @@ public class DashboardController {
             if (sellerCategoryPieChart != null) {
                 ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
                 for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
-                    pieChartData
-                            .add(new PieChart.Data(entry.getKey() + " (" + entry.getValue() + ")", entry.getValue()));
+                    // Use raw category name as PieChart.Data name; the legend will append the count
+                    pieChartData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
                 }
                 sellerCategoryPieChart.setData(pieChartData);
                 // hide built-in legend — we use a custom color legend below
