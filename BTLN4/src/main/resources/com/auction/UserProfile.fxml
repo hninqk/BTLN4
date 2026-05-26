@@ -15,13 +15,10 @@
     </left>
 
     <center>
-        <VBox>
-            <!-- Sticky Header -->
-            <fx:include source="components/Header.fxml" fx:id="header"/>
+        <ScrollPane fitToWidth="true" styleClass="scroll-pane">
+            <VBox styleClass="content-area" spacing="20" fillWidth="true">
 
-            <!-- Scrollable Content -->
-            <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
-                <VBox styleClass="content-area" spacing="20" fillWidth="true">
+                <Label text="Hồ sơ cá nhân" styleClass="page-title"/>
 
                 <!-- ══ TOP: Avatar card (User Profile) + Thông tin cửa hàng — side-by-side ══ -->
                 <HBox spacing="20" alignment="TOP_LEFT">
@@ -114,9 +111,8 @@
 
                 <!-- ══ BOTTOM: Removed Seller Activity Panel (migrated to dashboard) ════════════════ -->
 
-                </VBox>
-            </ScrollPane>
-        </VBox>
+            </VBox>
+        </ScrollPane>
     </center>
 
 </BorderPane>

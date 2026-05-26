@@ -45,8 +45,6 @@ import java.util.stream.Collectors;
  */
 public class SellerManagementController {
 
-    @FXML private HeaderController headerController;
-
     @FXML
     private TextField searchField;
     @FXML
@@ -103,11 +101,6 @@ public class SellerManagementController {
 
     @FXML
     public void initialize() {
-        // Set header title
-        if (headerController != null) {
-            headerController.setTitle("Quản lý Sản phẩm", "Tạo phiên đấu giá và theo dõi trạng thái duyệt");
-        }
-
         setupFilterCombo();
         setupTableColumns();
         loadSellerAuctionsFromServer(); // async load from server REST API

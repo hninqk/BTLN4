@@ -45,7 +45,6 @@ import java.util.stream.Collectors;
  */
 public class AuctionListController {
 
-    @FXML private HeaderController headerController;
     @FXML private TextField           searchField;
     @FXML private ComboBox<String>    statusFilter;
     @FXML private ComboBox<String>    categoryFilter;
@@ -69,11 +68,6 @@ public class AuctionListController {
 
     @FXML
     public void initialize() {
-        // Set header title
-        if (headerController != null) {
-            headerController.setTitle("Danh sách Đấu giá", "Tìm kiếm và tham gia các phiên đấu giá");
-        }
-
         setupFilters();
         setupActionIcons();
         setupTableColumns();

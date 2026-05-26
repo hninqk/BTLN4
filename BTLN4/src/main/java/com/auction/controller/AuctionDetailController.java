@@ -69,9 +69,6 @@ import java.util.function.UnaryOperator;
  */
 public class AuctionDetailController implements DataReceiver, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    @FXML private HeaderController headerController;
-
     // ── Info panel ────────────────────────────────────────────────────────────
     @FXML private Label     itemNameLabel;
     @FXML private Label     auctionIdLabel;
@@ -253,11 +250,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     }
 
     public void initialize() {
-        // Set header title (will be updated when auction data loads)
-        if (headerController != null) {
-            headerController.setTitle("Chi tiết phiên đấu giá", "");
-        }
-
         bidErrorLabel.setText("");
         chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
         applyChartWindow();
@@ -760,12 +752,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         Item item = currentAuction.getItem();
         itemNameLabel.setText(item.getName());
         auctionIdLabel.setText("ID: " + currentAuction.getId());
-
-        // Update header title
-        if (headerController != null) {
-            headerController.setTitle(item.getName(), "ID: " + currentAuction.getId());
-        }
-
         nameLabel.setText(item.getName());
         categoryLabel.setText(item.getCategory());
         String shopName = currentAuction.getSeller().getShopName();

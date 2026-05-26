@@ -46,7 +46,9 @@ import javafx.scene.control.Alert.AlertType;
 public class DashboardController {
 
     @FXML
-    private HeaderController headerController;
+    private Label welcomeLabel;
+    @FXML
+    private Button exploreButton;
 
     // Bidder View Elements
     @FXML
@@ -149,12 +151,6 @@ public class DashboardController {
 
     @FXML
     public void initialize() {
-        // Set header title
-        if (headerController != null) {
-            String username = SessionManager.getInstance().getCurrentUser().getUsername();
-            headerController.setTitle("Tổng quan", "Chào mừng " + username + " trở lại!");
-        }
-
         Platform.runLater(() -> {
             if (sellerRevenueHeatmap != null && sellerRevenueHeatmap.getScene() != null) {
                 sellerRevenueHeatmap.getScene().addEventHandler(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
@@ -220,6 +216,13 @@ public class DashboardController {
     private void loadData() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
+            welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
+
+            if (exploreButton != null) {
+                exploreButton.setVisible(true);
+                exploreButton.setManaged(true);
+            }
+
             if (user instanceof Seller) {
                 // Setup Seller View
                 if (bidderView != null) {
@@ -792,6 +795,16 @@ public class DashboardController {
             }
             Label countdown = (Label) card.getChildren().get(4);
             countdown.setText(formatCountdown(auction));
+        }
+    }
+
+    @FXML
+    private void handleViewAllAuctions(ActionEvent event) {
+        try {
+            NavigationManager.getInstance().navigateTo(
+                    NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
