@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<!-- Desktop Header: Clock (left) + Notification Bell (right) -->
+<HBox xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/21"
+      fx:controller="com.auction.controller.DesktopHeaderController"
+      fx:id="headerRoot"
+      styleClass="desktop-header"
+      alignment="CENTER_LEFT"
+      fillHeight="true"
+      maxWidth="Infinity">
+
+    <padding><Insets top="6" right="14" bottom="6" left="14"/></padding>
+
+    <!-- LEFT: Real-time clock + green online dot -->
+    <HBox alignment="CENTER_LEFT" spacing="7">
+        <!-- Green online indicator dot -->
+        <Circle fx:id="onlineDot" radius="4.5" fill="#10b981"/>
+        <!-- Clock label -->
+        <Label fx:id="clockLabel"
+               text="--:--:--"
+               styleClass="header-clock"/>
+    </HBox>
+
+    <!-- Spacer -->
+    <Region HBox.hgrow="ALWAYS"/>
+
+    <!-- RIGHT: Notification bell button (fixed size — no stretch) -->
+    <StackPane fx:id="bellPane"
+               prefWidth="44" prefHeight="44"
+               maxWidth="-Infinity" maxHeight="-Infinity"
+               minWidth="44"  minHeight="44"
+               alignment="CENTER">
+
+        <!-- Bell button -->
+        <Button fx:id="bellButton"
+                onAction="#handleBellClick"
+                styleClass="bell-button"
+                prefWidth="44" prefHeight="44"
+                maxWidth="44"  maxHeight="44"
+                minWidth="44"  minHeight="44"
+                text="🔔"/>
+
+        <!-- Unread badge (top-right corner of bellPane) -->
+        <Label fx:id="badgeLabel"
+               text="0"
+               styleClass="notif-badge"
+               visible="false"
+               managed="true"
+               mouseTransparent="true"
+               StackPane.alignment="TOP_RIGHT"/>
+    </StackPane>
+
+</HBox>

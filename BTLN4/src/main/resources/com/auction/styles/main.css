@@ -1754,3 +1754,84 @@
     -fx-background-color: rgba(74, 222, 128, 0.15);
     -fx-border-color: rgba(74, 222, 128, 0.3);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Desktop Header – Clock + Notification Bell
+   ══════════════════════════════════════════════════════════════════════ */
+
+.desktop-header {
+    -fx-background-color: -theme-surface;
+    -fx-border-color: transparent transparent -theme-border transparent;
+    -fx-border-width: 1;
+    -fx-min-height: 44;
+    -fx-pref-height: 44;
+    -fx-max-height: 44;
+}
+
+.dark-mode .desktop-header {
+    -fx-background-color: rgba(15, 23, 42, 0.60);
+}
+
+/* Clock label */
+.header-clock {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-text-fill: -theme-text;
+    -fx-padding: 0 4 0 0;
+}
+
+/* Bell button – strict fixed size, no stretch */
+.bell-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 24px;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-min-width: 44;
+    -fx-pref-width: 44;
+    -fx-max-width: 44;
+    -fx-min-height: 44;
+    -fx-pref-height: 44;
+    -fx-max-height: 44;
+    -fx-background-radius: 8;
+}
+
+/* Neon glow effect for unread notifications */
+.bell-unread {
+    -fx-effect: dropshadow(gaussian, #f59e0b, 15, 0.5, 0, 0);
+}
+
+.bell-button:hover {
+    -fx-background-color: rgba(99, 102, 241, 0.12);
+}
+
+.bell-button:pressed {
+    -fx-background-color: rgba(99, 102, 241, 0.22);
+}
+
+/* Unread notification badge */
+.notif-badge {
+    -fx-background-color: #EF4444;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-padding: 1 4 1 4;
+    -fx-min-width: 16;
+    -fx-min-height: 16;
+    -fx-pref-height: 16;
+    -fx-alignment: CENTER;
+    -fx-translate-x: 4;
+    -fx-translate-y: -4;
+}
+
+/* Notification popup inner scroll-pane */
+.notif-popup-wrapper .scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.notif-popup-wrapper .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}

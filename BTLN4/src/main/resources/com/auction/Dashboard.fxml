@@ -25,6 +25,9 @@
                         styleClass="scroll-pane" style="-fx-background-color: transparent; -fx-background: transparent;">
                 <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="20" fillWidth="true">
 
+                    <!-- Desktop Header: Clock + Notification Bell -->
+                    <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
+
                     <!-- Header & Search -->
                     <HBox alignment="CENTER_LEFT" spacing="16">
                         <VBox spacing="4">

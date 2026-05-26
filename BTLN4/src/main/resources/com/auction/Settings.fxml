@@ -16,6 +16,9 @@
 
     <center>
         <VBox styleClass="content-area" spacing="20" fillWidth="true">
+            <!-- Desktop Header: Clock + Notification Bell -->
+            <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
+
             <Label text="Cài đặt hệ thống" styleClass="page-title"/>
 
             <VBox styleClass="card" spacing="16" maxWidth="600">

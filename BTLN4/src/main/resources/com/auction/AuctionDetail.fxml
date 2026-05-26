@@ -35,6 +35,9 @@
                         styleClass="scroll-pane">
                 <VBox styleClass="content-area" spacing="12" fillWidth="true">
 
+                    <!-- Desktop Header: Clock + Notification Bell -->
+                    <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
+
                 <!-- ── Header ──────────────────────────────────────────── -->
                 <HBox alignment="CENTER_LEFT" spacing="10">
                     <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
@@ -127,7 +130,6 @@
                                 </Label>
                                 <Label fx:id="timeRemainingLabel" text="--:--:--" styleClass="bid-timer"/>
                             </HBox>
-                            <Label fx:id="lastUpdateLabel" text="" styleClass="label-subtle"/>
                         </VBox>
 
                         <!-- Bid input card -->

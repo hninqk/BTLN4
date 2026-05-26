@@ -6,6 +6,7 @@ import com.auction.util.DataReceiver;
 import com.auction.util.HotItemCache;
 import com.auction.util.ImageLoaderUtil;
 import com.auction.util.NavigationManager;
+import com.auction.util.NotificationManager;
 import com.auction.util.SessionManager;
 import com.auction.util.TimeSyncManager;
 import com.google.gson.Gson;
@@ -86,7 +87,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     @FXML private Label     currentPriceLabel;
     @FXML private Label     bidCountLabel;
     @FXML private Label     timeRemainingLabel;
-    @FXML private Label     lastUpdateLabel;
+    // lastUpdateLabel removed — global DesktopHeader clock replaces it
     @FXML private Label     minBidHint;
     @FXML private Label     sellerWarningLabel;
     @FXML private Label     balanceLabel;
@@ -463,6 +464,29 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         setTextIfChanged(bidErrorLabel, "");
 
+        // ── Role-based notification on new bid ──────────────────────────────
+        if (currentAuction != null) {
+            User me = SessionManager.getInstance().getCurrentUser();
+            String itemName = currentAuction.getItem().getName();
+
+            if (me instanceof Bidder myBidder) {
+                // Check if the current user was just outbid
+                boolean wasHighest = currentAuction.getBidHistory().stream()
+                        .filter(b -> b.getBidder().getId().equals(myBidder.getId()))
+                        .count() > 0 && !bidderId.equals(myBidder.getId());
+                if (wasHighest) {
+                    NotificationManager.getInstance().addNotification(
+                            NotificationManager.bidderOutbid(itemName));
+                }
+            } else if (me instanceof Seller mySeller) {
+                // Notify seller that their item received a new bid
+                if (currentAuction.getSeller().getId().equals(mySeller.getId())) {
+                    NotificationManager.getInstance().addNotification(
+                            NotificationManager.sellerNewBid(itemName, amount, bidderName));
+                }
+            }
+        }
+
         // PERF: A new bid only affects the price/count/hint labels and the
         // bid controls (e.g. highest-bidder detection). No need to touch
         // countdown, balance, status badge, or winner section.
@@ -609,6 +633,41 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             String winnerUsername = json.has("winnerUsername") ? json.get("winnerUsername").getAsString() : null;
             double winnerBid      = json.has("winnerBid")      ? json.get("winnerBid").getAsDouble()      : -1;
             showWinnerAnnouncement(winnerUsername, winnerBid);
+
+            // ── Role-based notification on auction CLOSED ───────────────────
+            if (currentAuction != null) {
+                User me = SessionManager.getInstance().getCurrentUser();
+                String itemName = currentAuction.getItem().getName();
+
+                if (me instanceof Bidder myBidder) {
+                    boolean iWon = winnerUsername != null
+                            && winnerUsername.equals(myBidder.getUsername());
+                    if (iWon && winnerBid > 0) {
+                        NotificationManager.getInstance().addNotification(
+                                NotificationManager.bidderWon(itemName, winnerBid));
+                    } else if (!iWon && winnerUsername != null) {
+                        NotificationManager.getInstance().addNotification(
+                                NotificationManager.bidderLost(itemName, winnerUsername,
+                                        winnerBid > 0 ? winnerBid : currentAuction.getHighestBid()));
+                    }
+                } else if (me instanceof Seller mySeller) {
+                    if (currentAuction.getSeller().getId().equals(mySeller.getId())) {
+                        String buyer = winnerUsername != null ? winnerUsername : "Không có";
+                        double price = winnerBid > 0 ? winnerBid : currentAuction.getHighestBid();
+                        NotificationManager.getInstance().addNotification(
+                                NotificationManager.sellerAuctionClosed(itemName, price, buyer));
+                    }
+                }
+            }
+        }
+
+        // Notify Bidder when auction opens (OPEN state → new auction available)
+        if ("OPEN".equals(newStatusStr) && !AuctionStatus.OPEN.equals(previousStatus)) {
+            User me = SessionManager.getInstance().getCurrentUser();
+            if (me instanceof Bidder && currentAuction != null) {
+                NotificationManager.getInstance().addNotification(
+                        NotificationManager.bidderNewAuction(currentAuction.getItem().getName()));
+            }
         }
     }
 
@@ -848,8 +907,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     private void refreshCountdown() {
         if (currentAuction == null) return;
 
-        // Sync timestamp
-        setTextIfChanged(lastUpdateLabel, "Đồng bộ : " + TimeSyncManager.getNow().format(TIME_FMT));
+        // Note: sync timestamp is now shown in the global DesktopHeader clock.
 
         // Countdown timer – compute the display string based on current status
         AuctionStatus status = currentAuction.getStatus();

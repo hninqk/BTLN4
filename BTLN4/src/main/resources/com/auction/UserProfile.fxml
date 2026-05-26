@@ -18,6 +18,9 @@
         <ScrollPane fitToWidth="true" styleClass="scroll-pane">
             <VBox styleClass="content-area" spacing="20" fillWidth="true">
 
+                <!-- Desktop Header: Clock + Notification Bell -->
+                <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
+
                 <Label text="Hồ sơ cá nhân" styleClass="page-title"/>
 
                 <!-- ══ TOP: Avatar card (User Profile) + Thông tin cửa hàng — side-by-side ══ -->

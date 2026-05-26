@@ -200,6 +200,13 @@ public class AdminManagementController {
             String msg = "Sản phẩm mới được tạo: " + a.getItem().getName();
             System.out.println("[AdminMgmt] " + msg);
             logActivity(msg);
+
+            // ── Role-based notification for Admin ──────────────────────────────
+            com.auction.util.NotificationManager.getInstance().addNotification(
+                    com.auction.util.NotificationManager.adminPendingApproval(
+                            a.getSeller().getUsername(), a.getItem().getName()
+                    )
+            );
         });
     }
 
@@ -498,6 +505,18 @@ public class AdminManagementController {
                     allAuctionTable.refresh();
                     updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
                     refreshStats();
+
+                    // ── Role-based notification on Admin action ──────────────────────────────
+                    String itemName = a.getItem().getName();
+                    if (nextStatus == AuctionStatus.OPEN) {
+                        // Notify Seller that their item was approved
+                        com.auction.util.NotificationManager.getInstance().addNotification(
+                                com.auction.util.NotificationManager.sellerApproved(itemName));
+                    } else if (nextStatus == AuctionStatus.CANCELED) {
+                        // Notify Seller that their item was canceled
+                        com.auction.util.NotificationManager.getInstance().addNotification(
+                                com.auction.util.NotificationManager.sellerCanceled(itemName));
+                    }
                 });
     }
 

@@ -25,6 +25,9 @@
             
             <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
 
+            <!-- Desktop Header: Clock + Notification Bell -->
+            <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
+
             <!-- Header row -->
             <HBox alignment="CENTER_LEFT" spacing="12">
                 <VBox spacing="4" HBox.hgrow="ALWAYS">

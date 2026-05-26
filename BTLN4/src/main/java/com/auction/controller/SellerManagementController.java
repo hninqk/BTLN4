@@ -189,6 +189,17 @@ public class SellerManagementController {
             auctionTable.refresh();
             showFormSuccess("Đã gửi lên server thành công! Đang chờ Admin duyệt.");
             System.out.println("[SellerMgmt] Auction created confirmed: " + a.getId());
+
+            // Admin cũng sẽ nhận được broadcast nhưng ở chiều seller tạo thì seller này push
+            // event. Nếu admin có app đang mở, ws event bên admin cũng trigger.
+            // Tuy nhiên admin notification có thể push từ mọi client để đảm bảo admin online có badge
+            if (a.getStatus() == AuctionStatus.PENDING) {
+                com.auction.util.NotificationManager.getInstance().addNotification(
+                        com.auction.util.NotificationManager.adminPendingApproval(
+                                mySeller.getUsername(), a.getItem().getName()
+                        )
+                );
+            }
         });
     }
 
