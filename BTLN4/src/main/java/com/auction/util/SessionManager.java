@@ -43,11 +43,7 @@ public class SessionManager {
     public boolean isLoggedIn() { return currentUser != null; }
 
     /** Clears the current session. */
-    public void logout() { 
-        this.currentUser = null; 
-        com.auction.service.NotificationHub.getInstance().reset();
-        com.auction.service.NotificationHub.getInstance().disconnect();
-    }
+    public void logout() { this.currentUser = null; }
 
     /** Alias kept for source compatibility with older call sites. */
     public void logoutUser() { logout(); }

@@ -46,7 +46,9 @@ import javafx.scene.control.Alert.AlertType;
 public class DashboardController {
 
     @FXML
-    private HeaderController headerController;
+    private Label welcomeLabel;
+    @FXML
+    private Button exploreButton;
 
     // Bidder View Elements
     @FXML
@@ -147,20 +149,8 @@ public class DashboardController {
     private volatile boolean isRefreshing = false;
     private volatile boolean isSellerRefreshing = false;
 
-    // --- Performance Optimization: Static Cache ---
-    private static List<Auction> cachedAllAuctions = null;
-    private static Integer cachedTotalUsers = null;
-    private static Map<String, List<Auction>> cachedSellerAuctions = new HashMap<>();
-
-
     @FXML
     public void initialize() {
-        // Set header title
-        if (headerController != null) {
-            String username = SessionManager.getInstance().getCurrentUser().getUsername();
-            headerController.setTitle("Tổng quan", "Chào mừng " + username + " trở lại!");
-        }
-
         Platform.runLater(() -> {
             if (sellerRevenueHeatmap != null && sellerRevenueHeatmap.getScene() != null) {
                 sellerRevenueHeatmap.getScene().addEventHandler(javafx.scene.input.MouseEvent.MOUSE_PRESSED, event -> {
@@ -226,6 +216,13 @@ public class DashboardController {
     private void loadData() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
+            welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
+
+            if (exploreButton != null) {
+                exploreButton.setVisible(true);
+                exploreButton.setManaged(true);
+            }
+
             if (user instanceof Seller) {
                 // Setup Seller View
                 if (bidderView != null) {
@@ -242,14 +239,6 @@ public class DashboardController {
                 loadSellerStats((Seller) user);
 
                 // Load hot items for seller view
-                if (cachedAllAuctions != null) {
-                    long running = cachedAllAuctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                    long open    = cachedAllAuctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
-                    if (sellerDashStatRunning != null) sellerDashStatRunning.setText(String.valueOf(running));
-                    if (sellerDashStatOpen    != null) sellerDashStatOpen.setText(String.valueOf(open));
-                    refreshSellerHotItems(cachedAllAuctions);
-                }
-
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
 
@@ -262,7 +251,6 @@ public class DashboardController {
 
                     @Override
                     protected void succeeded() {
-                        cachedAllAuctions = all;
                         long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
                         long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
                         if (sellerDashStatRunning != null) sellerDashStatRunning.setText(String.valueOf(running));
@@ -293,20 +281,6 @@ public class DashboardController {
                 startNewsTicker();
                 startHotCountdownRefresh();
 
-                startHotCountdownRefresh();
-
-                if (cachedAllAuctions != null) {
-                    long running = cachedAllAuctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                    long open    = cachedAllAuctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
-                    long pending = cachedAllAuctions.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
-                    if (dashStatRunning      != null) dashStatRunning.setText(String.valueOf(running));
-                    if (dashStatOpen         != null) dashStatOpen.setText(String.valueOf(open));
-                    if (dashStatPending       != null) dashStatPending.setText(String.valueOf(pending));
-                    if (dashStatTotalAuctions != null) dashStatTotalAuctions.setText(String.valueOf(cachedAllAuctions.size()));
-                    if (dashStatTotalUsers    != null && cachedTotalUsers != null) dashStatTotalUsers.setText(String.valueOf(cachedTotalUsers));
-                    refreshHotItems(cachedAllAuctions);
-                }
-
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
                     private int totalUsers = 0;
@@ -323,8 +297,6 @@ public class DashboardController {
 
                     @Override
                     protected void succeeded() {
-                        cachedAllAuctions = all;
-                        if (user.getRole().equalsIgnoreCase("Admin")) cachedTotalUsers = totalUsers;
                         long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
                         long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
                         long pending = all.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
@@ -388,14 +360,8 @@ public class DashboardController {
     private void loadSellerStats(Seller seller) {
         if (sellerEarningLabel == null)
             return;
-
-        // --- Performance Optimization: Instantly render from cache ---
-        if (cachedSellerAuctions.containsKey(seller.getId())) {
-            renderSellerStatsUI(cachedSellerAuctions.get(seller.getId()));
-        } else {
-            sellerEarningLabel.setText("...");
-            sellerRevenueLabel.setText("...");
-        }
+        sellerEarningLabel.setText("...");
+        sellerRevenueLabel.setText("...");
 
         javafx.concurrent.Task<List<Auction>> task = new javafx.concurrent.Task<>() {
             @Override
@@ -405,132 +371,127 @@ public class DashboardController {
         };
         task.setOnSucceeded(e -> {
             List<Auction> auctions = task.getValue();
-            cachedSellerAuctions.put(seller.getId(), auctions);
-            renderSellerStatsUI(auctions);
+            LocalDate today = TimeSyncManager.getNow().toLocalDate();
+            LocalDate firstDay = today.minusDays(34);
+            Map<LocalDate, Double> revenueByDay = new HashMap<>();
+            Map<LocalDate, Integer> closedByDay = new HashMap<>();
+            Map<String, Integer> categoryCount = new HashMap<>();
+
+            double totalRevenue = 0;
+            double monthRevenue = 0;
+
+            for (Auction a : auctions) {
+                if (a.getStatus() != AuctionStatus.CLOSED)
+                    continue;
+
+                // Count category for closed items only (sold items)
+                if (a.getItem() != null && a.getItem().getCategory() != null) {
+                    String catName = a.getItem().getCategory();
+                    categoryCount.merge(catName, 1, Integer::sum);
+                }
+
+                double amount = Math.max(0, a.getHighestBid());
+                LocalDate day = a.getEndTime().toLocalDate();
+                totalRevenue += amount;
+                if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
+                    monthRevenue += amount;
+                if (!day.isBefore(firstDay) && !day.isAfter(today)) {
+                    revenueByDay.merge(day, amount, Double::sum);
+                    closedByDay.merge(day, 1, Integer::sum);
+                }
+            }
+
+            final double total = totalRevenue;
+            final double month = monthRevenue;
+            final Map<LocalDate, Double> byDay = revenueByDay;
+            final Map<LocalDate, Integer> closedMap = closedByDay;
+
+            sellerEarningLabel.setText(String.format("%,.0f ₫", total));
+            sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
+
+            // Populate PieChart and apply theme-aware colors
+            if (sellerCategoryPieChart != null) {
+                ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
+                for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
+                    // Use raw category name as PieChart.Data name; the legend will append the count
+                    pieChartData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
+                }
+                sellerCategoryPieChart.setData(pieChartData);
+                // hide built-in legend — we use a custom color legend below
+                sellerCategoryPieChart.setLegendVisible(false);
+                // ensure chart is visible and sized (fix for cases where chart didn't render)
+                sellerCategoryPieChart.setVisible(true);
+                sellerCategoryPieChart.setOpacity(1.0);
+                sellerCategoryPieChart.setPrefSize(240, 240);
+                sellerCategoryPieChart.setMinSize(160, 160);
+                // Tidy up appearance: hide slice labels, make donut-style start angle
+                sellerCategoryPieChart.setLabelsVisible(false);
+                sellerCategoryPieChart.setStartAngle(90);
+                sellerCategoryPieChart.setClockwise(true);
+
+                // Ensure colors are applied after nodes are created
+                Platform.runLater(() -> applyPieColors());
+
+                // Attach listener to theme changes so pie colors update when dark-mode toggles
+                if (sellerCategoryPieChart.getScene() != null) {
+                    Parent root = sellerCategoryPieChart.getScene().getRoot();
+                    root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
+                } else {
+                    sellerCategoryPieChart.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                        if (newScene != null) {
+                            Parent root = newScene.getRoot();
+                            root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
+                        }
+                    });
+                }
+            }
+
+            double maxDay = byDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+            if (sellerRevenueHeatmap != null) {
+                sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
+                for (int i = 0; i < 35; i++) {
+                    int col = i % 7;
+                    int row = i / 7;
+                    LocalDate day = firstDay.plusDays(i);
+                    double amt = byDay.getOrDefault(day, 0.0);
+                    int closedDay = closedMap.getOrDefault(day, 0);
+                    Region cell = new Region();
+
+                    cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
+                    Tooltip tooltip = new Tooltip(
+                            "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
+                                    "Số phiên đã chốt: " + closedDay + "\n" +
+                                    "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                    tooltip.setShowDelay(javafx.util.Duration.millis(50));
+                    tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
+                    Tooltip.install(cell, tooltip);
+
+                    cell.setOnMousePressed(event -> {
+                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
+                            activeHeatmapTooltip.hide();
+                        }
+                        tooltip.show(cell, event.getScreenX() + 10, event.getScreenY() + 10);
+                        activeHeatmapTooltip = tooltip;
+                        event.consume();
+                    });
+
+                    cell.setOnMouseEntered(event -> {
+                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()
+                                && activeHeatmapTooltip != tooltip) {
+                            activeHeatmapTooltip.hide();
+                            activeHeatmapTooltip = null;
+                        }
+                    });
+
+                    sellerRevenueHeatmap.add(cell, col, row + 1);
+                }
+            }
         });
         task.setOnFailed(e -> {
             sellerEarningLabel.setText("?");
             sellerRevenueLabel.setText("?");
         });
         new Thread(task, "dashboard-seller-stats").start();
-    }
-
-    private void renderSellerStatsUI(List<Auction> auctions) {
-        LocalDate today = TimeSyncManager.getNow().toLocalDate();
-        LocalDate firstDay = today.minusDays(34);
-        Map<LocalDate, Double> revenueByDay = new HashMap<>();
-        Map<LocalDate, Integer> closedByDay = new HashMap<>();
-        Map<String, Integer> categoryCount = new HashMap<>();
-
-        double totalRevenue = 0;
-        double monthRevenue = 0;
-
-        for (Auction a : auctions) {
-            if (a.getStatus() != AuctionStatus.CLOSED)
-                continue;
-
-            // Count category for closed items only (sold items)
-            if (a.getItem() != null && a.getItem().getCategory() != null) {
-                String catName = a.getItem().getCategory();
-                categoryCount.merge(catName, 1, Integer::sum);
-            }
-
-            double amount = Math.max(0, a.getHighestBid());
-            LocalDate day = a.getEndTime().toLocalDate();
-            totalRevenue += amount;
-            if (!day.isBefore(today.minusDays(29)) && !day.isAfter(today))
-                monthRevenue += amount;
-            if (!day.isBefore(firstDay) && !day.isAfter(today)) {
-                revenueByDay.merge(day, amount, Double::sum);
-                closedByDay.merge(day, 1, Integer::sum);
-            }
-        }
-
-        final double total = totalRevenue;
-        final double month = monthRevenue;
-        final Map<LocalDate, Double> byDay = revenueByDay;
-        final Map<LocalDate, Integer> closedMap = closedByDay;
-
-        sellerEarningLabel.setText(String.format("%,.0f ₫", total));
-        sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
-
-        // Populate PieChart and apply theme-aware colors
-        if (sellerCategoryPieChart != null) {
-            ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
-            for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
-                // Use raw category name as PieChart.Data name; the legend will append the count
-                pieChartData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
-            }
-            sellerCategoryPieChart.setData(pieChartData);
-            // hide built-in legend — we use a custom color legend below
-            sellerCategoryPieChart.setLegendVisible(false);
-            // ensure chart is visible and sized (fix for cases where chart didn't render)
-            sellerCategoryPieChart.setVisible(true);
-            sellerCategoryPieChart.setOpacity(1.0);
-            sellerCategoryPieChart.setPrefSize(240, 240);
-            sellerCategoryPieChart.setMinSize(160, 160);
-            // Tidy up appearance: hide slice labels, make donut-style start angle
-            sellerCategoryPieChart.setLabelsVisible(false);
-            sellerCategoryPieChart.setStartAngle(90);
-            sellerCategoryPieChart.setClockwise(true);
-
-            // Ensure colors are applied after nodes are created
-            Platform.runLater(() -> applyPieColors());
-
-            // Attach listener to theme changes so pie colors update when dark-mode toggles
-            if (sellerCategoryPieChart.getScene() != null) {
-                Parent root = sellerCategoryPieChart.getScene().getRoot();
-                root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
-            } else {
-                sellerCategoryPieChart.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                    if (newScene != null) {
-                        Parent root = newScene.getRoot();
-                        root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
-                    }
-                });
-            }
-        }
-
-        double maxDay = byDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
-        if (sellerRevenueHeatmap != null) {
-            sellerRevenueHeatmap.getChildren().removeIf(node -> node.getStyleClass().contains("heatmap-cell"));
-            for (int i = 0; i < 35; i++) {
-                int col = i % 7;
-                int row = i / 7;
-                LocalDate day = firstDay.plusDays(i);
-                double amt = byDay.getOrDefault(day, 0.0);
-                int closedDay = closedMap.getOrDefault(day, 0);
-                Region cell = new Region();
-
-                cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
-                Tooltip tooltip = new Tooltip(
-                        "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
-                                "Số phiên đã chốt: " + closedDay + "\n" +
-                                "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-                tooltip.setShowDelay(javafx.util.Duration.millis(50));
-                tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
-                Tooltip.install(cell, tooltip);
-
-                cell.setOnMousePressed(event -> {
-                    if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()) {
-                        activeHeatmapTooltip.hide();
-                    }
-                    tooltip.show(cell, event.getScreenX() + 10, event.getScreenY() + 10);
-                    activeHeatmapTooltip = tooltip;
-                    event.consume();
-                });
-
-                cell.setOnMouseEntered(event -> {
-                    if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()
-                            && activeHeatmapTooltip != tooltip) {
-                        activeHeatmapTooltip.hide();
-                        activeHeatmapTooltip = null;
-                    }
-                });
-
-                sellerRevenueHeatmap.add(cell, col, row + 1);
-            }
-        }
     }
 
     private String heatmapLevel(double amount, double maxDayRevenue) {
@@ -834,6 +795,16 @@ public class DashboardController {
             }
             Label countdown = (Label) card.getChildren().get(4);
             countdown.setText(formatCountdown(auction));
+        }
+    }
+
+    @FXML
+    private void handleViewAllAuctions(ActionEvent event) {
+        try {
+            NavigationManager.getInstance().navigateTo(
+                    NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

@@ -15,21 +15,24 @@
     </left>
 
     <center>
-        <VBox>
-            <!-- Sticky Header -->
-            <fx:include source="components/Header.fxml" fx:id="header"/>
+        <StackPane pickOnBounds="false">
+            <!-- Aesthetic Geometric Background -->
+            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+            </Pane>
+            <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
 
-            <!-- Scrollable Content -->
-            <StackPane pickOnBounds="false" VBox.vgrow="ALWAYS">
-                <!-- Aesthetic Geometric Background -->
-                <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
-                    <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
-                    <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
-                    <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
-                </Pane>
-                <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
+            <!-- Header -->
+            <HBox alignment="CENTER_LEFT">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="Lịch sử Đấu giá" styleClass="page-title"/>
+                    <Label text="Xem lại các lượt đặt giá của bạn" styleClass="label-subtle"/>
+                </VBox>
+            </HBox>
 
-                <!-- Summary stats -->
+            <!-- Summary stats -->
             <HBox spacing="16">
                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
                     <Label text="Tổng lượt đặt giá" styleClass="stat-label"/>
@@ -99,7 +102,6 @@
 
         </VBox>
         </StackPane>
-        </VBox>
     </center>
 
 </BorderPane>
