@@ -15,17 +15,17 @@
     </left>
 
     <center>
-        <VBox styleClass="content-area" spacing="16" fillWidth="true">
+        <VBox>
+            <!-- Sticky Header -->
+            <fx:include source="components/Header.fxml" fx:id="header"/>
 
-            <!-- Header -->
-            <HBox alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Quản trị hệ thống" styleClass="page-title"/>
-                    <Label text="Duyệt sản phẩm, điều hành đấu giá và quản lý người dùng" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
+            <!-- Scrollable Content -->
+            <ScrollPane fitToWidth="true" fitToHeight="true" vbarPolicy="AS_NEEDED" hbarPolicy="NEVER"
+                        styleClass="scroll-pane" style="-fx-background-color: transparent; -fx-background: transparent;"
+                        VBox.vgrow="ALWAYS">
+                <VBox styleClass="content-area" spacing="16" fillWidth="true">
 
-            <!-- Main Actions Dashboard -->
+                <!-- Main Actions Dashboard -->
             <VBox styleClass="card" spacing="12">
                 <Label text="Thao tác nhanh (Main Actions)" styleClass="section-title"/>
                 <HBox spacing="16" alignment="CENTER_LEFT">
@@ -197,6 +197,8 @@
 
             </TabPane>
 
+        </VBox>
+        </ScrollPane>
         </VBox>
     </center>
 

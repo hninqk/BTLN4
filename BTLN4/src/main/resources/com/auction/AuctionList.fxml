@@ -15,25 +15,22 @@
     </left>
 
     <center>
-        <StackPane pickOnBounds="false">
-            <!-- Aesthetic Geometric Background -->
-            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
-                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
-                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
-                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
-            </Pane>
-            
-            <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
+        <VBox>
+            <!-- Sticky Header -->
+            <fx:include source="components/Header.fxml" fx:id="header"/>
 
-            <!-- Header row -->
-            <HBox alignment="CENTER_LEFT" spacing="12">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Danh sách Đấu giá" styleClass="page-title"/>
-                    <Label text="Tìm kiếm và tham gia các phiên đấu giá" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
+            <!-- Scrollable Content -->
+            <StackPane pickOnBounds="false" VBox.vgrow="ALWAYS">
+                <!-- Aesthetic Geometric Background -->
+                <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                    <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                    <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                    <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+                </Pane>
 
-            <!-- Filters toolbar -->
+                <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
+
+                <!-- Filters toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."
                            styleClass="text-field" prefWidth="260" prefHeight="36"/>
@@ -73,6 +70,7 @@
 
         </VBox>
         </StackPane>
+        </VBox>
     </center>
 
 </BorderPane>

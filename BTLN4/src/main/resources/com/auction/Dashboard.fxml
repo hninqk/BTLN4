@@ -18,24 +18,19 @@
 
     <!-- CENTER: Content -->
     <center>
-        <StackPane pickOnBounds="false">
-            <Pane style="-fx-background-color: transparent;" mouseTransparent="true" />
+        <VBox>
+            <!-- Sticky Header -->
+            <fx:include source="components/Header.fxml" fx:id="header"/>
 
-            <ScrollPane fitToWidth="true" fitToHeight="true" vbarPolicy="AS_NEEDED" hbarPolicy="NEVER"
-                        styleClass="scroll-pane" style="-fx-background-color: transparent; -fx-background: transparent;">
-                <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="20" fillWidth="true">
+            <!-- Scrollable Content -->
+            <StackPane pickOnBounds="false" VBox.vgrow="ALWAYS">
+                <Pane style="-fx-background-color: transparent;" mouseTransparent="true" />
 
-                    <!-- Header & Search -->
-                    <HBox alignment="CENTER_LEFT" spacing="16">
-                        <VBox spacing="4">
-                            <Label text="Tổng quan" styleClass="page-title"/>
-                            <Label fx:id="welcomeLabel" text="Chào mừng bạn trở lại!" styleClass="label-subtle"/>
-                        </VBox>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="exploreButton" text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
-                    </HBox>
+                <ScrollPane fitToWidth="true" fitToHeight="true" vbarPolicy="AS_NEEDED" hbarPolicy="NEVER"
+                            styleClass="scroll-pane" style="-fx-background-color: transparent; -fx-background: transparent;">
+                    <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="20" fillWidth="true">
 
-                    <!-- Bidder View -->
+                        <!-- Bidder View -->
                     <VBox fx:id="bidderView" visible="false" managed="false" spacing="20" fillWidth="true">
                         <!-- News Banner -->
                         <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: -theme-bid-panel; -fx-padding: 14 20; -fx-background-radius: 8; -fx-border-color: -theme-bid-border; -fx-border-radius: 8;">
@@ -231,6 +226,7 @@
                 </VBox>
             </ScrollPane>
         </StackPane>
+        </VBox>
     </center>
 
 </BorderPane>

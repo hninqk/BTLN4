@@ -19,35 +19,35 @@
     </left>
 
     <center>
-        <!-- Outer StackPane so chart-tooltip can float over everything -->
-        <StackPane fx:id="rootStackPane" pickOnBounds="false">
+        <VBox>
+            <!-- Sticky Header -->
+            <fx:include source="components/Header.fxml" fx:id="header"/>
 
-            <!-- Aesthetic Geometric Background -->
-            <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
-                <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
-                <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
-                <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
-            </Pane>
+            <!-- Scrollable Content -->
+            <!-- Outer StackPane so chart-tooltip can float over everything -->
+            <StackPane fx:id="rootStackPane" pickOnBounds="false" VBox.vgrow="ALWAYS">
 
-            <!-- ScrollPane wrapper for responsive layout -->
-            <ScrollPane fitToWidth="true" fitToHeight="false"
-                        style="-fx-background-color: transparent; -fx-background: transparent;"
-                        styleClass="scroll-pane">
-                <VBox styleClass="content-area" spacing="12" fillWidth="true">
+                <!-- Aesthetic Geometric Background -->
+                <Pane style="-fx-background-color: transparent;" mouseTransparent="true">
+                    <javafx.scene.shape.Circle radius="200" centerX="800" centerY="50" styleClass="geo-shape-1" />
+                    <javafx.scene.shape.Circle radius="300" centerX="150" centerY="600" styleClass="geo-shape-2" />
+                    <javafx.scene.shape.Polygon points="600,600, 800,400, 1000,600" styleClass="geo-shape-3" />
+                </Pane>
 
-                <!-- ── Header ──────────────────────────────────────────── -->
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
-                        <graphic>
-                            <FontIcon iconLiteral="fas-arrow-left" iconSize="13" styleClass="button-icon"/>
-                        </graphic>
-                    </Button>
-                    <VBox spacing="2" HBox.hgrow="ALWAYS">
-                        <Label fx:id="itemNameLabel" text="Chi tiết phiên đấu giá" styleClass="page-title"/>
-                        <Label fx:id="auctionIdLabel" text="" styleClass="label-subtle"/>
-                    </VBox>
-                    <Label fx:id="statusBadge" text="..." styleClass="badge"/>
-                </HBox>
+                <!-- ScrollPane wrapper for responsive layout -->
+                <ScrollPane fitToWidth="true" fitToHeight="false"
+                            style="-fx-background-color: transparent; -fx-background: transparent;"
+                            styleClass="scroll-pane">
+                    <VBox styleClass="content-area" spacing="12" fillWidth="true">
+
+                    <!-- ── Back Button ──────────────────────────────────────────── -->
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
+                            <graphic>
+                                <FontIcon iconLiteral="fas-arrow-left" iconSize="13" styleClass="button-icon"/>
+                            </graphic>
+                        </Button>
+                    </HBox>
 
                 <!-- ── Two-column body ─────────────────────────────────── -->
                 <HBox spacing="14" fillHeight="true" VBox.vgrow="ALWAYS">
@@ -259,7 +259,10 @@
             </VBox>
 
 
+                </VBox>
+            </ScrollPane>
         </StackPane>
+        </VBox>
     </center>
 
 </BorderPane>

@@ -50,6 +50,8 @@ import java.util.Map;
 
 public class UserProfileController {
 
+    @FXML private HeaderController headerController;
+
     @FXML
     private Label avatarLabel;
     @FXML
@@ -97,6 +99,11 @@ public class UserProfileController {
 
     @FXML
     public void initialize() {
+        // Set header title
+        if (headerController != null) {
+            headerController.setTitle("Hồ sơ cá nhân", "");
+        }
+
         currentUser = SessionManager.getInstance().getCurrentUser();
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");

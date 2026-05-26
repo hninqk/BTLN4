@@ -38,6 +38,9 @@ import java.util.stream.Collectors;
  */
 public class AdminManagementController {
 
+    // ── Header ────────────────────────────────────────────────────────────────
+    @FXML private HeaderController headerController;
+
     // ── User tab ──────────────────────────────────────────────────────────────
     @FXML private TextField        userSearchField;
     @FXML private ComboBox<String> roleFilter;
@@ -94,6 +97,11 @@ public class AdminManagementController {
 
     @FXML
     public void initialize() {
+        // Set header title
+        if (headerController != null) {
+            headerController.setTitle("Quản trị hệ thống", "Duyệt sản phẩm, điều hành đấu giá và quản lý người dùng");
+        }
+
         setupFilters();
         setupUserTableColumns();
         setupAuctionTableColumns();

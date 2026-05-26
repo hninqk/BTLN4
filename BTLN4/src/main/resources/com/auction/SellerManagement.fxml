@@ -16,16 +16,13 @@
     </left>
 
     <center>
-        <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="scroll-pane">
-            <VBox styleClass="content-area" spacing="16" fillWidth="true">
+        <VBox>
+            <!-- Sticky Header -->
+            <fx:include source="components/Header.fxml" fx:id="header"/>
 
-                <!-- Header -->
-                <HBox alignment="CENTER_LEFT" spacing="12">
-                    <VBox spacing="4" HBox.hgrow="ALWAYS">
-                        <Label text="Quản lý Sản phẩm" styleClass="page-title"/>
-                        <Label text="Tạo phiên đấu giá và theo dõi trạng thái duyệt" styleClass="label-subtle"/>
-                    </VBox>
-                </HBox>
+            <!-- Scrollable Content -->
+            <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
+                <VBox styleClass="content-area" spacing="16" fillWidth="true">
 
                 <!-- Notice -->
                 <Label text="Sau khi tạo, phiên đấu giá sẽ ở trạng thái 'Chờ duyệt'. Admin sẽ xét duyệt và bắt đầu phiên đấu giá."
@@ -154,8 +151,9 @@
 
                 </HBox>
 
-            </VBox>
-        </ScrollPane>
+                </VBox>
+            </ScrollPane>
+        </VBox>
     </center>
 
 </BorderPane>

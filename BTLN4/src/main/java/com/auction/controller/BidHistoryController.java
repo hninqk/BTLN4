@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
  */
 public class BidHistoryController {
 
+    @FXML private HeaderController headerController;
+
     @FXML
     private Label totalBidsLabel;
     @FXML
@@ -146,6 +148,11 @@ public class BidHistoryController {
 
     @FXML
     public void initialize() {
+        // Set header title
+        if (headerController != null) {
+            headerController.setTitle("Lịch sử Đấu giá", "Xem lại các lượt đặt giá của bạn");
+        }
+
         resultFilter.setItems(FXCollections.observableArrayList("Tất cả", "Thắng", "Thua", "Đang tham gia"));
         resultFilter.getSelectionModel().selectFirst();
         setupActionIcons();

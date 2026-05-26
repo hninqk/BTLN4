@@ -1754,3 +1754,61 @@
     -fx-background-color: rgba(74, 222, 128, 0.15);
     -fx-border-color: rgba(74, 222, 128, 0.3);
 }
+
+/* ── Sticky Header ─────────────────────────── */
+.sticky-header {
+    -fx-background-color: -theme-bg;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 16 24;
+}
+
+/* ── Notification Button ─────────────────────────── */
+.btn-icon {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 8;
+    -fx-cursor: hand;
+    -fx-background-radius: 8;
+}
+
+.btn-icon:hover {
+    -fx-background-color: -theme-hover;
+}
+
+.btn-icon:pressed {
+    -fx-background-color: -theme-border;
+}
+
+/* ── Notification Dropdown ─────────────────────────── */
+.notification-dropdown {
+    -fx-background-color: -theme-card-bg;
+    -fx-background-radius: 8;
+    -fx-border-color: -theme-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 4);
+    -fx-padding: 8;
+}
+
+.notification-dropdown .scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.notification-dropdown .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.notification-dropdown .scroll-pane .scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.notification-dropdown .scroll-bar:vertical .thumb {
+    -fx-background-color: -theme-border;
+    -fx-background-radius: 4;
+}
+
+.notification-dropdown .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: -theme-text-secondary;
+}

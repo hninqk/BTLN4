@@ -156,11 +156,24 @@ public class DatabaseConnection {
                     + "FOREIGN KEY (auction_id) REFERENCES auctions(id), "
                     + "FOREIGN KEY (bidder_id) REFERENCES users(id))");
 
+            st.execute("CREATE TABLE IF NOT EXISTS notifications ("
+                    + "id         TEXT PRIMARY KEY, "
+                    + "user_id    TEXT NOT NULL, "
+                    + "type       TEXT NOT NULL, "
+                    + "message    TEXT NOT NULL, "
+                    + "auction_id TEXT, "
+                    + "is_read    BOOLEAN DEFAULT FALSE, "
+                    + "created_at TEXT NOT NULL, "
+                    + "FOREIGN KEY (user_id) REFERENCES users(id), "
+                    + "FOREIGN KEY (auction_id) REFERENCES auctions(id))");
+
             // Index để tăng tốc độ query phổ biến
             st.execute("CREATE INDEX IF NOT EXISTS idx_auctions_seller ON auctions(seller_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_bids_auction ON bid_transactions(auction_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_autobids_auction ON auto_bids(auction_id)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC)");
 
             log.info("Tables and indexes ready");
             log.info("Schema includes frozen_balance for fund-freezing support");
