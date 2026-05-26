@@ -30,14 +30,14 @@ public class AuctionChartHelper {
     private static class ClusterData {
         long epochMillis;
         double maxPrice;
-        int count;
+        String bidderName;
         XYChart.Data<Number, Number> dataNode;
         Tooltip tooltip;
 
-        public ClusterData(long epochMillis, double maxPrice, XYChart.Data<Number, Number> dataNode) {
+        public ClusterData(long epochMillis, double maxPrice, String bidderName, XYChart.Data<Number, Number> dataNode) {
             this.epochMillis = epochMillis;
             this.maxPrice = maxPrice;
-            this.count = 1;
+            this.bidderName = bidderName;
             this.dataNode = dataNode;
         }
         
@@ -45,7 +45,9 @@ public class AuctionChartHelper {
             if (tooltip != null) {
                 String timeStr = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh"))
                         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
-                String text = String.format("Thời gian: %s\nGiá cao nhất: %,.0f ₫\nSố lượt đặt: %d", timeStr, maxPrice, count);
+                String text = "Thời gian: " + timeStr + "\n" +
+                              "Giá cao nhất: " + String.format("%,.0f", maxPrice) + " đ\n" +
+                              "Người đấu giá: " + bidderName;
                 tooltip.setText(text);
             }
         }
@@ -86,19 +88,19 @@ public class AuctionChartHelper {
 
     /** Adds a fully-formed BidTransaction to the chart. */
     public void addBid(BidTransaction bid) {
-        addRawBid(bid.getAmount(), bid.getTimestamp());
+        addRawBid(bid.getAmount(), bid.getTimestamp(), bid.getBidder() != null ? bid.getBidder().getUsername() : "Ẩn danh");
     }
 
-    /** Adds raw amount and timestamp to the chart, applying clustering logic. */
-    public void addRawBid(double amount, LocalDateTime ts) {
+    /** Adds raw amount and timestamp to the chart, applying clustering logic with bidder name. */
+    public void addRawBid(double amount, LocalDateTime ts, String bidderName) {
         long epochMillis = ts.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
         
         if (!clusters.isEmpty()) {
             ClusterData lastCluster = clusters.get(clusters.size() - 1);
             if (Math.abs(epochMillis - lastCluster.epochMillis) <= CLUSTER_THRESHOLD_MS) {
-                lastCluster.count++;
                 if (amount > lastCluster.maxPrice) {
                     lastCluster.maxPrice = amount;
+                    lastCluster.bidderName = bidderName;
                     lastCluster.dataNode.setYValue(amount);
                 }
                 lastCluster.updateTooltip();
@@ -107,7 +109,7 @@ public class AuctionChartHelper {
         }
         
         XYChart.Data<Number, Number> data = new XYChart.Data<>(epochMillis, amount);
-        ClusterData cluster = new ClusterData(epochMillis, amount, data);
+        ClusterData cluster = new ClusterData(epochMillis, amount, bidderName, data);
         clusters.add(cluster);
         
         data.nodeProperty().addListener((obs, oldNode, newNode) -> {

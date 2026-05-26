@@ -459,7 +459,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         String timeDisplay = ts.format(TIME_FMT);
         appendToFeed(String.format("[%s]  %s  →  %,.0f ₫", timeDisplay, bidderName, amount));
-        chartHelper.addRawBid(amount, ts);
+        chartHelper.addRawBid(amount, ts, bidderName);
 
         setTextIfChanged(bidErrorLabel, "");
 

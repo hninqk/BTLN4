@@ -12,7 +12,6 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
-import javafx.scene.control.Tooltip;
 
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
@@ -205,7 +204,6 @@ public class SidebarController {
         button.setGraphic(icon);
         button.setContentDisplay(ContentDisplay.LEFT);
         button.setGraphicTextGap(12);
-        button.setTooltip(new Tooltip(text));
     }
 
     @FXML
