@@ -57,6 +57,17 @@ public class DashboardController {
     private Label newsLabel;
     @FXML
     private FlowPane hotItemsBox;
+    // Bidder stat cards
+    @FXML
+    private VBox cardRunning;
+    @FXML
+    private VBox cardOpen;
+    @FXML
+    private VBox cardPending;
+    @FXML
+    private VBox cardTotalAuctions;
+    @FXML
+    private VBox cardTotalUsers;
 
     // Seller View Elements
     @FXML
@@ -77,6 +88,17 @@ public class DashboardController {
     private PieChart sellerCategoryPieChart;
     @FXML
     private StackPane sellerPieContainer;
+    // Seller stat cards
+    @FXML
+    private VBox sellerCardRunning;
+    @FXML
+    private VBox sellerCardOpen;
+    @FXML
+    private VBox sellerCardPending;
+    @FXML
+    private VBox sellerCardTotalAuctions;
+    @FXML
+    private VBox sellerCardTotalUsers;
 
     @FXML
     private FlowPane sellerPieLegend;
@@ -85,8 +107,8 @@ public class DashboardController {
     private Tooltip activeHeatmapTooltip;
 
     // Pie chart color palettes (blue-focused for light and dark themes)
-    private final String[] lightPieColors = new String[] {"#93C5FD", "#60A5FA", "#3B82F6", "#2563EB", "#1E3A8A"};
-    private final String[] darkPieColors = new String[] {"#60A5FA", "#3B82F6", "#2563EB", "#1E40AF", "#1E3A8A"};
+    private final String[] lightPieColors = new String[] { "#93C5FD", "#60A5FA", "#3B82F6", "#2563EB", "#1E3A8A" };
+    private final String[] darkPieColors = new String[] { "#60A5FA", "#3B82F6", "#2563EB", "#1E40AF", "#1E3A8A" };
 
     private final String[] newsHeadlines = {
             "Sự kiện đặc biệt: Đấu giá thượng lưu có sự góp mặt của tỷ phú Trương Xuân Hiếu vào chiều thứ 6 tuần này.",
@@ -121,7 +143,7 @@ public class DashboardController {
                 });
             }
         });
-        
+
         loadData();
     }
 
@@ -178,12 +200,13 @@ public class DashboardController {
         if (user != null) {
             welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
 
+            if (exploreButton != null) {
+                exploreButton.setVisible(true);
+                exploreButton.setManaged(true);
+            }
+
             if (user instanceof Seller) {
                 // Setup Seller View
-                if (exploreButton != null) {
-                    exploreButton.setVisible(false);
-                    exploreButton.setManaged(false);
-                }
                 if (bidderView != null) {
                     bidderView.setVisible(false);
                     bidderView.setManaged(false);
@@ -192,6 +215,7 @@ public class DashboardController {
                     sellerView.setVisible(true);
                     sellerView.setManaged(true);
                 }
+                setupStatCardsByRole(user.getRole(), false); // Seller: only RUNNING + OPEN
                 startSellerNewsTicker();
                 startSellerHotCountdownRefresh();
                 loadSellerStats((Seller) user);
@@ -199,17 +223,20 @@ public class DashboardController {
                 // Load hot items for seller view
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
+
                     @Override
                     protected Void call() {
                         all = app.getAllAuctions();
                         hotCache.seedFromList(all);
                         return null;
                     }
+
                     @Override
                     protected void succeeded() {
                         refreshSellerHotItems(all);
                         startSellerHotItemRefresh();
                     }
+
                     @Override
                     protected void failed() {
                         System.err.println("[Dashboard] loadData failed: " + getException().getMessage());
@@ -220,10 +247,6 @@ public class DashboardController {
                 t.start();
             } else {
                 // Setup Bidder/Admin View
-                if (exploreButton != null) {
-                    exploreButton.setVisible(true);
-                    exploreButton.setManaged(true);
-                }
                 if (bidderView != null) {
                     bidderView.setVisible(true);
                     bidderView.setManaged(true);
@@ -232,22 +255,26 @@ public class DashboardController {
                     sellerView.setVisible(false);
                     sellerView.setManaged(false);
                 }
+                setupStatCardsByRole(user.getRole(), true); // Admin: all 5 cards; Bidder: only 2
                 startNewsTicker();
                 startHotCountdownRefresh();
 
                 javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
                     private List<Auction> all;
+
                     @Override
                     protected Void call() {
                         all = app.getAllAuctions();
                         hotCache.seedFromList(all);
                         return null;
                     }
+
                     @Override
                     protected void succeeded() {
                         refreshHotItems(all);
                         startHotItemRefresh();
                     }
+
                     @Override
                     protected void failed() {
                         System.err.println("[Dashboard] loadData failed: " + getException().getMessage());
@@ -259,9 +286,46 @@ public class DashboardController {
             }
         }
     }
-    
+
+    /**
+     * Shows or hides the stat cards based on user role.
+     * ADMIN → all 5 cards visible.
+     * SELLER / BIDDER → only card 1 (RUNNING) and card 2 (OPEN) visible;
+     * cards 3-5 are hidden AND unmanaged to free layout space.
+     *
+     * @param role         the role string of the current user (e.g. "Admin",
+     *                     "Seller", "Bidder")
+     * @param isBidderView true when acting on the bidderView cards, false for
+     *                     sellerView cards
+     */
+    private void setupStatCardsByRole(String role, boolean isBidderView) {
+        boolean isAdmin = role != null && role.equalsIgnoreCase("Admin");
+
+        if (isBidderView) {
+            // Bidder view cards
+            setCardVisibility(cardPending, isAdmin);
+            setCardVisibility(cardTotalAuctions, isAdmin);
+            setCardVisibility(cardTotalUsers, isAdmin);
+        } else {
+            // Seller view cards
+            setCardVisibility(sellerCardPending, isAdmin);
+            setCardVisibility(sellerCardTotalAuctions, isAdmin);
+            setCardVisibility(sellerCardTotalUsers, isAdmin);
+        }
+    }
+
+    /** Helper: hide a VBox card visually while keeping its layout space. */
+    private void setCardVisibility(VBox card, boolean visible) {
+        if (card == null)
+            return;
+        card.setVisible(visible);
+        // setManaged(true) intentionally NOT called — card keeps its size when hidden,
+        // leaving a blank placeholder so Card 1 & 2 do NOT stretch to fill the gap.
+    }
+
     private void loadSellerStats(Seller seller) {
-        if (sellerEarningLabel == null) return;
+        if (sellerEarningLabel == null)
+            return;
         sellerEarningLabel.setText("...");
         sellerRevenueLabel.setText("...");
 
@@ -283,7 +347,8 @@ public class DashboardController {
             double monthRevenue = 0;
 
             for (Auction a : auctions) {
-                if (a.getStatus() != AuctionStatus.CLOSED) continue;
+                if (a.getStatus() != AuctionStatus.CLOSED)
+                    continue;
 
                 // Count category for closed items only (sold items)
                 if (a.getItem() != null && a.getItem().getCategory() != null) {
@@ -314,7 +379,8 @@ public class DashboardController {
             if (sellerCategoryPieChart != null) {
                 ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
                 for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
-                    pieChartData.add(new PieChart.Data(entry.getKey() + " (" + entry.getValue() + ")", entry.getValue()));
+                    pieChartData
+                            .add(new PieChart.Data(entry.getKey() + " (" + entry.getValue() + ")", entry.getValue()));
                 }
                 sellerCategoryPieChart.setData(pieChartData);
                 // hide built-in legend — we use a custom color legend below
@@ -360,8 +426,8 @@ public class DashboardController {
                     cell.getStyleClass().addAll("heatmap-cell", heatmapLevel(amt, maxDay));
                     Tooltip tooltip = new Tooltip(
                             "Tổng doanh thu: " + String.format("%,.0f đ", amt) + "\n" +
-                            "Số phiên đã chốt: " + closedDay + "\n" +
-                            "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                                    "Số phiên đã chốt: " + closedDay + "\n" +
+                                    "Ngày: " + day.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                     tooltip.setShowDelay(javafx.util.Duration.millis(50));
                     tooltip.setShowDuration(javafx.util.Duration.INDEFINITE);
                     Tooltip.install(cell, tooltip);
@@ -376,7 +442,8 @@ public class DashboardController {
                     });
 
                     cell.setOnMouseEntered(event -> {
-                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing() && activeHeatmapTooltip != tooltip) {
+                        if (activeHeatmapTooltip != null && activeHeatmapTooltip.isShowing()
+                                && activeHeatmapTooltip != tooltip) {
                             activeHeatmapTooltip.hide();
                             activeHeatmapTooltip = null;
                         }
@@ -416,13 +483,16 @@ public class DashboardController {
 
     // Apply colors to pie chart slices according to current theme
     private void applyPieColors() {
-        if (sellerCategoryPieChart == null) return;
+        if (sellerCategoryPieChart == null)
+            return;
         ObservableList<PieChart.Data> data = sellerCategoryPieChart.getData();
-        if (data == null) return;
+        if (data == null)
+            return;
         String[] palette = isDarkMode() ? darkPieColors : lightPieColors;
         Platform.runLater(() -> {
             double total = data.stream().mapToDouble(PieChart.Data::getPieValue).sum();
-            if (sellerPieLegend != null) sellerPieLegend.getChildren().clear();
+            if (sellerPieLegend != null)
+                sellerPieLegend.getChildren().clear();
             int i = 0;
             for (PieChart.Data d : data) {
                 Node node = d.getNode();
@@ -451,7 +521,8 @@ public class DashboardController {
                         if (newNode != null) {
                             newNode.setStyle("-fx-pie-color: " + color + ";");
                             String perc = total > 0 ? String.format("%.1f%%", d.getPieValue() * 100.0 / total) : "0%";
-                            Tooltip t = new Tooltip(d.getName() + "\nSố lượng: " + (int) d.getPieValue() + "\nTỷ lệ: " + perc);
+                            Tooltip t = new Tooltip(
+                                    d.getName() + "\nSố lượng: " + (int) d.getPieValue() + "\nTỷ lệ: " + perc);
                             Tooltip.install(newNode, t);
                             newNode.addEventHandler(MouseEvent.MOUSE_ENTERED, ev -> {
                                 newNode.setScaleX(1.06);
@@ -471,7 +542,8 @@ public class DashboardController {
                     legendItem.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
                     Region swatch = new Region();
                     swatch.setPrefSize(12, 12);
-                    swatch.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 4; -fx-border-color: rgba(0,0,0,0.06); -fx-border-width: 1;");
+                    swatch.setStyle("-fx-background-color: " + color
+                            + "; -fx-background-radius: 4; -fx-border-color: rgba(0,0,0,0.06); -fx-border-width: 1;");
                     Label lbl = new Label(d.getName() + " (" + (int) d.getPieValue() + ")");
                     lbl.setStyle("-fx-text-fill: -theme-text; -fx-font-size: 13px;");
                     legendItem.getChildren().addAll(swatch, lbl);
@@ -538,7 +610,8 @@ public class DashboardController {
     }
 
     private void refreshSellerHotItems(List<Auction> all) {
-        if (sellerHotItemsBox == null) return;
+        if (sellerHotItemsBox == null)
+            return;
 
         List<Auction> hotList = all.stream()
                 .filter(a -> a.getStatus() == AuctionStatus.OPEN
@@ -655,7 +728,8 @@ public class DashboardController {
     }
 
     private void startSellerHotCountdownRefresh() {
-        sellerHotCountdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateSellerHotCountdownLabels()));
+        sellerHotCountdownTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(1), e -> updateSellerHotCountdownLabels()));
         sellerHotCountdownTimeline.setCycleCount(Timeline.INDEFINITE);
         sellerHotCountdownTimeline.play();
     }
@@ -675,7 +749,8 @@ public class DashboardController {
     }
 
     private void updateSellerHotCountdownLabels() {
-        if (sellerHotItemsBox == null) return;
+        if (sellerHotItemsBox == null)
+            return;
         for (javafx.scene.Node node : sellerHotItemsBox.getChildren()) {
             if (!(node instanceof VBox card) || !(card.getUserData() instanceof String auctionId)) {
                 continue;
@@ -702,7 +777,8 @@ public class DashboardController {
     private VBox createHotItemCard(Auction auction) {
         VBox card = new VBox(8);
         card.getStyleClass().add("card");
-        card.setStyle("-fx-background-radius: 16; -fx-border-radius: 16; -fx-min-width: 240; -fx-pref-width: 240; -fx-alignment: center;");
+        card.setStyle(
+                "-fx-background-radius: 16; -fx-border-radius: 16; -fx-min-width: 240; -fx-pref-width: 240; -fx-alignment: center;");
         card.setCursor(Cursor.HAND);
 
         ImageView iv = new ImageView();
@@ -721,6 +797,7 @@ public class DashboardController {
                     protected javafx.scene.image.Image call() {
                         return ImageLoaderUtil.loadItemImage(imgUrl, 200, 120);
                     }
+
                     @Override
                     protected void succeeded() {
                         iv.setImage(getValue());
