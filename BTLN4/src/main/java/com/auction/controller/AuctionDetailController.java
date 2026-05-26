@@ -69,6 +69,9 @@ import java.util.function.UnaryOperator;
  */
 public class AuctionDetailController implements DataReceiver, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
+    // ── Header ────────────────────────────────────────────────────────────────
+    @FXML private HeaderController headerController;
+
     // ── Info panel ────────────────────────────────────────────────────────────
     @FXML private Label     itemNameLabel;
     @FXML private Label     auctionIdLabel;
@@ -86,7 +89,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     @FXML private Label     currentPriceLabel;
     @FXML private Label     bidCountLabel;
     @FXML private Label     timeRemainingLabel;
-    @FXML private Label     lastUpdateLabel;
     @FXML private Label     minBidHint;
     @FXML private Label     sellerWarningLabel;
     @FXML private Label     balanceLabel;
@@ -250,6 +252,11 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     }
 
     public void initialize() {
+        // Set header title (will be updated when auction data loads)
+        if (headerController != null) {
+            headerController.setTitle("Chi tiết phiên đấu giá", "");
+        }
+
         bidErrorLabel.setText("");
         chartHelper = new com.auction.util.AuctionChartHelper(priceChart, timeAxis);
         applyChartWindow();
@@ -725,13 +732,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         //         (price, bid count, badge, balance, controls, winner box, etc.)
         //         even though only the countdown timer text actually changes.
         //
-        // After:  Every 1 second, the scheduler updates at most 2 labels
-        //         (timeRemainingLabel, lastUpdateLabel) via setTextIfChanged,
+        // After:  Every 1 second, the scheduler updates at most 1 label
+        //         (timeRemainingLabel) via setTextIfChanged,
         //         meaning zero JavaFX invalidations if the text happens to be
         //         the same (e.g. "Hết giờ" stays stable after auction ends).
         //
         // This reduces the FX Application Thread work per tick from ~20 property
-        // sets + layout + CSS to at most 2 property sets + minimal layout.
+        // sets + layout + CSS to at most 1 property set + minimal layout.
         scheduler.scheduleAtFixedRate(
                 () -> Platform.runLater(this::refreshCountdown), 0, 1, TimeUnit.SECONDS);
     }
@@ -752,6 +759,12 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         Item item = currentAuction.getItem();
         itemNameLabel.setText(item.getName());
         auctionIdLabel.setText("ID: " + currentAuction.getId());
+
+        // Update header title
+        if (headerController != null) {
+            headerController.setTitle(item.getName(), "ID: " + currentAuction.getId());
+        }
+
         nameLabel.setText(item.getName());
         categoryLabel.setText(item.getCategory());
         String shopName = currentAuction.getSeller().getShopName();
@@ -836,20 +849,14 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     }
 
     /**
-     * Refreshes ONLY the countdown timer and sync timestamp.
+     * Refreshes ONLY the countdown timer.
      * Called by: scheduler (every 1 second).
      *
      * PERF: This is the highest-frequency caller (every 1s). By restricting it
-     * to just 2 labels, we reduce the per-tick FX thread work from ~20 property
-     * mutations to at most 2. The setTextIfChanged guard further eliminates
-     * invalidations when the text hasn't changed (e.g. stable "Hết giờ" or
-     * "⏳ Chờ Admin duyệt" states).
+     * to just 1 label, we reduce the per-tick FX thread work significantly.
      */
     private void refreshCountdown() {
         if (currentAuction == null) return;
-
-        // Sync timestamp
-        setTextIfChanged(lastUpdateLabel, "Đồng bộ : " + TimeSyncManager.getNow().format(TIME_FMT));
 
         // Countdown timer – compute the display string based on current status
         AuctionStatus status = currentAuction.getStatus();

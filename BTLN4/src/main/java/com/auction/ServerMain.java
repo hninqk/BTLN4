@@ -1,11 +1,14 @@
 package com.auction;
 
 import com.auction.server.AuctionWebSocketHandler;
+// import com.auction.server.NotificationWebSocketHandler;
 import com.auction.server.RestApiHandler;
 import com.auction.service.AuctionService;
+import com.auction.service.NotificationService;
 import com.auction.service.UserService;
 import com.auction.util.AppConfig;
 import com.auction.util.DatabaseConnection;
+import com.auction.util.NotificationManager;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +20,7 @@ import java.time.Duration;
  *
  * Starts the configured database + Javalin server, exposing:
  * • WebSocket /auction – real-time bidding (unchanged)
+ * • WebSocket /notifications – real-time notifications (temporarily disabled)
  * • REST /api/** – HTTP endpoints for login, auctions, users
  *
  * HOW TO RUN (operator only):
@@ -46,9 +50,14 @@ public class ServerMain {
         // 2. Build Javalin application
         AuctionService auctionService = AuctionService.getInstance();
         UserService userService = UserService.getInstance();
+        NotificationService notificationService = new NotificationService();
 
         AuctionWebSocketHandler wsHandler = new AuctionWebSocketHandler(auctionService);
+        // NotificationWebSocketHandler notificationWsHandler = new NotificationWebSocketHandler(notificationService);
         RestApiHandler restHandler = new RestApiHandler(auctionService, userService);
+
+        // Set WebSocket handler in NotificationManager for broadcasting
+        // NotificationManager.getInstance().setWebSocketHandler(notificationWsHandler);
 
         Javalin server = Javalin
                 .create(config -> config.jetty
@@ -56,11 +65,13 @@ public class ServerMain {
                 .start(AppConfig.port());
 
         // 3. Register routes
-        server.ws("/auction", wsHandler::register); // WebSocket (unchanged)
-        restHandler.register(server); // REST API (new)
+        server.ws("/auction", wsHandler::register); // WebSocket for bidding
+        // server.ws("/notifications", notificationWsHandler::register); // WebSocket for notifications (disabled)
+        restHandler.register(server); // REST API
 
         System.out.println("[Server] WebSocket + REST server running on port " + AppConfig.port() + ".");
         System.out.println("[Server] REST API base: " + AppConfig.httpBaseUrl() + "/api");
+        System.out.println("[Server] WebSocket endpoints: /auction, /notifications");
         System.out.println("[Server] Press Ctrl+C to stop.");
 
         // 4. Graceful shutdown hook

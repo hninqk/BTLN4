@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<!-- 
+    DesktopHeader: Global UI component
+    Bao gồm:
+      - Clock (Trái)
+      - Notification Bell + Badge (Phải)
+      - Notification Tray Popup (Drop down)
+-->
+<StackPane alignment="TOP_RIGHT" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/21" 
+           fx:controller="com.auction.controller.DesktopHeaderController"
+           pickOnBounds="false">
+           
+    <!-- Thanh Header Chính -->
+    <HBox styleClass="desktop-header" alignment="CENTER" pickOnBounds="false" spacing="0">
+        <!-- Đồng hồ (Trái) -->
+        <HBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS" pickOnBounds="false">
+            <Label fx:id="clockLabel" text="00:00:00 - 01/01/2026" styleClass="desktop-clock">
+                <graphic>
+                    <FontIcon iconLiteral="fas-clock" iconSize="18" styleClass="clock-icon"/>
+                </graphic>
+            </Label>
+        </HBox>
+        
+        <!-- Notification Area (Phải) -->
+        <HBox alignment="CENTER_RIGHT" pickOnBounds="false">
+            <StackPane>
+                <!-- Bell container (clickable) -->
+                <HBox fx:id="bellIconContainer" styleClass="bell-container" alignment="CENTER" style="-fx-cursor: hand;">
+                    <FontIcon iconLiteral="fas-bell" iconSize="18" styleClass="bell-icon"/>
+                </HBox>
+                
+                <!-- Badge hiển thị số lượng chưa đọc -->
+                <Label fx:id="notificationBadge" text="3" styleClass="notification-badge"
+                       StackPane.alignment="TOP_RIGHT" visible="false" managed="false"/>
+            </StackPane>
+        </HBox>
+    </HBox>
+    
+    <!-- Notification Popup Tray (Drop-down) -->
+    <!-- Đặt StackPane.margin="top: 40" để nó hiển thị dưới thanh header -->
+    <VBox fx:id="notificationPopup" styleClass="notification-popup" maxWidth="320" maxHeight="400"
+          StackPane.alignment="TOP_RIGHT" visible="false" managed="false" style="-fx-translate-y: 40;">
+          
+        <HBox alignment="CENTER_LEFT" styleClass="notification-popup-header">
+            <Label text="Thông Báo" styleClass="notification-popup-title" HBox.hgrow="ALWAYS"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Xóa tất cả" styleClass="btn-link" onAction="#handleClearNotifications"/>
+        </HBox>
+        
+        <StackPane VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+            <Label fx:id="emptyNotificationLabel" text="Không có thông báo mới" styleClass="label-subtle" />
+            <ListView fx:id="notificationList" styleClass="notification-list" VBox.vgrow="ALWAYS" />
+        </StackPane>
+        
+    </VBox>
+    
+</StackPane>

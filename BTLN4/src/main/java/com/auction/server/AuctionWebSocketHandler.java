@@ -42,6 +42,7 @@ public class AuctionWebSocketHandler {
     private final AuctionService auctionService;
     private final UserService userService;
     private final Gson gson = new Gson();
+    // private final AuctionNotificationHelper notificationHelper;
 
     // All currently connected clients
     private final Set<WsContext> sessions = ConcurrentHashMap.newKeySet();
@@ -56,6 +57,7 @@ public class AuctionWebSocketHandler {
     public AuctionWebSocketHandler(AuctionService auctionService) {
         this.auctionService = auctionService;
         this.userService = UserService.getInstance();
+        // this.notificationHelper = new AuctionNotificationHelper(auctionService);
         startAutoFinishScheduler();
     }
 
@@ -96,6 +98,9 @@ public class AuctionWebSocketHandler {
      * Gửi: BALANCE_UPDATE tới winner + AUCTION_STATUS_CHANGED kèm thông tin winner.
      */
     private void broadcastFinishResult(Auction auction, BidTransaction preWinner) {
+        // Send notifications
+        // notificationHelper.notifyAuctionEnded(auction, preWinner);
+
         // 1. Gửi BALANCE_UPDATE nếu có winner
         if (preWinner != null) {
             String winnerId = preWinner.getBidder().getId();
@@ -229,6 +234,9 @@ public class AuctionWebSocketHandler {
             // processOutbidUnfreeze() lấy thông tin old bidder đã được lưu trong placeBid()
             // và thực hiện unfreeze + ghi DB với ReentrantLock của old bidder.
             Bidder unfrozenOldBidder = auctionService.processOutbidUnfreeze();
+
+            // ── Send notifications ──
+            // notificationHelper.notifyNewBid(auction, createdBid, unfrozenOldBidder);
 
             // ── Broadcast BID_UPDATE tới TẤT CẢ client ──
             JsonObject bidUpdate = new JsonObject();
@@ -424,6 +432,9 @@ public class AuctionWebSocketHandler {
             // ── Create auction (PENDING status) ──
             Auction auction = auctionService.createAuction(seller, item, endTime);
 
+            // ── Send notifications to admins ──
+            // notificationHelper.notifyAuctionCreated(auction);
+
             // ── Broadcast AUCTION_CREATED to ALL clients ──
             JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction, false);
             broadcastAll(broadcast.toString());
@@ -450,7 +461,10 @@ public class AuctionWebSocketHandler {
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
 
             switch (action) {
-                case "approve" -> auctionService.approveAuction(auction);
+                case "approve" -> {
+                    auctionService.approveAuction(auction);
+                    // notificationHelper.notifyAuctionApproved(auction);
+                }
                 case "start"   -> auctionService.startAuction(auction);
                 case "finish"  -> {
                     BidTransaction preWinner = auction.getWinner();
@@ -462,7 +476,10 @@ public class AuctionWebSocketHandler {
                             auctionId);
                     return;
                 }
-                case "cancel"  -> auctionService.cancelAuction(auction);
+                case "cancel"  -> {
+                    auctionService.cancelAuction(auction);
+                    // notificationHelper.notifyAuctionRejected(auction);
+                }
                 default        -> throw new Exception("Unknown admin action: " + action);
             }
 
