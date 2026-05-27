@@ -48,13 +48,15 @@ import java.util.List;
  */
 public class DesktopHeaderController implements NotificationManager.NotificationListener, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
-    private final java.util.Map<String, Double> pendingAcks = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, Double> pendingAcks = new java.util.concurrent.ConcurrentHashMap<>();
     /** Auctions the current user has placed at least one bid on (populated on login). */
-    private final java.util.Set<String> biddedAuctionIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final java.util.Set<String> biddedAuctionIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
     /** Maps auctionId → item name so toast can show the item without extra HTTP calls. */
-    private final java.util.Map<String, String> auctionItemNames = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, String> auctionItemNames = new java.util.concurrent.ConcurrentHashMap<>();
     /** Dedup guard: auction IDs already added as notifications this session. */
-    private final java.util.Set<String> notifiedThisSession = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final java.util.Set<String> notifiedThisSession = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    private static DesktopHeaderController activeInstance;
 
     // ── FXML bindings ─────────────────────────────────────────────────────────
     @FXML private HBox    headerRoot;
@@ -77,6 +79,7 @@ public class DesktopHeaderController implements NotificationManager.Notification
 
     @FXML
     public void initialize() {
+        activeInstance = this;
         startClock();
         buildNotifPopup();
         buildToastPopup();
@@ -166,6 +169,8 @@ public class DesktopHeaderController implements NotificationManager.Notification
     @Override public void onWsError(String err) {}
     @Override
     public void onBidUpdate(JsonObject j) {
+        if (this != activeInstance) return;
+
         String bidderName = j.has("bidderUsername") ? j.get("bidderUsername").getAsString() : "Bidder";
         double amount     = j.has("amount")         ? j.get("amount").getAsDouble()         : 0;
         String auctionId  = j.has("auctionId")      ? j.get("auctionId").getAsString()      : "";
