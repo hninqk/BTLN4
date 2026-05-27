@@ -104,6 +104,8 @@ public class AuctionDetailController
     @FXML
     private Label minBidHint;
     @FXML
+    private Label stepHintLabel;
+    @FXML
     private Label sellerWarningLabel;
     @FXML
     private Label balanceLabel;
@@ -985,7 +987,10 @@ public class AuctionDetailController
         setTextIfChanged(currentPriceLabel, String.format("%,.0f ₫", currentAuction.getHighestBid()));
         setTextIfChanged(bidCountLabel, currentAuction.getBidHistory().size() + " lượt đấu giá");
         double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
-        setTextIfChanged(minBidHint, "Tối thiểu: " + String.format("%,.0f ₫ (bước giá: %,.0f ₫)", currentAuction.getHighestBid() + step, step));
+        setTextIfChanged(minBidHint, String.format("%,.0f ₫", currentAuction.getHighestBid() + step));
+        if (stepHintLabel != null) {
+            setTextIfChanged(stepHintLabel, String.format("%,.0f ₫", step));
+        }
         if (autoIncrementField != null) {
             autoIncrementField.setText(String.format("%.0f", step));
         }
@@ -1015,12 +1020,12 @@ public class AuctionDetailController
         if (user instanceof Bidder bidder) {
             double available = bidder.getAvailableBalance();
             double frozen = bidder.getFrozenBalance();
-            setTextIfChanged(balanceLabel, String.format("Khả dụng: %,.0f ₫", available));
+            setTextIfChanged(balanceLabel, String.format("%,.0f ₫", available));
             setVisibleIfChanged(balanceLabel, true);
 
             if (frozenLabel != null) {
                 if (frozen > 0) {
-                    setTextIfChanged(frozenLabel, String.format("Đóng băng: %,.0f ₫", frozen));
+                    setTextIfChanged(frozenLabel, String.format("%,.0f ₫", frozen));
                     setVisibleIfChanged(frozenLabel, true);
                     setManagedIfChanged(frozenLabel, true);
                 } else {
