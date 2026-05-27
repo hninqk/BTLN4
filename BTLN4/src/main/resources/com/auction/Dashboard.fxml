@@ -30,10 +30,6 @@
 
                     <!-- Header & Search -->
                     <HBox alignment="CENTER_LEFT" spacing="16">
-                        <VBox spacing="4">
-                            <Label text="Tổng quan" styleClass="page-title"/>
-                            <Label fx:id="welcomeLabel" text="Chào mừng bạn trở lại!" styleClass="label-subtle"/>
-                        </VBox>
                         <Region HBox.hgrow="ALWAYS"/>
                         <Button fx:id="exploreButton" text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
                     </HBox>

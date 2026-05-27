@@ -12,6 +12,8 @@ import com.google.gson.JsonObject;
 
 import java.util.concurrent.CompletableFuture;
 
+import javax.swing.plaf.LabelUI;
+
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -60,6 +62,8 @@ public class DesktopHeaderController implements NotificationManager.Notification
 
     // ── FXML bindings ─────────────────────────────────────────────────────────
     @FXML private HBox    headerRoot;
+    @FXML private Label   pageTitle;
+    @FXML private Label   pageSubtitle;
     @FXML private Circle  onlineDot;
     @FXML private Label   clockLabel;
     @FXML private StackPane bellPane;
@@ -76,6 +80,24 @@ public class DesktopHeaderController implements NotificationManager.Notification
     private static final DateTimeFormatter TIME_FMT   = DateTimeFormatter.ofPattern("HH:mm");
 
     // ── Initialize ────────────────────────────────────────────────────────────
+
+    public static void setTitleAndSubtitle(String title, String subtitle) {
+        if (activeInstance != null) {
+            if (activeInstance.pageTitle != null) {
+                activeInstance.pageTitle.setText(title);
+            }
+            if (activeInstance.pageSubtitle != null) {
+                if (subtitle == null || subtitle.trim().isEmpty()) {
+                    activeInstance.pageSubtitle.setVisible(false);
+                    activeInstance.pageSubtitle.setManaged(false);
+                } else {
+                    activeInstance.pageSubtitle.setText(subtitle);
+                    activeInstance.pageSubtitle.setVisible(true);
+                    activeInstance.pageSubtitle.setManaged(true);
+                }
+            }
+        }
+    }
 
     @FXML
     public void initialize() {
@@ -139,15 +161,18 @@ public class DesktopHeaderController implements NotificationManager.Notification
                                     && notifiedThisSession.add(fullAuction.getId())) {
                                 
                                 if (fullAuction.getHighestBid() > ackedBid) {
-                                    NotificationManager.getInstance().addNotification(
-                                        NotificationManager.outbidMessage(fullAuction.getItem().getName())
-                                    );
+                                    Platform.runLater(() -> {
+                                        NotificationManager.getInstance().addNotification(
+                                            NotificationManager.outbidMessage(fullAuction.getItem().getName())
+                                        );
+                                    });
                                     pendingAcks.put(prefKey, fullAuction.getHighestBid());
                                 } else if (ackedBid > 0 && myMaxBid < fullAuction.getHighestBid()) {
-                                    // Restore previously read notification across logins!
-                                    NotificationManager.getInstance().addReadNotification(
-                                        NotificationManager.outbidMessage(fullAuction.getItem().getName())
-                                    );
+                                    Platform.runLater(() -> {
+                                        NotificationManager.getInstance().addReadNotification(
+                                            NotificationManager.outbidMessage(fullAuction.getItem().getName())
+                                        );
+                                    });
                                 }
                             }
                             }

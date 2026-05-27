@@ -68,6 +68,7 @@ public class AuctionListController {
 
     @FXML
     public void initialize() {
+        DesktopHeaderController.setTitleAndSubtitle("Danh sách đấu giá", null);
         setupFilters();
         setupActionIcons();
         setupTableColumns();

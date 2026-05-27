@@ -44,9 +44,6 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
 public class DashboardController {
-
-    @FXML
-    private Label welcomeLabel;
     @FXML
     private Button exploreButton;
 
@@ -216,7 +213,7 @@ public class DashboardController {
     private void loadData() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (user != null) {
-            welcomeLabel.setText("Chào mừng, " + user.getUsername() + " (" + user.getRole() + ")");
+            com.auction.controller.DesktopHeaderController.setTitleAndSubtitle("Tổng quan", null);
 
             if (exploreButton != null) {
                 exploreButton.setVisible(true);

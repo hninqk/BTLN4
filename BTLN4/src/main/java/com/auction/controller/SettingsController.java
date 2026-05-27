@@ -11,6 +11,7 @@ public class SettingsController {
 
     @FXML
     public void initialize() {
+        DesktopHeaderController.setTitleAndSubtitle("Cài đặt hệ thống", null);
         btnDarkModeToggle.setSelected(NavigationManager.getInstance().isDarkMode());
         updateButtonText();
     }

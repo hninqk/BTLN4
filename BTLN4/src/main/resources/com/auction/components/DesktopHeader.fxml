@@ -6,7 +6,6 @@
 <?import javafx.scene.shape.Circle?>
 <?import javafx.scene.shape.SVGPath?>
 
-<!-- Desktop Header: Clock (left) + Notification Bell (right) -->
 <HBox xmlns:fx="http://javafx.com/fxml/1"
       xmlns="http://javafx.com/javafx/21"
       fx:controller="com.auction.controller.DesktopHeaderController"
@@ -14,51 +13,53 @@
       styleClass="desktop-header"
       alignment="CENTER_LEFT"
       fillHeight="true"
-      maxWidth="Infinity">
+      maxWidth="Infinity"
+      spacing="16"> 
+      
+    <padding><Insets top="10" right="14" bottom="14" left="14"/></padding>
 
-    <padding><Insets top="6" right="14" bottom="6" left="14"/></padding>
+    <VBox alignment="CENTER_LEFT" spacing="4"> <Label fx:id="pageTitle" text="Tiêu đề trang" styleClass="page-title"/>
+        <Label fx:id="pageSubtitle" text="Mô tả phụ" styleClass="label-subtle" 
+               visible="false" managed="false"/> 
+    </VBox>
 
-    <!-- LEFT: Real-time clock + green online dot -->
-    <HBox alignment="CENTER_LEFT" spacing="7">
-        <!-- Green online indicator dot -->
-        <Circle fx:id="onlineDot" radius="4.5" fill="#10b981"/>
-        <!-- Clock label -->
-        <Label fx:id="clockLabel"
-               text="--:--:--"
-               styleClass="header-clock"/>
-    </HBox>
-
-    <!-- Spacer -->
     <Region HBox.hgrow="ALWAYS"/>
 
-    <!-- RIGHT: Notification bell button (fixed size — no stretch) -->
-    <StackPane fx:id="bellPane"
-               prefWidth="44" prefHeight="44"
-               maxWidth="-Infinity" maxHeight="-Infinity"
-               minWidth="44"  minHeight="44"
-               alignment="CENTER">
+    <HBox alignment="CENTER_RIGHT" spacing="16">
+        
+        <HBox alignment="CENTER_RIGHT" spacing="7">
+            <Circle fx:id="onlineDot" radius="4.5" fill="#10b981"/>
+            <Label fx:id="clockLabel"
+                   text="--:--:--"
+                   styleClass="header-clock"/>
+        </HBox>
 
-        <!-- Bell button -->
-        <Button fx:id="bellButton"
-                onAction="#handleBellClick"
-                styleClass="bell-button"
-                prefWidth="44" prefHeight="44"
-                maxWidth="44"  maxHeight="44"
-                minWidth="44"  minHeight="44">
-            <graphic>
-                <SVGPath content="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
-                         fill="#FACC15" />
-            </graphic>
-        </Button>
+        <StackPane fx:id="bellPane"
+                   prefWidth="44" prefHeight="44"
+                   maxWidth="-Infinity" maxHeight="-Infinity"
+                   minWidth="44"  minHeight="44"
+                   alignment="CENTER">
 
-        <!-- Unread badge (top-right corner of bellPane) -->
-        <Label fx:id="badgeLabel"
-               text="0"
-               styleClass="notif-badge"
-               visible="false"
-               managed="true"
-               mouseTransparent="true"
-               StackPane.alignment="TOP_RIGHT"/>
-    </StackPane>
+            <Button fx:id="bellButton"
+                    onAction="#handleBellClick"
+                    styleClass="bell-button"
+                    prefWidth="44" prefHeight="44"
+                    maxWidth="44"  maxHeight="44"
+                    minWidth="44"  minHeight="44">
+                <graphic>
+                    <SVGPath content="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+                             fill="#FACC15" />
+                </graphic>
+            </Button>
 
+            <Label fx:id="badgeLabel"
+                   text="0"
+                   styleClass="notif-badge"
+                   visible="false"
+                   managed="true"
+                   mouseTransparent="true"
+                   StackPane.alignment="TOP_RIGHT"/>
+        </StackPane>
+        
+    </HBox>
 </HBox>

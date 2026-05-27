@@ -20,14 +20,6 @@
             <!-- Desktop Header: Clock + Notification Bell -->
             <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-            <!-- Header -->
-            <HBox alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Quản trị hệ thống" styleClass="page-title"/>
-                    <Label text="Duyệt sản phẩm, điều hành đấu giá và quản lý người dùng" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
-
             <!-- Main Actions Dashboard -->
             <VBox styleClass="card" spacing="12">
                 <Label text="Thao tác nhanh (Main Actions)" styleClass="section-title"/>

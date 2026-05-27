@@ -106,6 +106,8 @@ public class SellerManagementController {
         loadSellerAuctionsFromServer(); // async load from server REST API
         disableActionButtons();
 
+        DesktopHeaderController.setTitleAndSubtitle("Quản lí sản phẩm", null);
+
         // Cấu hình Spinner Giờ (0–23, mặc định 20)
         SpinnerValueFactory<Integer> hourFactory =
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, 20);

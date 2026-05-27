@@ -146,6 +146,7 @@ public class BidHistoryController {
 
     @FXML
     public void initialize() {
+        DesktopHeaderController.setTitleAndSubtitle("Lịch sử đấu giá", null);
         resultFilter.setItems(FXCollections.observableArrayList("Tất cả", "Thắng", "Thua", "Đang tham gia"));
         resultFilter.getSelectionModel().selectFirst();
         setupActionIcons();

@@ -22,14 +22,6 @@
                 <!-- Desktop Header: Clock + Notification Bell -->
                 <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-                <!-- Header -->
-                <HBox alignment="CENTER_LEFT" spacing="12">
-                    <VBox spacing="4" HBox.hgrow="ALWAYS">
-                        <Label text="Quản lý Sản phẩm" styleClass="page-title"/>
-                        <Label text="Tạo phiên đấu giá và theo dõi trạng thái duyệt" styleClass="label-subtle"/>
-                    </VBox>
-                </HBox>
-
                 <!-- Notice -->
                 <Label text="Sau khi tạo, phiên đấu giá sẽ ở trạng thái 'Chờ duyệt'. Admin sẽ xét duyệt và bắt đầu phiên đấu giá."
                        styleClass="label-subtle" wrapText="true">

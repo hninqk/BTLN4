@@ -28,14 +28,6 @@
             <!-- Desktop Header: Clock + Notification Bell -->
             <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-            <!-- Header row -->
-            <HBox alignment="CENTER_LEFT" spacing="12">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Danh sách Đấu giá" styleClass="page-title"/>
-                    <Label text="Tìm kiếm và tham gia các phiên đấu giá" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
-
             <!-- Filters toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."

@@ -27,14 +27,6 @@
             <!-- Desktop Header: Clock + Notification Bell -->
             <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-            <!-- Header -->
-            <HBox alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Lịch sử Đấu giá" styleClass="page-title"/>
-                    <Label text="Xem lại các lượt đặt giá của bạn" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
-
             <!-- Summary stats -->
             <HBox spacing="16">
                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">

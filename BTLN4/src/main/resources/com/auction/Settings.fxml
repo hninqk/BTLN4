@@ -19,8 +19,6 @@
             <!-- Desktop Header: Clock + Notification Bell -->
             <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-            <Label text="Cài đặt hệ thống" styleClass="page-title"/>
-
             <VBox styleClass="card" spacing="16" maxWidth="600">
                 <Label text="Giao diện &amp; Hiển thị" styleClass="section-title"/>
                 <Separator/>

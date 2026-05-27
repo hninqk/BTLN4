@@ -98,6 +98,7 @@ public class UserProfileController {
     @FXML
     public void initialize() {
         currentUser = SessionManager.getInstance().getCurrentUser();
+        DesktopHeaderController.setTitleAndSubtitle("Hồ sơ cá nhân", null);
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
 

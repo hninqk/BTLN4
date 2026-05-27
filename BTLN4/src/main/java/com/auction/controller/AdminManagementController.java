@@ -94,6 +94,7 @@ public class AdminManagementController {
 
     @FXML
     public void initialize() {
+        DesktopHeaderController.setTitleAndSubtitle("Quản trị hệ thống", null);
         setupFilters();
         setupUserTableColumns();
         setupAuctionTableColumns();
