@@ -34,25 +34,25 @@ public class AuctionTest {
     void testPlaceValidBid() throws Exception {
         auction.startAuction();
 
-        // Đặt giá lần 1 (100.0)
-        auction.placeBid(createBid(100.0));
+        // Đặt giá lần 1 (10,000.0)
+        auction.placeBid(createBid(10_000.0));
 
-        // Đặt giá lần 2 (150.0 - hợp lệ)
-        assertDoesNotThrow(() -> auction.placeBid(createBid(150.0)));
+        // Đặt giá lần 2 (20,000.0 - hợp lệ)
+        assertDoesNotThrow(() -> auction.placeBid(createBid(20_000.0)));
     }
 
     @Test
     @DisplayName("Ngoại lệ: Đặt giá bằng, thấp hơn, bằng 0 hoặc số âm -> Ném InvalidBidException")
     void testPlaceInvalidBids() throws Exception {
         auction.startAuction();
-        auction.placeBid(createBid(100.0)); // Thiết lập giá hiện tại là 100.0
+        auction.placeBid(createBid(20_000.0)); // Thiết lập giá hiện tại là 20,000.0
 
-        double[] invalidAmounts = { 100.0, 99.9, 0.0, -50.0 };
+        double[] invalidAmounts = { 20_000.0, 19_999.0, 0.0, -50.0 };
 
         for (double amount : invalidAmounts) {
             assertThrows(InvalidBidException.class, () -> {
                 auction.placeBid(createBid(amount));
-            }, "Bid must be higher than the current bid");
+            }, "Bid must be higher than the current bid + step");
         }
     }
 

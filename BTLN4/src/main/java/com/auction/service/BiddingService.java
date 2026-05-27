@@ -87,8 +87,10 @@ public final class BiddingService {
                         "Bạn đang là người ra giá cao nhất, không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
             }
 
-            if (amount <= auction.getHighestBid()) {
-                throw new InvalidBidException("Số tiền đặt giá chưa đủ.");
+            double step = com.auction.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
+            double minRequired = auction.getHighestBid() + step;
+            if (amount < minRequired) {
+                throw new InvalidBidException(String.format("Giá đặt tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", minRequired, step));
             }
 
             double available = freshBidder.getAvailableBalance();
@@ -199,8 +201,10 @@ public final class BiddingService {
                     .filter(u -> u instanceof Bidder)
                     .orElse(bidder);
 
-            if (maxBid <= auction.getHighestBid()) {
-                throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
+            double step = com.auction.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
+            double minRequired = auction.getHighestBid() + step;
+            if (maxBid < minRequired) {
+                throw new InvalidBidException(String.format("Giá tối đa (Max Bid) tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", minRequired, step));
             }
             if (freshBidder.getAvailableBalance() < maxBid) {
                 throw new InvalidBidException("Số dư không đủ. Cần " + String.format("%,.0f ₫", maxBid)

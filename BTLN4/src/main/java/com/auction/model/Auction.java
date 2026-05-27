@@ -84,8 +84,10 @@ public class Auction extends Entity implements Subject {
         if (this.endTime != null && com.auction.util.TimeSyncManager.getNow().isAfter(this.endTime))
             throw new InvalidStatusException("Phiên đấu giá đã kết thúc.");
         double newBidAmount = newBid.getAmount();
-        if (newBidAmount <= this.highestBid)
-            throw new InvalidBidException("Giá đặt phải cao hơn giá hiện tại: " + this.highestBid);
+        double step = com.auction.util.BidLadderUtil.getIncrementForPrice(this.highestBid);
+        if (newBidAmount < this.highestBid + step) {
+            throw new InvalidBidException(String.format("Giá đặt tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", this.highestBid + step, step));
+        }
         this.highestBid = newBidAmount;
         this.bidHistory.add(newBid);
         this.notifyObserver(newBid);

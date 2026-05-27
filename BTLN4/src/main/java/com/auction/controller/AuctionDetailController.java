@@ -317,8 +317,11 @@ public class AuctionDetailController
         com.auction.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
         if (autoMaxBidField != null)
             com.auction.util.CurrencyUtil.setupCurrencyTextField(autoMaxBidField);
-        if (autoIncrementField != null)
+        if (autoIncrementField != null) {
             com.auction.util.CurrencyUtil.setupCurrencyTextField(autoIncrementField);
+            autoIncrementField.setEditable(false);
+            autoIncrementField.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #6b7280;");
+        }
 
         // Close auto-bid popup when clicking outside it
         if (rootStackPane != null) {
@@ -586,8 +589,10 @@ public class AuctionDetailController
         Platform.runLater(() -> {
             if (autoMaxBidField != null)
                 autoMaxBidField.setText(String.format("%.0f", maxBid));
-            if (autoIncrementField != null)
-                autoIncrementField.setText(String.format("%.0f", increment));
+            if (autoIncrementField != null) {
+                double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                autoIncrementField.setText(String.format("%.0f", step));
+            }
             if (autoBidStatusBadge != null) {
                 setTextIfChanged(autoBidStatusBadge, "Đang Hoạt Động");
                 autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
@@ -595,8 +600,9 @@ public class AuctionDetailController
                     setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
             }
             if (currentAutoBidLabel != null) {
+                double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                 currentAutoBidLabel
-                        .setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", maxBid, increment));
+                        .setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", maxBid, step));
                 currentAutoBidLabel.setVisible(true);
                 currentAutoBidLabel.setManaged(true);
             }
@@ -908,8 +914,10 @@ public class AuctionDetailController
                 Platform.runLater(() -> {
                     if (autoMaxBidField != null)
                         autoMaxBidField.setText(String.format("%.0f", myAutoBid.getMaxBid()));
-                    if (autoIncrementField != null)
-                        autoIncrementField.setText(String.format("%.0f", myAutoBid.getIncrement()));
+                    if (autoIncrementField != null) {
+                        double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                        autoIncrementField.setText(String.format("%.0f", step));
+                    }
                     if (autoBidStatusBadge != null) {
                         setTextIfChanged(autoBidStatusBadge, "Đang Hoạt Động");
                         autoBidStatusBadge.setStyle("-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
@@ -917,8 +925,9 @@ public class AuctionDetailController
                             setTextIfChanged(registerAutoBidButton, "Cập nhật Auto-Bid");
                     }
                     if (currentAutoBidLabel != null) {
+                        double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                         currentAutoBidLabel.setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)",
-                                myAutoBid.getMaxBid(), myAutoBid.getIncrement()));
+                                myAutoBid.getMaxBid(), step));
                         currentAutoBidLabel.setVisible(true);
                         currentAutoBidLabel.setManaged(true);
                     }
@@ -980,7 +989,11 @@ public class AuctionDetailController
 
         setTextIfChanged(currentPriceLabel, String.format("%,.0f ₫", currentAuction.getHighestBid()));
         setTextIfChanged(bidCountLabel, currentAuction.getBidHistory().size() + " lượt đấu giá");
-        setTextIfChanged(minBidHint, "Tối thiểu: " + String.format("%,.0f ₫", currentAuction.getHighestBid() + 1));
+        double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+        setTextIfChanged(minBidHint, "Tối thiểu: " + String.format("%,.0f ₫ (bước giá: %,.0f ₫)", currentAuction.getHighestBid() + step, step));
+        if (autoIncrementField != null) {
+            autoIncrementField.setText(String.format("%.0f", step));
+        }
 
         // Track known bid count for chart/feed dedup
         List<BidTransaction> history = currentAuction.getBidHistory();
