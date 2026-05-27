@@ -75,10 +75,6 @@ public class AuctionDetailController
 
     // ── Info panel ────────────────────────────────────────────────────────────
     @FXML
-    private Label itemNameLabel;
-    @FXML
-    private Label auctionIdLabel;
-    @FXML
     private Label statusBadge;
     @FXML
     private Label nameLabel;
@@ -839,9 +835,8 @@ public class AuctionDetailController
         if (currentAuction == null)
             return;
         Item item = currentAuction.getItem();
-        itemNameLabel.setText(item.getName());
-        auctionIdLabel.setText("ID: " + currentAuction.getId());
         nameLabel.setText(item.getName());
+        DesktopHeaderController.setTitleAndSubtitle(item.getName(), null);
         categoryLabel.setText(item.getCategory());
         String shopName = currentAuction.getSeller().getShopName();
         sellerLabel.setText(

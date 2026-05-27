@@ -39,16 +39,14 @@
                     <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
                 <!-- ── Header ──────────────────────────────────────────── -->
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
+                <HBox alignment="CENTER_LEFT" spacing="10" maxWidth="Infinity"> <Button text="Quay lại" onAction="#handleBack" styleClass="btn-secondary">
                         <graphic>
                             <FontIcon iconLiteral="fas-arrow-left" iconSize="13" styleClass="button-icon"/>
                         </graphic>
                     </Button>
-                    <VBox spacing="2" HBox.hgrow="ALWAYS">
-                        <Label fx:id="itemNameLabel" text="Chi tiết phiên đấu giá" styleClass="page-title"/>
-                        <Label fx:id="auctionIdLabel" text="" styleClass="label-subtle"/>
-                    </VBox>
+                    
+                    <Region HBox.hgrow="ALWAYS" />
+                    
                     <Label fx:id="statusBadge" text="..." styleClass="badge"/>
                 </HBox>
 
