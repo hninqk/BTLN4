@@ -701,14 +701,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
     @Override
     public void onOutbid(JsonObject json) {
-        String bidderId = json.get("bidderId").getAsString();
-        String itemName = json.get("itemName").getAsString();
-
-        User me = SessionManager.getInstance().getCurrentUser();
-        if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
-            NotificationManager.getInstance().addNotification(
-                    NotificationManager.outbidMessage(itemName));
-        }
+        // Intentionally no-op: outbid notifications are handled centrally by
+        // DesktopHeaderController to prevent duplicates from multiple listeners.
     }
 
     @Override

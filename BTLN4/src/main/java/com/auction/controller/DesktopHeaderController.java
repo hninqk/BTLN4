@@ -501,12 +501,10 @@ public class DesktopHeaderController implements NotificationManager.Notification
         );
         card.setPrefWidth(280);
         card.setOpacity(0.0);
-
-        javafx.scene.layout.StackPane popupWrapper = new javafx.scene.layout.StackPane(card);
-        popupWrapper.setStyle("-fx-background-color: transparent; -fx-padding: 24;");
+        card.setMouseTransparent(true);
 
         toastPopup.getContent().clear();
-        toastPopup.getContent().add(popupWrapper);
+        toastPopup.getContent().add(card);
 
         // ── Position: bottom-right of the primary screen ─────────────────────
         javafx.stage.Window window = (bellButton != null && bellButton.getScene() != null)
