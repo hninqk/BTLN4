@@ -27,6 +27,7 @@ public class AuctionWebSocketService {
         void onStatusChanged(JsonObject json);
         void onBalanceUpdate(JsonObject json);
         void onFullSync(JsonObject json);
+        void onOutbid(JsonObject json);
         void onLegacyBidUpdate(JsonObject json);
     }
 
@@ -65,11 +66,15 @@ public class AuctionWebSocketService {
 
     public void sendRequestSync() {
         if (wsClient == null || !wsClient.isConnected()) return;
+        
+        User user = SessionManager.getInstance().getCurrentUser();
         JsonObject req = new JsonObject();
         req.addProperty("type", "REQUEST_SYNC");
+        if (user != null) {
+            req.addProperty("bidderId", user.getId());
+        }
         wsClient.send(req.toString());
 
-        User user = SessionManager.getInstance().getCurrentUser();
         if (user instanceof Bidder bidder && currentAuctionId != null) {
             JsonObject abReq = new JsonObject();
             abReq.addProperty("type", "CHECK_AUTO_BID");
@@ -111,6 +116,7 @@ public class AuctionWebSocketService {
                 case "AUTO_BID_ACK"           -> listener.onAutoBidAck(json);
                 case "AUTO_BID_STATUS"        -> listener.onAutoBidStatus(json);
                 case "AUTO_BID_DEACTIVATED"   -> listener.onAutoBidDeactivated(json);
+                case "OUTBID"                 -> listener.onOutbid(json);
                 // Legacy: bare bid response without "type" field
                 default -> {
                     if (json.has("amount") && json.has("bidder")) {

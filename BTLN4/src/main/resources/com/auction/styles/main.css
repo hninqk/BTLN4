@@ -1783,9 +1783,10 @@
 
 /* Bell button – strict fixed size, no stretch */
 .bell-button {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-font-size: 24px;
+    -fx-background-color: rgba(99, 102, 241, 0.12);
+    -fx-border-color: rgba(99, 102, 241, 0.40);
+    -fx-border-width: 1;
+    -fx-font-size: 22px;
     -fx-padding: 0;
     -fx-cursor: hand;
     -fx-min-width: 44;
@@ -1794,20 +1795,63 @@
     -fx-min-height: 44;
     -fx-pref-height: 44;
     -fx-max-height: 44;
-    -fx-background-radius: 8;
+    -fx-background-radius: 22;
+    -fx-border-radius: 22;
 }
 
-/* Neon glow effect for unread notifications */
+/* Dark mode: brighter border + deeper tint so bell stands out */
+.dark-mode .bell-button {
+    -fx-background-color: rgba(129, 140, 248, 0.18);
+    -fx-border-color: rgba(165, 180, 252, 0.55);
+    -fx-border-width: 1;
+}
+
+/* Neon amber glow + tinted background for unread state */
 .bell-unread {
-    -fx-effect: dropshadow(gaussian, #f59e0b, 15, 0.5, 0, 0);
+    -fx-effect: dropshadow(gaussian, #f59e0b, 18, 0.6, 0, 0);
+    -fx-background-color: rgba(245, 158, 11, 0.18);
+    -fx-border-color: rgba(245, 158, 11, 0.60);
+}
+
+.dark-mode .bell-unread {
+    -fx-background-color: rgba(245, 158, 11, 0.22);
+    -fx-border-color: rgba(253, 211, 77, 0.70);
 }
 
 .bell-button:hover {
-    -fx-background-color: rgba(99, 102, 241, 0.12);
+    -fx-background-color: rgba(99, 102, 241, 0.24);
+    -fx-border-color: rgba(99, 102, 241, 0.65);
+}
+
+.dark-mode .bell-button:hover {
+    -fx-background-color: rgba(129, 140, 248, 0.30);
+    -fx-border-color: rgba(165, 180, 252, 0.80);
 }
 
 .bell-button:pressed {
-    -fx-background-color: rgba(99, 102, 241, 0.22);
+    -fx-background-color: rgba(99, 102, 241, 0.35);
+}
+
+/* ── Bid Toast Notification ────────────────────────────────────────── */
+.bid-toast {
+    -fx-background-color: linear-gradient(to right, #064e3b, #065f46);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(52, 211, 153, 0.55);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0, 0, 6);
+    -fx-padding: 12 18 12 14;
+}
+
+.bid-toast-name {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: rgba(167, 243, 208, 0.90);
+}
+
+.bid-toast-amount {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ECFDF5;
 }
 
 /* Unread notification badge */

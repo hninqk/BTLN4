@@ -9,6 +9,7 @@ import com.auction.util.NavigationManager;
 import com.auction.util.NotificationManager;
 import com.auction.util.SessionManager;
 import com.auction.util.TimeSyncManager;
+import com.auction.service.AuctionWebSocketService;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -128,7 +129,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
     private Auction currentAuction;
     private ScheduledExecutorService scheduler;
     private com.auction.util.AuctionChartHelper chartHelper;
-    private com.auction.service.AuctionWebSocketService wsService;
     private volatile boolean wsConnected = false;
     private int knownBidCount = 0;
 
@@ -233,16 +233,34 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
                     this.currentAuction = full;
                     populateStaticView();
                     preloadBidsIntoChartAndFeed();
-                    // Full refresh after REST data arrives with complete bid history
+
+                    // Register for global WebSocket updates
+                    SessionManager.getInstance().addWsListener(this);
+                    AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+                    if (globalWs != null && globalWs.isConnected()) {
+                        wsConnected = true;
+                        // Request auto-bid check for THIS auction
+                        User user = SessionManager.getInstance().getCurrentUser();
+                        if (user instanceof Bidder bidder) {
+                            JsonObject abReq = new JsonObject();
+                            abReq.addProperty("type", "CHECK_AUTO_BID");
+                            abReq.addProperty("auctionId", currentAuction.getId());
+                            abReq.addProperty("bidderId", bidder.getId());
+                            globalWs.send(abReq.toString());
+                        }
+                    }
+
+                    // Full refresh after REST data arrives with complete bid history and WebSocket state is synced
                     refreshAll();
                     loadAutoBidState();
-                    connectWebSocket(); // Only connect WS after we have baseline bids
                 });
             });
 
             task.setOnFailed(e -> {
                 System.err.println("[AuctionDetail] Failed to fetch full details: " + task.getException().getMessage());
-                connectWebSocket(); // Fallback: connect anyway
+                SessionManager.getInstance().addWsListener(this);
+                wsConnected = SessionManager.getInstance().getGlobalWs() != null && SessionManager.getInstance().getGlobalWs().isConnected();
+                refreshControls();
             });
 
             new Thread(task, "fetch-full-auction").start();
@@ -357,20 +375,11 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
     public void shutdown() {
         if (scheduler != null && !scheduler.isShutdown()) scheduler.shutdown();
-        if (wsService != null) wsService.disconnect();
+        SessionManager.getInstance().removeWsListener(this);
     }
 
     /** Called by NavigationManager when leaving this screen. */
     public void cleanup() { shutdown(); }
-
-    // ──────────────────────────────────────────────────────────────────────────
-    // WebSocket
-    // ──────────────────────────────────────────────────────────────────────────
-
-    private void connectWebSocket() {
-        wsService = new com.auction.service.AuctionWebSocketService(currentAuction != null ? currentAuction.getId() : null, this);
-        wsService.connect();
-    }
 
     // ──────────────────────────────────────────────────────────────────────────
     // WebSocket Listener Implementation
@@ -391,12 +400,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         
         // Fetch auto-bid status so the label displays immediately
         User user = SessionManager.getInstance().getCurrentUser();
-        if (user instanceof Bidder bidder && currentAuction != null) {
+        AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+        if (user instanceof Bidder bidder && currentAuction != null && globalWs != null) {
             JsonObject req = new JsonObject();
             req.addProperty("type", "CHECK_AUTO_BID");
             req.addProperty("auctionId", currentAuction.getId());
             req.addProperty("bidderId", bidder.getId());
-            wsService.send(req.toString());
+            globalWs.send(req.toString());
         }
     }
 
@@ -464,29 +474,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
         setTextIfChanged(bidErrorLabel, "");
 
-        // ── Role-based notification on new bid ──────────────────────────────
-        if (currentAuction != null) {
-            User me = SessionManager.getInstance().getCurrentUser();
-            String itemName = currentAuction.getItem().getName();
-
-            if (me instanceof Bidder myBidder) {
-                // Check if the current user was just outbid
-                boolean wasHighest = currentAuction.getBidHistory().stream()
-                        .filter(b -> b.getBidder().getId().equals(myBidder.getId()))
-                        .count() > 0 && !bidderId.equals(myBidder.getId());
-                if (wasHighest) {
-                    NotificationManager.getInstance().addNotification(
-                            NotificationManager.bidderOutbid(itemName));
-                }
-            } else if (me instanceof Seller mySeller) {
-                // Notify seller that their item received a new bid
-                if (currentAuction.getSeller().getId().equals(mySeller.getId())) {
-                    NotificationManager.getInstance().addNotification(
-                            NotificationManager.sellerNewBid(itemName, amount, bidderName));
-                }
-            }
-        }
-
         // PERF: A new bid only affects the price/count/hint labels and the
         // bid controls (e.g. highest-bidder detection). No need to touch
         // countdown, balance, status badge, or winner section.
@@ -524,12 +511,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         
         // Fetch new status to update the label and fields
         User user = SessionManager.getInstance().getCurrentUser();
-        if (user instanceof Bidder bidder && wsConnected && wsService != null) {
+        AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+        if (user instanceof Bidder bidder && wsConnected && globalWs != null) {
             JsonObject req = new JsonObject();
             req.addProperty("type", "CHECK_AUTO_BID");
             req.addProperty("auctionId", aid != null ? aid : currentAuction.getId());
             req.addProperty("bidderId", bidder.getId());
-            wsService.send(req.toString());
+            globalWs.send(req.toString());
         }
         
         // PERF: Auto-bid acknowledgement only needs to refresh controls
@@ -633,41 +621,6 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             String winnerUsername = json.has("winnerUsername") ? json.get("winnerUsername").getAsString() : null;
             double winnerBid      = json.has("winnerBid")      ? json.get("winnerBid").getAsDouble()      : -1;
             showWinnerAnnouncement(winnerUsername, winnerBid);
-
-            // ── Role-based notification on auction CLOSED ───────────────────
-            if (currentAuction != null) {
-                User me = SessionManager.getInstance().getCurrentUser();
-                String itemName = currentAuction.getItem().getName();
-
-                if (me instanceof Bidder myBidder) {
-                    boolean iWon = winnerUsername != null
-                            && winnerUsername.equals(myBidder.getUsername());
-                    if (iWon && winnerBid > 0) {
-                        NotificationManager.getInstance().addNotification(
-                                NotificationManager.bidderWon(itemName, winnerBid));
-                    } else if (!iWon && winnerUsername != null) {
-                        NotificationManager.getInstance().addNotification(
-                                NotificationManager.bidderLost(itemName, winnerUsername,
-                                        winnerBid > 0 ? winnerBid : currentAuction.getHighestBid()));
-                    }
-                } else if (me instanceof Seller mySeller) {
-                    if (currentAuction.getSeller().getId().equals(mySeller.getId())) {
-                        String buyer = winnerUsername != null ? winnerUsername : "Không có";
-                        double price = winnerBid > 0 ? winnerBid : currentAuction.getHighestBid();
-                        NotificationManager.getInstance().addNotification(
-                                NotificationManager.sellerAuctionClosed(itemName, price, buyer));
-                    }
-                }
-            }
-        }
-
-        // Notify Bidder when auction opens (OPEN state → new auction available)
-        if ("OPEN".equals(newStatusStr) && !AuctionStatus.OPEN.equals(previousStatus)) {
-            User me = SessionManager.getInstance().getCurrentUser();
-            if (me instanceof Bidder && currentAuction != null) {
-                NotificationManager.getInstance().addNotification(
-                        NotificationManager.bidderNewAuction(currentAuction.getItem().getName()));
-            }
         }
     }
 
@@ -743,6 +696,18 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         for (BidTransaction bt : history) {
             chartHelper.addBid(bt);
             addBidToFeed(bt);
+        }
+    }
+
+    @Override
+    public void onOutbid(JsonObject json) {
+        String bidderId = json.get("bidderId").getAsString();
+        String itemName = json.get("itemName").getAsString();
+
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
+            NotificationManager.getInstance().addNotification(
+                    NotificationManager.outbidMessage(itemName));
         }
     }
 
@@ -1218,7 +1183,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             return;
         }
 
-        if (!wsConnected || wsService == null) {
+        AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+        if (!wsConnected || globalWs == null) {
             bidErrorLabel.setText("Không thể kết nối server. Vui lòng chờ server hoạt động.");
             return;
         }
@@ -1231,7 +1197,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         req.addProperty("bidderUsername", bidder.getUsername());
         req.addProperty("bidderBalance",  bidder.getAccountBalance());
         req.addProperty("amount",         amount);
-        wsService.send(req.toString());
+        globalWs.send(req.toString());
         bidAmountField.clear();
 
         // Disable immediately to prevent double-click while waiting for server
@@ -1256,12 +1222,13 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
 
             // Fetch current auto-bid status
             User user = SessionManager.getInstance().getCurrentUser();
-            if (user instanceof Bidder bidder && wsConnected && wsService != null) {
+            AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+            if (user instanceof Bidder bidder && wsConnected && globalWs != null) {
                 JsonObject req = new JsonObject();
                 req.addProperty("type", "CHECK_AUTO_BID");
                 req.addProperty("auctionId", currentAuction.getId());
                 req.addProperty("bidderId", bidder.getId());
-                wsService.send(req.toString());
+                globalWs.send(req.toString());
             }
         }
     }
@@ -1312,7 +1279,8 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
             return;
         }
 
-        if (!wsConnected || wsService == null) {
+        AuctionWebSocketService globalWs = SessionManager.getInstance().getGlobalWs();
+        if (!wsConnected || globalWs == null) {
             autoBidErrorLabel.setText("Không thể kết nối server. Vui lòng chờ.");
             autoBidErrorLabel.setStyle("-fx-text-fill: red;");
             return;
@@ -1324,7 +1292,7 @@ public class AuctionDetailController implements DataReceiver, com.auction.servic
         req.addProperty("bidderId", bidder.getId());
         req.addProperty("maxBid", maxBid);
         req.addProperty("increment", increment);
-        wsService.send(req.toString());
+        globalWs.send(req.toString());
 
         registerAutoBidButton.setDisable(true);
         autoMaxBidField.setDisable(true);

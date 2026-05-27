@@ -162,7 +162,7 @@ public class RestApiHandler {
 
             JsonArray arr = new JsonArray();
             for (Auction a : auctions)
-                arr.add(AuctionSerializer.auctionToJson(a, false));
+                arr.add(AuctionSerializer.auctionToJson(a, true));
             ctx.status(200).contentType("application/json").result(arr.toString());
         } catch (Exception e) {
             ctx.status(500).contentType("application/json")

@@ -14,6 +14,7 @@ import io.javalin.websocket.WsMessageContext;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -45,6 +46,10 @@ public class AuctionWebSocketHandler {
 
     // All currently connected clients
     private final Set<WsContext> sessions = ConcurrentHashMap.newKeySet();
+
+    // Cache to store the latest outbid notification per bidder (RAM only)
+    // Map<bidderId, latestOutbidItemName>
+    private final Map<String, String> outbidCache = new ConcurrentHashMap<>();
 
     // Scheduler for auto-finishing expired auctions
     private final ScheduledExecutorService autoFinishScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -183,11 +188,20 @@ public class AuctionWebSocketHandler {
                 case "ADMIN_ACTION"      -> handleAdminAction(ctx, req);
                 case "REQUEST_SYNC"      -> handleRequestSync(ctx);
                 case "CHECK_AUTO_BID"    -> handleCheckAutoBid(ctx, req);
+                case "CLEAR_NOTIFICATIONS" -> handleClearNotifications(ctx, req);
                 default                  -> sendError(ctx, "Unknown message type: " + type);
             }
         } catch (Exception e) {
             sendError(ctx, "Server error: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void handleClearNotifications(WsMessageContext ctx, JsonObject req) {
+        if (req.has("bidderId")) {
+            String bidderId = req.get("bidderId").getAsString();
+            outbidCache.remove(bidderId);
+            System.out.println("[Server] Notifications cleared for user " + bidderId);
         }
     }
 
@@ -280,6 +294,16 @@ public class AuctionWebSocketHandler {
                         unfrozenOldBidder.getUsername(),
                         unfrozenOldBidder.getAvailableBalance(),
                         unfrozenOldBidder.getFrozenBalance());
+
+                // ── Broadcast OUTBID notification specifically for the outbid user ──
+                JsonObject outbidNotif = new JsonObject();
+                outbidNotif.addProperty("type",      "OUTBID");
+                outbidNotif.addProperty("bidderId",  unfrozenOldBidder.getId());
+                outbidNotif.addProperty("itemName",  auction.getItem().getName());
+                broadcastAll(outbidNotif.toString());
+
+                // Update server-side RAM cache for this user
+                outbidCache.put(unfrozenOldBidder.getId(), auction.getItem().getName());
             }
             
             // ── Cập nhật Auto-Bidding sau manual bid ──
@@ -382,6 +406,19 @@ public class AuctionWebSocketHandler {
             balUpdate.addProperty("frozenBalance", freshBidder.getFrozenBalance());
             balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
             broadcastAll(balUpdate.toString());
+
+            // ── Broadcast OUTBID notification for auto-bid victims ──
+            String itemName = auctionService.findById(auctionId)
+                    .map(a -> a.getItem().getName()).orElse("sản phẩm");
+            
+            JsonObject outbidNotif = new JsonObject();
+            outbidNotif.addProperty("type", "OUTBID");
+            outbidNotif.addProperty("bidderId", freshBidder.getId());
+            outbidNotif.addProperty("itemName", itemName);
+            broadcastAll(outbidNotif.toString());
+
+            // Update server-side RAM cache
+            outbidCache.put(freshBidder.getId(), itemName);
         }
         
         for (String bidderId : abResult.deactivatedBidderIds) {
@@ -499,6 +536,9 @@ public class AuctionWebSocketHandler {
 
     private void handleRequestSync(WsMessageContext ctx) {
         try {
+            JsonObject req = gson.fromJson(ctx.message(), JsonObject.class);
+            String bidderId = req.has("bidderId") ? req.get("bidderId").getAsString() : null;
+
             List<Auction> all = auctionService.getAllAuctions();
             JsonArray arr = new JsonArray();
             for (Auction a : all) {
@@ -510,6 +550,20 @@ public class AuctionWebSocketHandler {
             ctx.send(resp.toString());
             System.out.println("[Server] FULL_SYNC sent to " + ctx.sessionId()
                     + "  (" + all.size() + " auctions)");
+
+            // Replay cached outbid notification if exists for this user
+            if (bidderId != null && outbidCache.containsKey(bidderId)) {
+                String itemName = outbidCache.get(bidderId);
+                JsonObject outbidNotif = new JsonObject();
+                outbidNotif.addProperty("type", "OUTBID");
+                outbidNotif.addProperty("bidderId", bidderId);
+                outbidNotif.addProperty("itemName", itemName);
+                ctx.send(outbidNotif.toString());
+                System.out.println("[Server] Replaying cached OUTBID for user " + bidderId);
+                
+                // Consumed: clear it from cache so it doesn't replay on next sync
+                outbidCache.remove(bidderId);
+            }
         } catch (Exception e) {
             sendError(ctx, e.getMessage());
         }

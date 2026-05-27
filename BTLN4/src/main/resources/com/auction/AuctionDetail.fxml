@@ -138,7 +138,7 @@
                             <Separator/>
                             <Label text="Giá đặt của bạn (₫):" styleClass="form-label"/>
                             <TextField fx:id="bidAmountField" promptText="Nhập số tiền..."
-                                       styleClass="text-field"/>
+                                       styleClass="text-field" onAction="#handlePlaceBid"/>
                             <Label fx:id="minBidHint" text="Tối thiểu: --" styleClass="label-subtle"/>
                             <Label fx:id="sellerWarningLabel" text="Bạn là seller, không được đấu giá!"
                                    style="-fx-text-fill: red; -fx-font-weight: bold;" managed="false" visible="false"/>

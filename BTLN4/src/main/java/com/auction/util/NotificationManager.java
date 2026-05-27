@@ -11,12 +11,11 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * NotificationManager – singleton lưu tối đa 15 thông báo gần nhất.
+ * NotificationManager – singleton lưu thông báo mới nhất.
  *
  * Cung cấp:
  *  - addNotification(content) để push thông báo từ bất kỳ thread nào.
  *  - Listener pattern để DesktopHeaderController nhận cập nhật UI.
- *  - Static factory methods sinh nội dung theo vai trò (Bidder/Seller/Admin).
  */
 public class NotificationManager {
 
@@ -57,7 +56,7 @@ public class NotificationManager {
 
     // ── State ────────────────────────────────────────────────────────────────────
 
-    private static final int MAX_NOTIFICATIONS = 15;
+    private static final int MAX_NOTIFICATIONS = 20;
 
     /** Head = newest notification. */
     private final Deque<AppNotification> notifications = new ArrayDeque<>();
@@ -121,6 +120,14 @@ public class NotificationManager {
         listeners.remove(listener);
     }
 
+    /** Clear all notifications (used on logout). */
+    public void clear() {
+        synchronized (notifications) {
+            notifications.clear();
+        }
+        dispatchAllRead();
+    }
+
     // ── Dispatch ─────────────────────────────────────────────────────────────────
 
     private void dispatchAdded(AppNotification notif) {
@@ -144,71 +151,12 @@ public class NotificationManager {
     }
 
     // ════════════════════════════════════════════════════════════════════════════
-    // ROLE-BASED CONTENT FACTORY METHODS
+    // CONTENT FACTORY
     // ════════════════════════════════════════════════════════════════════════════
 
-    // ── Bidder events ─────────────────────────────────────────────────────────────
-
-    /** Bidder: có phiên đấu giá mới mở. */
-    public static String bidderNewAuction(String itemName) {
-        return "[Sản phẩm mới] Phiên đấu giá cho sản phẩm \"" + itemName
-                + "\" đã chính thức mở. Tham gia đặt giá ngay!";
-    }
-
-    /** Bidder: bị người khác vượt giá. */
-    public static String bidderOutbid(String itemName) {
+    /** Thông báo vượt giá. */
+    public static String outbidMessage(String itemName) {
         return "[Vượt giá] Cảnh báo! Một bidder khác đã trả giá cao hơn bạn tại sản phẩm \""
                 + itemName + "\".";
-    }
-
-    /** Bidder thắng cuộc. */
-    public static String bidderWon(String itemName, double finalPrice) {
-        return "[Chúc mừng] Bạn đã THẮNG CUỘC phiên đấu giá sản phẩm \""
-                + itemName + "\" với mức giá chốt là "
-                + String.format("%,.0f", finalPrice) + "đ!";
-    }
-
-    /** Bidder thua cuộc. */
-    public static String bidderLost(String itemName, String winnerName, double finalPrice) {
-        return "[Kết thúc] Phiên đấu giá \"" + itemName
-                + "\" đã khép lại. Người thắng cuộc: " + winnerName
-                + " với giá " + String.format("%,.0f", finalPrice) + "đ.";
-    }
-
-    // ── Seller events ─────────────────────────────────────────────────────────────
-
-    /** Seller: Admin duyệt sản phẩm. */
-    public static String sellerApproved(String itemName) {
-        return "[Phê duyệt] Sản phẩm \"" + itemName
-                + "\" của bạn đã được Admin duyệt và đưa vào sàn.";
-    }
-
-    /** Seller: Admin hủy phiên đấu giá. */
-    public static String sellerCanceled(String itemName) {
-        return "[Hủy phiên] Ban quản trị đã hủy phiên đấu giá sản phẩm \""
-                + itemName + "\" của bạn do vi phạm điều khoản.";
-    }
-
-    /** Seller: có người đặt giá mới. */
-    public static String sellerNewBid(String itemName, double amount, String bidderName) {
-        return "[Lượt đặt giá] Sản phẩm \"" + itemName
-                + "\" của bạn vừa nhận được một mức giá mới: "
-                + String.format("%,.0f", amount) + "đ từ người dùng " + bidderName + ".";
-    }
-
-    /** Seller: phiên đấu giá kết thúc. */
-    public static String sellerAuctionClosed(String itemName, double finalPrice, String winnerName) {
-        return "[Kết thúc] Phiên đấu giá sản phẩm \"" + itemName
-                + "\" của bạn đã hoàn thành. Giá chốt: "
-                + String.format("%,.0f", finalPrice) + "đ. Người mua: " + winnerName + ".";
-    }
-
-    // ── Admin events ─────────────────────────────────────────────────────────────
-
-    /** Admin: có sản phẩm mới cần duyệt. */
-    public static String adminPendingApproval(String sellerName, String itemName) {
-        return "[Yêu cầu duyệt] Người bán " + sellerName
-                + " vừa đăng bán một sản phẩm mới: \"" + itemName
-                + "\". Vui lòng kiểm tra và phê duyệt.";
     }
 }
