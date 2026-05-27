@@ -109,30 +109,91 @@ public class SplashController {
                 try {
                     com.auction.service.AppFacade facade = com.auction.service.AppFacade.getInstance();
                     java.util.List<com.auction.model.Auction> allAuctions = facade.getAllAuctions();
-                    java.util.List<com.auction.model.Auction> fullAuctions = new java.util.ArrayList<>();
-                    for (com.auction.model.Auction a : allAuctions) {
-                        facade.findAuctionById(a.getId()).ifPresent(fullAuctions::add);
-                    }
-                    UserProfileController.preloadCache(fullAuctions);
-                    BidHistoryController.preloadCache(fullAuctions);
 
-                    // Preload images at every size actually used in the UI so that
-                    // CacheManager hits occur on all screens (keys include dimensions).
-                    // Dashboard card  → 200×120
-                    // AuctionDetail   → 420×250
-                    // AuctionList row → 120×80
-                    int preloadedImages = 0;
-                    for (com.auction.model.Auction a : fullAuctions) {
-                        String imgUrl = a.getItem() != null ? a.getItem().getImageUrl() : null;
-                        if (imgUrl != null && !imgUrl.isEmpty()) {
-                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 200, 120);
-                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 420, 250);
-                            com.auction.util.ImageLoaderUtil.loadItemImageSync(imgUrl, 120, 80);
-                            preloadedImages++;
-                            if (preloadedImages >= 20) break;
+                    // ── Parallel detail fetch ────────────────────────────────────────────
+                    // BOTTLENECK: facade.findAuctionById() is a blocking HTTP GET.
+                    // Doing N of them sequentially = N × RTT.  Running them concurrently
+                    // collapses that to ≈ ceil(N/5) × RTT.
+                    //
+                    // Safety rationale:
+                    //  • ApiClient uses Java-11 HttpClient — thread-safe by spec.
+                    //  • AppFacade.findAuctionById is stateless (HTTP + JSON parse only).
+                    //  • Results are joined *after* all futures finish, so fullAuctions is
+                    //    built on the boot thread before any cache consumer touches it.
+                    //  • preloadCache calls must stay sequential: each calls .clear() first
+                    //    and then writes — cannot race with each other or with list assembly.
+                    java.util.List<java.util.concurrent.CompletableFuture<
+                            java.util.Optional<com.auction.model.Auction>>> futures =
+                            new java.util.ArrayList<>(allAuctions.size());
+
+                    java.util.concurrent.ExecutorService fetchPool =
+                            java.util.concurrent.Executors.newFixedThreadPool(5);
+                    try {
+                        for (com.auction.model.Auction a : allAuctions) {
+                            final String id = a.getId();
+                            futures.add(java.util.concurrent.CompletableFuture
+                                    .supplyAsync(() -> facade.findAuctionById(id), fetchPool));
                         }
+                        // All N HTTP calls are now in-flight concurrently.
+                        // Join in submission order — order doesn't matter for a cache,
+                        // but joining sequentially is fine since all run in parallel.
+                        java.util.List<com.auction.model.Auction> fullAuctions =
+                                new java.util.ArrayList<>(allAuctions.size());
+                        for (var f : futures) {
+                            f.join().ifPresent(fullAuctions::add);
+                        }
+
+                        // Sequential — each calls .clear() internally, must not overlap.
+                        UserProfileController.preloadCache(fullAuctions);
+                        BidHistoryController.preloadCache(fullAuctions);
+
+                        // ── Parallel image preload (3 threads, 3 sizes each) ────────────
+                        java.util.List<com.auction.model.Auction> toPreload = new java.util.ArrayList<>();
+                        for (com.auction.model.Auction a : fullAuctions) {
+                            String imgUrl = a.getItem() != null ? a.getItem().getImageUrl() : null;
+                            if (imgUrl != null && !imgUrl.isEmpty()) {
+                                toPreload.add(a);
+                                if (toPreload.size() >= 20) break;
+                            }
+                        }
+
+                        int taskCount = toPreload.size() * 3; // 3 sizes per auction
+                        java.util.concurrent.CountDownLatch latch =
+                                new java.util.concurrent.CountDownLatch(taskCount);
+                        java.util.concurrent.atomic.AtomicInteger preloadedImages =
+                                new java.util.concurrent.atomic.AtomicInteger(0);
+                        java.util.concurrent.ExecutorService imgPool =
+                                java.util.concurrent.Executors.newFixedThreadPool(3);
+
+                        try {
+                            int[][] SIZES = {{200, 120}, {420, 250}, {120, 80}};
+                            for (com.auction.model.Auction a : toPreload) {
+                                final String url = a.getItem().getImageUrl();
+                                for (int[] sz : SIZES) {
+                                    final int w = sz[0], h = sz[1];
+                                    imgPool.submit(() -> {
+                                        try {
+                                            com.auction.util.ImageLoaderUtil.loadItemImageSync(url, w, h);
+                                        } catch (Exception ex) {
+                                            System.err.printf("[Splash] Image preload failed (%dx%d) %s: %s%n",
+                                                    w, h, url, ex.getMessage());
+                                        } finally {
+                                            latch.countDown();
+                                        }
+                                    });
+                                }
+                                preloadedImages.incrementAndGet();
+                            }
+                            latch.await(); // block until all 3×N tasks complete
+                        } finally {
+                            imgPool.shutdown();
+                        }
+                        System.out.printf("[Splash] Pre-cached images for %d auctions at 3 sizes (parallel).%n",
+                                preloadedImages.get());
+
+                    } finally {
+                        fetchPool.shutdown();
                     }
-                    System.out.printf("[Splash] Pre-cached images for %d auctions at 3 sizes.%n", preloadedImages);
                 } catch (Exception e) {
                     System.err.println("Cache preload error: " + e.getMessage());
                 }
