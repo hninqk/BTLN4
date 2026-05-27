@@ -46,23 +46,26 @@ public class CurrencyUtil {
                 change.setRange(0, change.getControlText().length());
                 change.setText(formatted);
 
-                // Find the new caret position in the formatted string that matches the same number of digits
-                int finalCaret = 0;
+                // Find the new caret position in the formatted string that matches the same number of digits.
+                // Walk through the formatted string, counting digits; stop when we've counted
+                // as many digits as were before the caret in the raw (pre-format) new text.
+                int finalCaret = formatted.length(); // default: end of string
                 int digitsSeen = 0;
+                boolean caretPlaced = false;
                 for (int i = 0; i < formatted.length(); i++) {
                     if (digitsSeen == digitsBeforeCaret) {
+                        // We have counted exactly the right number of digits – place the
+                        // caret here (before any trailing comma/separator at position i).
                         finalCaret = i;
+                        caretPlaced = true;
                         break;
                     }
                     if (Character.isDigit(formatted.charAt(i))) {
                         digitsSeen++;
                     }
                 }
-                
-                // If we've seen all the required digits, or the caret was at the very end
-                if (digitsSeen < digitsBeforeCaret || digitsSeen == digitsBeforeCaret) {
-                    finalCaret = formatted.length();
-                }
+                // If the loop ended without placing the caret (all digits consumed),
+                // finalCaret stays at formatted.length() which is the correct end position.
 
                 change.setCaretPosition(finalCaret);
                 change.setAnchor(finalCaret);

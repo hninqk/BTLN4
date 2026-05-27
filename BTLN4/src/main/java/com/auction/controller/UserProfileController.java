@@ -101,6 +101,9 @@ public class UserProfileController {
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
 
+        // Apply thousands-separator formatting to the deposit input field
+        com.auction.util.CurrencyUtil.setupCurrencyTextField(depositField);
+
         if (currentUser != null) {
             populateProfile();
             // Fetch fresh data from server to ensure balance is up-to-date
