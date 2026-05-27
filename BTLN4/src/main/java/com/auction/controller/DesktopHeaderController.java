@@ -49,6 +49,12 @@ import java.util.List;
 public class DesktopHeaderController implements NotificationManager.NotificationListener, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
     private final java.util.Map<String, Double> pendingAcks = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Auctions the current user has placed at least one bid on (populated on login). */
+    private final java.util.Set<String> biddedAuctionIds = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Maps auctionId → item name so toast can show the item without extra HTTP calls. */
+    private final java.util.Map<String, String> auctionItemNames = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Dedup guard: auction IDs already added as notifications this session. */
+    private final java.util.Set<String> notifiedThisSession = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     // ── FXML bindings ─────────────────────────────────────────────────────────
     @FXML private HBox    headerRoot;
@@ -102,30 +108,45 @@ public class DesktopHeaderController implements NotificationManager.Notification
                 for (com.auction.model.Auction a : auctions) {
                     if (a.getStatus() != com.auction.model.AuctionStatus.RUNNING) continue;
 
-                    // Fetch detailed auction from remote server to get the bid history
                     AppFacade.getInstance().findAuctionById(a.getId()).ifPresent(fullAuction -> {
+                        // Cache item name for real-time toast display
+                        auctionItemNames.put(fullAuction.getId(), fullAuction.getItem().getName());
+
                         double myMaxBid = 0;
                         boolean hasBid = false;
                         for (com.auction.model.BidTransaction bt : fullAuction.getBidHistory()) {
                             if (bt.getBidder().getId().equals(me.getId())) {
                                 hasBid = true;
-                                if (bt.getAmount() > myMaxBid) {
-                                    myMaxBid = bt.getAmount();
-                                }
+                                if (bt.getAmount() > myMaxBid) myMaxBid = bt.getAmount();
                             }
                         }
 
-                        // Formula: Has bid AND user's highest bid < current highest bid
-                        if (hasBid && myMaxBid < fullAuction.getHighestBid()) {
-                            String prefKey = "ack_" + me.getId() + "_" + fullAuction.getId();
-                            java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(DesktopHeaderController.class);
-                            double ackedBid = prefs.getDouble(prefKey, 0.0);
+                        if (hasBid) {
+                            biddedAuctionIds.add(fullAuction.getId()); // track for real-time updates
 
-                            if (fullAuction.getHighestBid() > ackedBid) {
-                                NotificationManager.getInstance().addNotification(
-                                    NotificationManager.outbidMessage(fullAuction.getItem().getName())
-                                );
-                                pendingAcks.put(prefKey, fullAuction.getHighestBid());
+                            // Formula: user's highest bid < auction's current highest bid
+                            if (myMaxBid < fullAuction.getHighestBid()) {
+                                String prefKey = "ack_" + me.getId() + "_" + fullAuction.getId();
+                                java.util.prefs.Preferences prefs =
+                                    java.util.prefs.Preferences.userNodeForPackage(DesktopHeaderController.class);
+                                double ackedBid = prefs.getDouble(prefKey, 0.0);
+
+                            // Session dedup & Persistence check
+                            if (!NotificationManager.getInstance().containsOutbidFor(fullAuction.getItem().getName()) 
+                                    && notifiedThisSession.add(fullAuction.getId())) {
+                                
+                                if (fullAuction.getHighestBid() > ackedBid) {
+                                    NotificationManager.getInstance().addNotification(
+                                        NotificationManager.outbidMessage(fullAuction.getItem().getName())
+                                    );
+                                    pendingAcks.put(prefKey, fullAuction.getHighestBid());
+                                } else if (ackedBid > 0 && myMaxBid < fullAuction.getHighestBid()) {
+                                    // Restore previously read notification across logins!
+                                    NotificationManager.getInstance().addReadNotification(
+                                        NotificationManager.outbidMessage(fullAuction.getItem().getName())
+                                    );
+                                }
+                            }
                             }
                         }
                     });
@@ -135,14 +156,9 @@ public class DesktopHeaderController implements NotificationManager.Notification
 
     @Override
     public void onOutbid(JsonObject json) {
-        String bidderId = json.get("bidderId").getAsString();
-        String itemName = json.get("itemName").getAsString();
-
-        User me = SessionManager.getInstance().getCurrentUser();
-        if (me instanceof Bidder myBidder && myBidder.getId().equals(bidderId)) {
-            NotificationManager.getInstance().addNotification(
-                    NotificationManager.outbidMessage(itemName));
-        }
+        // Intentionally no-op: outbid state is handled by evaluateOutbidState() on
+        // login and by real-time logic inside onBidUpdate(). Routing through both
+        // would cause duplicate notifications.
     }
 
     @Override public void onWsConnected() {}
@@ -152,14 +168,45 @@ public class DesktopHeaderController implements NotificationManager.Notification
     public void onBidUpdate(JsonObject j) {
         String bidderName = j.has("bidderUsername") ? j.get("bidderUsername").getAsString() : "Bidder";
         double amount     = j.has("amount")         ? j.get("amount").getAsDouble()         : 0;
+        String auctionId  = j.has("auctionId")      ? j.get("auctionId").getAsString()      : "";
+        String itemName   = auctionItemNames.getOrDefault(auctionId, "");
 
-        // Do not show the toast to the person who just placed the bid
         User me = SessionManager.getInstance().getCurrentUser();
+
         if (me != null && me.getUsername().equals(bidderName)) {
-            return;
+            // I just placed a bid — track this auction for future outbid detection
+            if (!auctionId.isEmpty()) {
+                biddedAuctionIds.add(auctionId);
+                if (itemName.isEmpty()) {
+                    // Fetch item name in background for future toasts
+                    String aid = auctionId;
+                    CompletableFuture.runAsync(() ->
+                        AppFacade.getInstance().findAuctionById(aid)
+                            .ifPresent(a -> auctionItemNames.put(aid, a.getItem().getName())));
+                }
+            }
+            return; // don't show toast for own bid
         }
 
-        Platform.runLater(() -> showBidToast(bidderName, amount));
+        // Real-time outbid: if current user has bid on this auction, notify them now
+        if (me != null && !auctionId.isEmpty() && biddedAuctionIds.contains(auctionId)) {
+            String prefKey = "ack_" + me.getId() + "_" + auctionId;
+            java.util.prefs.Preferences prefs =
+                java.util.prefs.Preferences.userNodeForPackage(DesktopHeaderController.class);
+            double ackedBid = prefs.getDouble(prefKey, 0.0);
+            // Dedup key includes amount so each new higher bid triggers exactly one notification
+            String dedupKey = auctionId + "_rt_" + amount;
+            if (amount > ackedBid && notifiedThisSession.add(dedupKey)) {
+                String notifItem = itemName.isEmpty() ? "mục đấu giá" : itemName;
+                NotificationManager.getInstance().addNotification(
+                    NotificationManager.outbidMessage(notifItem)
+                );
+                pendingAcks.put(prefKey, amount);
+            }
+        }
+
+        String toastItem = itemName;
+        Platform.runLater(() -> showBidToast(bidderName, amount, toastItem));
     }
     @Override public void onAutoBidLog(JsonObject j) {}
     @Override public void onAutoBidAck(JsonObject j) {}
@@ -224,19 +271,7 @@ public class DesktopHeaderController implements NotificationManager.Notification
         HBox.setHgrow(title, Priority.ALWAYS);
         title.setMaxWidth(Double.MAX_VALUE);
 
-        Button markAllBtn = new Button("Đọc tất cả");
-        markAllBtn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: -theme-primary;" +
-            "-fx-font-size: 11px;" +
-            "-fx-cursor: hand;" +
-            "-fx-padding: 2 6;"
-        );
-        markAllBtn.setOnAction(e -> {
-            NotificationManager.getInstance().markAllRead();
-        });
-
-        header.getChildren().addAll(title, markAllBtn);
+        header.getChildren().add(title);
 
         // ── Scrollable notification list ─────────────────────────────────────
         notifListBox = new VBox(0);
@@ -355,14 +390,8 @@ public class DesktopHeaderController implements NotificationManager.Notification
             if (unread > 0) {
                 badgeLabel.setText(unread > 9 ? "9+" : String.valueOf(unread));
                 badgeLabel.setVisible(true);
-                if (bellButton != null && !bellButton.getStyleClass().contains("bell-unread")) {
-                    bellButton.getStyleClass().add("bell-unread");
-                }
             } else {
                 badgeLabel.setVisible(false);
-                if (bellButton != null) {
-                    bellButton.getStyleClass().remove("bell-unread");
-                }
             }
         }
     }
@@ -429,7 +458,7 @@ public class DesktopHeaderController implements NotificationManager.Notification
      * the screen. Triggered for ALL connected viewers when a BID_UPDATE arrives
      * (not just the bidder). Timeline: fade-in 300ms → hold 3.5s → fade-out 800ms.
      */
-    private void showBidToast(String bidderName, double amount) {
+    private void showBidToast(String bidderName, double amount, String itemName) {
         if (toastPopup == null) return;
         if (toastPopup.isShowing()) toastPopup.hide();
 
@@ -440,10 +469,17 @@ public class DesktopHeaderController implements NotificationManager.Notification
         Label nameLbl = new Label(bidderName + " vừa đặt giá");
         nameLbl.setStyle("-fx-font-size: 11.5px; -fx-text-fill: rgba(167,243,208,0.90);");
 
-        Label amountLbl = new Label(String.format("%,.0f ₫", amount));
+        Label amountLbl = new Label(String.format("%,.0f \u20ab", amount));
         amountLbl.setStyle("-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: #ECFDF5;");
 
-        VBox textBox = new VBox(2, nameLbl, amountLbl);
+        VBox textBox;
+        if (itemName != null && !itemName.isEmpty()) {
+            Label itemLbl = new Label(itemName);
+            itemLbl.setStyle("-fx-font-size: 10.5px; -fx-text-fill: rgba(167,243,208,0.65); -fx-font-style: italic;");
+            textBox = new VBox(1, nameLbl, amountLbl, itemLbl);
+        } else {
+            textBox = new VBox(2, nameLbl, amountLbl);
+        }
 
         HBox card = new HBox(12, icon, textBox);
         card.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -459,8 +495,11 @@ public class DesktopHeaderController implements NotificationManager.Notification
         card.setPrefWidth(280);
         card.setOpacity(0.0);
 
+        javafx.scene.layout.StackPane popupWrapper = new javafx.scene.layout.StackPane(card);
+        popupWrapper.setStyle("-fx-background-color: transparent; -fx-padding: 24;");
+
         toastPopup.getContent().clear();
-        toastPopup.getContent().add(card);
+        toastPopup.getContent().add(popupWrapper);
 
         // ── Position: bottom-right of the primary screen ─────────────────────
         javafx.stage.Window window = (bellButton != null && bellButton.getScene() != null)

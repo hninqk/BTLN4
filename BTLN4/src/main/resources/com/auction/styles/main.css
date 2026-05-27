@@ -1781,11 +1781,10 @@
     -fx-padding: 0 4 0 0;
 }
 
-/* Bell button – strict fixed size, no stretch */
+/* Bell button – invisible background, just the SVG */
 .bell-button {
-    -fx-background-color: rgba(99, 102, 241, 0.12);
-    -fx-border-color: rgba(99, 102, 241, 0.40);
-    -fx-border-width: 1;
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
     -fx-font-size: 22px;
     -fx-padding: 0;
     -fx-cursor: hand;
@@ -1795,41 +1794,31 @@
     -fx-min-height: 44;
     -fx-pref-height: 44;
     -fx-max-height: 44;
-    -fx-background-radius: 22;
-    -fx-border-radius: 22;
+    -fx-translate-y: -2;
 }
 
-/* Dark mode: brighter border + deeper tint so bell stands out */
 .dark-mode .bell-button {
-    -fx-background-color: rgba(129, 140, 248, 0.18);
-    -fx-border-color: rgba(165, 180, 252, 0.55);
-    -fx-border-width: 1;
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
 }
 
-/* Neon amber glow + tinted background for unread state */
+/* No glowing effect, badgeLabel handles the red dot */
 .bell-unread {
-    -fx-effect: dropshadow(gaussian, #f59e0b, 18, 0.6, 0, 0);
-    -fx-background-color: rgba(245, 158, 11, 0.18);
-    -fx-border-color: rgba(245, 158, 11, 0.60);
 }
 
 .dark-mode .bell-unread {
-    -fx-background-color: rgba(245, 158, 11, 0.22);
-    -fx-border-color: rgba(253, 211, 77, 0.70);
 }
 
 .bell-button:hover {
-    -fx-background-color: rgba(99, 102, 241, 0.24);
-    -fx-border-color: rgba(99, 102, 241, 0.65);
+    -fx-background-color: transparent;
 }
 
 .dark-mode .bell-button:hover {
-    -fx-background-color: rgba(129, 140, 248, 0.30);
-    -fx-border-color: rgba(165, 180, 252, 0.80);
+    -fx-background-color: transparent;
 }
 
 .bell-button:pressed {
-    -fx-background-color: rgba(99, 102, 241, 0.35);
+    -fx-translate-y: 0;
 }
 
 /* ── Bid Toast Notification ────────────────────────────────────────── */
@@ -1878,4 +1867,17 @@
 
 .notif-popup-wrapper .scroll-pane .viewport {
     -fx-background-color: transparent;
+}
+
+/* ── Tooltips (Charts and Heatmaps) ────────────────────────────────── */
+.tooltip {
+    -fx-background-color: rgba(15, 23, 42, 0.85);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 12px;
+    -fx-padding: 8 12 8 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 12, 0, 0, 5);
 }

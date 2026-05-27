@@ -84,6 +84,34 @@ public class NotificationManager {
         dispatchAdded(notif);
     }
 
+    /** Push a previously read notification (used for restoring state on login). */
+    public void addReadNotification(String content) {
+        AppNotification notif = new AppNotification(
+                UUID.randomUUID().toString(),
+                content,
+                TimeSyncManager.getNow(),
+                true
+        );
+        synchronized (notifications) {
+            notifications.addLast(notif); // Add to end so it doesn't push down new ones
+            while (notifications.size() > MAX_NOTIFICATIONS) {
+                notifications.removeLast();
+            }
+        }
+        dispatchAdded(notif);
+    }
+
+    /** Checks if an outbid notification for this item already exists. */
+    public boolean containsOutbidFor(String itemName) {
+        String expectedMsg = outbidMessage(itemName);
+        synchronized (notifications) {
+            for (AppNotification n : notifications) {
+                if (n.content().equals(expectedMsg)) return true;
+            }
+            return false;
+        }
+    }
+
     /** Return a snapshot of notifications (newest first). */
     public List<AppNotification> getNotifications() {
         synchronized (notifications) {
