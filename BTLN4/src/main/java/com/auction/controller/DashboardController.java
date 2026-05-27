@@ -795,16 +795,6 @@ public class DashboardController {
         }
     }
 
-    @FXML
-    private void handleViewAllAuctions(ActionEvent event) {
-        try {
-            NavigationManager.getInstance().navigateTo(
-                    NavigationManager.AUCTION_LIST, "Danh sách đấu giá", null);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     private VBox createHotItemCard(Auction auction) {
         VBox card = new VBox(8);
         card.getStyleClass().add("card");

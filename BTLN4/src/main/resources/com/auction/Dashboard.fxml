@@ -28,12 +28,6 @@
                     <!-- Desktop Header: Clock + Notification Bell -->
                     <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-                    <!-- Header & Search -->
-                    <HBox alignment="CENTER_LEFT" spacing="16">
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="exploreButton" text="🚀 Khám phá Đấu giá" onAction="#handleViewAllAuctions" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 24;"/>
-                    </HBox>
-
                     <!-- Bidder View -->
                     <VBox fx:id="bidderView" visible="false" managed="false" spacing="20" fillWidth="true">
                         <!-- News Banner -->
