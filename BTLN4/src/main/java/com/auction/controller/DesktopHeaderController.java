@@ -177,6 +177,8 @@ public class DesktopHeaderController implements NotificationManager.Notification
             // I just placed a bid — track this auction for future outbid detection
             if (!auctionId.isEmpty()) {
                 biddedAuctionIds.add(auctionId);
+                // Clear the outbid flag so we CAN be notified again if someone outbids this new bid
+                notifiedThisSession.remove(auctionId);
                 if (itemName.isEmpty()) {
                     // Fetch item name in background for future toasts
                     String aid = auctionId;
@@ -194,9 +196,9 @@ public class DesktopHeaderController implements NotificationManager.Notification
             java.util.prefs.Preferences prefs =
                 java.util.prefs.Preferences.userNodeForPackage(DesktopHeaderController.class);
             double ackedBid = prefs.getDouble(prefKey, 0.0);
-            // Dedup key includes amount so each new higher bid triggers exactly one notification
-            String dedupKey = auctionId + "_rt_" + amount;
-            if (amount > ackedBid && notifiedThisSession.add(dedupKey)) {
+            // We only notify them ONCE per outbid (notifiedThisSession prevents spam). 
+            // The flag is cleared when THEY place a new bid.
+            if (amount > ackedBid && notifiedThisSession.add(auctionId)) {
                 String notifItem = itemName.isEmpty() ? "mục đấu giá" : itemName;
                 NotificationManager.getInstance().addNotification(
                     NotificationManager.outbidMessage(notifItem)
