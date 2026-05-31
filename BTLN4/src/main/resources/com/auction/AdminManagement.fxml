@@ -20,14 +20,7 @@
             <!-- Desktop Header: Clock + Notification Bell -->
             <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
-            <!-- Main Actions Dashboard -->
-            <VBox styleClass="card" spacing="12">
-                <Label text="Thao tác nhanh (Main Actions)" styleClass="section-title"/>
-                <HBox spacing="16" alignment="CENTER_LEFT">
-                    <Button text="Duyệt sản phẩm chờ" onAction="#handleQuickApprove" styleClass="btn-primary" style="-fx-padding: 12 24; -fx-min-height: 42; -fx-pref-height: 42; -fx-max-height: 42; -fx-min-width: 220; -fx-pref-width: 220; -fx-max-width: 220;"/>
-                    <Button text="Bắt đầu phiên đấu giá" onAction="#handleQuickStart" styleClass="btn-success" style="-fx-padding: 12 24; -fx-min-height: 42; -fx-pref-height: 42; -fx-max-height: 42; -fx-min-width: 220; -fx-pref-width: 220; -fx-max-width: 220;"/>
-                </HBox>
-            </VBox>
+            <!-- Thao tác nhanh đã được xoá theo yêu cầu -->
 
             <!-- Tabs -->
             <TabPane fx:id="adminTabs" VBox.vgrow="ALWAYS" tabClosingPolicy="UNAVAILABLE"
@@ -95,6 +88,7 @@
                                     <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
                                 </columnResizePolicy>
                                 <columns>
+                                     <TableColumn fx:id="colAuctionSelect" text="Chọn"        prefWidth="50" sortable="false"/>
                                      <TableColumn fx:id="colAuctionName"   text="Sản phẩm"     prefWidth="230"/>
                                      <TableColumn fx:id="colAuctionSeller" text="Người bán"     prefWidth="130"/>
                                      <TableColumn fx:id="colAuctionStatus" text="Trạng thái"    prefWidth="130"/>

@@ -1422,19 +1422,14 @@ public class AuctionDetailController
      * Gọi trên FX thread (từ Platform.runLater trong handleWsMessage).
      */
     private void showWinnerAnnouncement(String winnerUsername, double winnerBid) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("Phiên đấu giá kết thúc");
-        alert.setHeaderText("Phiên đấu giá: " + (currentAuction != null
-                ? currentAuction.getItem().getName()
-                : ""));
+        String title = "Phiên đấu giá kết thúc";
+        String header = "Phiên đấu giá: " + (currentAuction != null ? currentAuction.getItem().getName() : "");
+        String content;
         if (winnerUsername != null && winnerBid > 0) {
-            alert.setContentText(String.format(
-                    "🎉 Người chiến thắng: %s%n💰 Giá chốt: %,.0f ₫%n%nSố dư của người thắng đã được trừ tự động.",
-                    winnerUsername, winnerBid));
+            content = String.format("🎉 Người chiến thắng: %s%n💰 Giá chốt: %,.0f ₫%n%nSố dư của người thắng đã được trừ tự động.", winnerUsername, winnerBid);
         } else {
-            alert.setContentText("Phiên đấu giá đã kết thúc.\nKhông có ai đặt giá trong phiên này.");
+            content = "Phiên đấu giá đã kết thúc.\nKhông có ai đặt giá trong phiên này.";
         }
-        alert.showAndWait();
+        com.auction.util.AlertHelper.createAlert(javafx.scene.control.Alert.AlertType.INFORMATION, title, header, content).showAndWait();
     }
 }

@@ -25,7 +25,7 @@
 
     <Region HBox.hgrow="ALWAYS"/>
 
-    <HBox alignment="CENTER_RIGHT" spacing="16">
+    <HBox alignment="CENTER_RIGHT" spacing="8">
         
         <HBox alignment="CENTER_RIGHT" spacing="7">
             <Circle fx:id="onlineDot" radius="4.5" fill="#10b981"/>

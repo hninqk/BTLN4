@@ -312,10 +312,9 @@ public class SellerManagementController {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null)
             return;
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?",
+        Alert confirm = com.auction.util.AlertHelper.createConfirmation("Xác nhận huỷ", 
+                "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?", 
                 ButtonType.YES, ButtonType.NO);
-        confirm.setTitle("Xác nhận huỷ");
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.YES) {
                 if (wsConnected && wsClient != null) {

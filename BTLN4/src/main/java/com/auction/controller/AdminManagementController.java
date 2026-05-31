@@ -9,12 +9,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.BooleanProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
+import com.auction.util.AlertHelper;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,6 +57,7 @@ public class AdminManagementController {
     @FXML private ComboBox<String>    auctionStatusFilter;
     @FXML private Label               auctionCountLabel;
     @FXML private TableView<Auction>  allAuctionTable;
+    @FXML private TableColumn<Auction, Boolean> colAuctionSelect;
     @FXML private TableColumn<Auction, String> colAuctionName;
     @FXML private TableColumn<Auction, String> colAuctionSeller;
     @FXML private TableColumn<Auction, String> colAuctionStatus;
@@ -91,6 +96,7 @@ public class AdminManagementController {
     // Cached user list (loaded once; refreshed via handleRefreshUsers)
     private final ObservableList<User> userList = FXCollections.observableArrayList();
     private final Map<String, Integer> auctionBidCounts = new ConcurrentHashMap<>();
+    private final Map<Auction, BooleanProperty> auctionSelectionMap = new ConcurrentHashMap<>();
 
     @FXML
     public void initialize() {
@@ -180,6 +186,7 @@ public class AdminManagementController {
         JsonArray arr = json.get("auctions").getAsJsonArray();
         List<Auction> synced = new ArrayList<>();
         auctionBidCounts.clear();
+        auctionSelectionMap.clear();
         for (int i = 0; i < arr.size(); i++) {
             buildAuctionFromJson(arr.get(i).getAsJsonObject()).ifPresent(synced::add);
         }
@@ -285,6 +292,14 @@ public class AdminManagementController {
     }
 
     private void setupAuctionTableColumns() {
+        allAuctionTable.setEditable(true);
+        colAuctionSelect.setCellValueFactory(cellData -> {
+            Auction a = cellData.getValue();
+            return auctionSelectionMap.computeIfAbsent(a, k -> new SimpleBooleanProperty(false));
+        });
+        colAuctionSelect.setCellFactory(CheckBoxTableCell.forTableColumn(colAuctionSelect));
+        colAuctionSelect.setEditable(true);
+
         colAuctionName.setCellValueFactory(c ->
                 new SimpleStringProperty(c.getValue().getItem().getName()));
         colAuctionSeller.setCellValueFactory(c ->
@@ -305,19 +320,14 @@ public class AdminManagementController {
     // ── Button state ─────────────────────────────────────────────────────────
 
     private void disableAuctionButtons() {
-        btnApprove.setDisable(true);
-        btnStart.setDisable(true);
-        btnFinish.setDisable(true);
-        btnCancel.setDisable(true);
+        btnApprove.setDisable(false);
+        btnStart.setDisable(false);
+        btnFinish.setDisable(false);
+        btnCancel.setDisable(false);
     }
 
     private void updateAuctionButtons(Auction a) {
-        if (a == null) { disableAuctionButtons(); return; }
-        AuctionStatus s = a.getStatus();
-        btnApprove.setDisable(s != AuctionStatus.PENDING);
-        btnStart.setDisable(s != AuctionStatus.OPEN);
-        btnFinish.setDisable(s != AuctionStatus.RUNNING);
-        btnCancel.setDisable(s == AuctionStatus.CLOSED || s == AuctionStatus.CANCELED);
+        // Do nothing, validation happens on click
     }
 
     // ── Data loading ─────────────────────────────────────────────────────────
@@ -351,6 +361,7 @@ public class AdminManagementController {
         task.setOnSucceeded(e -> {
             auctionList.setAll(task.getValue());
             auctionBidCounts.clear();
+            auctionSelectionMap.clear();
             for (Auction a : auctionList) {
                 auctionBidCounts.put(a.getId(), a.getBidHistory().size());
             }
@@ -388,9 +399,7 @@ public class AdminManagementController {
         User sel = userTable.getSelectionModel().getSelectedItem();
         if (sel == null) { showAlert(Alert.AlertType.WARNING, "Chưa chọn", "Vui lòng chọn người dùng."); return; }
         if (sel instanceof Admin) { showAlert(Alert.AlertType.ERROR, "Không thể xoá", "Không thể xoá tài khoản Admin."); return; }
-        Alert c = new Alert(Alert.AlertType.CONFIRMATION,
-                "Xoá người dùng \"" + sel.getUsername() + "\"?", ButtonType.YES, ButtonType.NO);
-        c.setTitle("Xác nhận xoá");
+        Alert c = AlertHelper.createConfirmation("Xác nhận xoá", "Xoá người dùng \"" + sel.getUsername() + "\"?", ButtonType.YES, ButtonType.NO);
         c.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.YES) {
                 Task<Boolean> task = new Task<>() {
@@ -411,32 +420,77 @@ public class AdminManagementController {
     // ── Auction tab actions (via WebSocket) ───────────────────────────────────
 
     @FXML private void handleApprove(ActionEvent event) {
-        Auction sel = allAuctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
-        sendAdminAction("approve", sel.getId());
+        processBulkAction("DUYỆT", "duyệt", "Chờ duyệt", "approve");
     }
 
     @FXML private void handleForceStart(ActionEvent event) {
-        Auction sel = allAuctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
-        sendAdminAction("start", sel.getId());
+        processBulkAction("BẮT ĐẦU", "bắt đầu", "Chờ bắt đầu", "start");
     }
 
     @FXML private void handleForceFinish(ActionEvent event) {
-        Auction sel = allAuctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
-        sendAdminAction("finish", sel.getId());
+        processBulkAction("KẾT THÚC", "kết thúc", "Đang diễn ra", "finish");
     }
 
     @FXML private void handleForceCancel(ActionEvent event) {
-        Auction sel = allAuctionTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
-        Alert c = new Alert(Alert.AlertType.CONFIRMATION,
-                "Huỷ \"" + sel.getItem().getName() + "\"?", ButtonType.YES, ButtonType.NO);
-        c.setTitle("Xác nhận huỷ");
+        processBulkAction("HUỶ", "huỷ", "hợp lệ để huỷ", "cancel");
+    }
+
+    private void processBulkAction(String actionName, String targetVerb, String statusName, String actionCode) {
+        List<Auction> selected = auctionList.stream()
+                .filter(a -> auctionSelectionMap.containsKey(a) && auctionSelectionMap.get(a).get())
+                .collect(Collectors.toList());
+
+        if (selected.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "Chưa chọn", "Vui lòng tick chọn ít nhất một phiên đấu giá.");
+            return;
+        }
+
+        List<Auction> valid = selected.stream()
+                .filter(a -> isValidStatusForAction(a.getStatus(), actionCode))
+                .collect(Collectors.toList());
+
+        int totalSelected = selected.size();
+        int validCount = valid.size();
+        int invalidCount = totalSelected - validCount;
+
+        if (validCount == 0) {
+            showAlert(Alert.AlertType.WARNING, "Không hợp lệ", "Không có phiên đấu giá nào hợp lệ để " + targetVerb + ".");
+            return;
+        }
+
+        String message;
+        if (invalidCount > 0) {
+            message = String.format("Hệ thống sẽ chỉ tiến hành %s cho %d phiên đang ở trạng thái %s.\n" +
+                                    "(%d phiên còn lại không hợp lệ sẽ bị bỏ qua). Bạn có muốn tiếp tục?", 
+                                    actionName, validCount, statusName, invalidCount);
+        } else {
+            message = String.format("Bạn đang chọn %d phiên đấu giá để %s. Bạn có muốn tiếp tục?", validCount, targetVerb);
+        }
+
+        Alert c = AlertHelper.createConfirmation("Xác nhận thao tác", message, ButtonType.YES, ButtonType.NO);
         c.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.YES) sendAdminAction("cancel", sel.getId());
+            if (btn == ButtonType.YES) {
+                for (Auction a : valid) {
+                    sendAdminAction(actionCode, a.getId());
+                }
+                for (Auction a : selected) {
+                    if (auctionSelectionMap.containsKey(a)) {
+                        auctionSelectionMap.get(a).set(false);
+                    }
+                }
+                allAuctionTable.refresh();
+            }
         });
+    }
+
+    private boolean isValidStatusForAction(AuctionStatus status, String action) {
+        return switch(action) {
+            case "approve" -> status == AuctionStatus.PENDING;
+            case "start" -> status == AuctionStatus.OPEN;
+            case "finish" -> status == AuctionStatus.RUNNING;
+            case "cancel" -> status != AuctionStatus.CLOSED && status != AuctionStatus.CANCELED;
+            default -> false;
+        };
     }
 
     @FXML private void handleRefreshAuctions(ActionEvent event) {
@@ -448,23 +502,7 @@ public class AdminManagementController {
         }
     }
 
-    @FXML private void handleQuickApprove(ActionEvent event) {
-        Auction sel = auctionList.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).findFirst().orElse(null);
-        if (sel == null) {
-            showAlert(Alert.AlertType.INFORMATION, "Không có", "Không có phiên đấu giá nào đang chờ duyệt.");
-            return;
-        }
-        sendAdminAction("approve", sel.getId());
-    }
-
-    @FXML private void handleQuickStart(ActionEvent event) {
-        Auction sel = auctionList.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).findFirst().orElse(null);
-        if (sel == null) {
-            showAlert(Alert.AlertType.INFORMATION, "Không có", "Không có phiên đấu giá nào đang chờ bắt đầu.");
-            return;
-        }
-        sendAdminAction("start", sel.getId());
-    }
+    // Quick actions removed
 
     /** Send ADMIN_ACTION via WebSocket so server persists + broadcasts to all clients. */
     private void sendAdminAction(String action, String auctionId) {
@@ -555,11 +593,7 @@ public class AdminManagementController {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void showAlert(Alert.AlertType type, String title, String message) {
-        Alert alert = new Alert(type);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        AlertHelper.showAlert(type, title, message);
     }
 
     /**

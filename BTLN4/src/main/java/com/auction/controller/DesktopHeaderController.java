@@ -76,7 +76,7 @@ public class DesktopHeaderController implements NotificationManager.Notification
     private VBox     notifListBox;   // Container for notification rows inside popup
     private Popup    toastPopup;     // Auto-fading “new bid” toast shown to all viewers
 
-    private static final DateTimeFormatter CLOCK_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter CLOCK_FMT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter TIME_FMT   = DateTimeFormatter.ofPattern("HH:mm");
 
     // ── Initialize ────────────────────────────────────────────────────────────
