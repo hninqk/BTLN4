@@ -1574,7 +1574,7 @@
    ══════════════════════════════════════════════════════════════════════ */
 
 .desktop-header {
-    -fx-background-color: -theme-surface;
+    -fx-background-color: transparent;
     -fx-border-color: transparent transparent -theme-border transparent;
     -fx-border-width: 1;
     -fx-min-height: 44;
