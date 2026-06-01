@@ -2,6 +2,7 @@ package com.auction;
 
 import com.auction.server.AuctionWebSocketHandler;
 import com.auction.server.RestApiHandler;
+import com.auction.server.SecurityHeaderFilter;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
 import com.auction.util.AppConfig;
@@ -49,6 +50,7 @@ public class ServerMain {
 
         AuctionWebSocketHandler wsHandler = new AuctionWebSocketHandler(auctionService);
         RestApiHandler restHandler = new RestApiHandler(auctionService, userService);
+        SecurityHeaderFilter securityFilter = new SecurityHeaderFilter();
 
         Javalin server = Javalin
                 .create(config -> config.jetty
@@ -57,7 +59,8 @@ public class ServerMain {
 
         // 3. Register routes
         server.ws("/auction", wsHandler::register); // WebSocket (unchanged)
-        restHandler.register(server); // REST API (new)
+        restHandler.register(server); // REST API
+        securityFilter.register(server); // Security headers
 
         System.out.println("[Server] WebSocket + REST server running on port " + AppConfig.port() + ".");
         System.out.println("[Server] REST API base: " + AppConfig.httpBaseUrl() + "/api");

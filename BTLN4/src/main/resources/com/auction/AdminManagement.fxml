@@ -103,11 +103,9 @@
 
                         <!-- Action buttons — contextually enabled by row selection -->
                         <HBox spacing="8" styleClass="admin-action-bar">
-                            <Button fx:id="btnApprove" text="Duyệt (PENDING-&gt;OPEN)"
-                                    onAction="#handleApprove"     styleClass="btn-primary"/>
-                            <Button fx:id="btnStart"   text="Bắt đầu (OPEN-&gt;RUNNING)"
+                            <Button fx:id="btnStart"   text="Bắt đầu"
                                     onAction="#handleForceStart"  styleClass="btn-success"/>
-                            <Button fx:id="btnFinish"  text="Kết thúc (RUNNING-&gt;CLOSED)"
+                            <Button fx:id="btnFinish"  text="Kết thúc"
                                     onAction="#handleForceFinish" styleClass="btn-warning"/>
                             <Button fx:id="btnCancel"  text="Huỷ"
                                     onAction="#handleForceCancel" styleClass="btn-danger"/>
@@ -115,9 +113,6 @@
                             <Button text="Làm mới" onAction="#handleRefreshAuctions" styleClass="btn-secondary"/>
                         </HBox>
 
-                        <!-- Workflow hint -->
-                        <Label text="Luồng duyệt: Seller tạo -&gt; PENDING -&gt; Admin duyệt -&gt; OPEN -&gt; Admin bắt đầu -&gt; RUNNING (Bidder có thể đặt giá)"
-                               styleClass="label-subtle" wrapText="true"/>
                     </VBox>
                 </Tab>
 
@@ -149,8 +144,8 @@
                             <!-- Row 2: Auction status breakdown -->
                             <HBox spacing="16">
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="Chờ duyệt" styleClass="stat-label"/>
-                                    <Label fx:id="statPending"  text="0" styleClass="stat-value"/>
+                                    <Label text="Không dùng" styleClass="stat-label"/>
+                                    <Label fx:id="statPending"  text="-" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
                                     <Label text="Chờ bắt đầu" styleClass="stat-label"/>

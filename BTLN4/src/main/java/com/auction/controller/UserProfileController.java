@@ -181,13 +181,26 @@ public class UserProfileController {
 
     private static final java.util.Map<String, Long> bidCountCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public static void preloadCache(java.util.List<Auction> fullAuctions) {
-        bidCountCache.clear();
+    /**
+     * Warm the bid-count cache for a single bidder only.
+     * Called by LoginController after the user authenticates — avoids building
+     * a cache for every user in the system on a single-machine deployment.
+     */
+    public static void preloadCacheForUser(java.util.List<Auction> fullAuctions, String bidderId) {
+        long count = 0;
         for (Auction full : fullAuctions) {
             for (com.auction.model.BidTransaction b : full.getBidHistory()) {
-                bidCountCache.merge(b.getBidder().getId(), 1L, Long::sum);
+                if (b.getBidder().getId().equals(bidderId)) {
+                    count++;
+                }
             }
         }
+        bidCountCache.put(bidderId, count);
+    }
+
+    /** Clear all cached bid counts — call on logout so the next user gets fresh data. */
+    public static void clearCache() {
+        bidCountCache.clear();
     }
 
     private void loadBidCount(Bidder bidder) {

@@ -39,6 +39,10 @@ public class LogoutController {
                 // Wait a tiny bit to let previous scenes fully detach
                 Thread.sleep(300);
 
+                // Clear per-user caches so the next user gets fresh data on login
+                BidHistoryController.clearCache();
+                UserProfileController.clearCache();
+
                 // Perform the actual session logout logic (clearing user, etc.)
                 SessionManager.getInstance().logoutUser();
 

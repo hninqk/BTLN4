@@ -23,7 +23,7 @@
                 <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
                 <!-- Notice -->
-                <Label text="Sau khi tạo, phiên đấu giá sẽ ở trạng thái 'Chờ duyệt'. Admin sẽ xét duyệt và bắt đầu phiên đấu giá."
+                <Label text="Sau khi tạo, phiên đấu giá sẽ hiển thị ngay và Admin có thể bắt đầu đấu giá bất cứ lúc nào."
                        styleClass="label-subtle" wrapText="true">
                     <graphic>
                         <FontIcon iconLiteral="fas-info-circle" iconSize="13" styleClass="button-icon"/>
@@ -136,10 +136,10 @@
                         <Label fx:id="formSuccessLabel" text="" styleClass="label-success" wrapText="true"/>
 
                         <HBox spacing="8">
-                            <Button fx:id="submitButton" text="Gửi duyệt" onAction="#handleSave"
+                            <Button fx:id="submitButton" text="Đăng bán" onAction="#handleSave"
                                     styleClass="btn-primary" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                                 <graphic>
-                                    <FontIcon iconLiteral="fas-paper-plane" iconSize="13" styleClass="button-icon"/>
+                                    <FontIcon iconLiteral="fas-store" iconSize="13" styleClass="button-icon"/>
                                 </graphic>
                             </Button>
                             <Button text="Xoá trắng" onAction="#handleClearForm"

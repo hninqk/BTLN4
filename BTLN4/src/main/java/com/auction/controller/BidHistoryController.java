@@ -86,59 +86,62 @@ public class BidHistoryController {
     }
     private static final java.util.Map<String, HistoryCache> cacheMap = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public static void preloadCache(java.util.List<Auction> fullAuctions) {
-        cacheMap.clear();
-        java.util.Map<String, java.util.List<BidRow>> rowsByBidder = new java.util.HashMap<>();
-        
+    /**
+     * Warm the history cache for a single bidder only.
+     * Called by LoginController after the user authenticates — avoids building
+     * a cache for every user in the system on a single-machine deployment.
+     */
+    public static void preloadCacheForUser(java.util.List<Auction> fullAuctions, String bidderId) {
+        java.util.List<BidRow> rows = new java.util.ArrayList<>();
+
         for (Auction full : fullAuctions) {
-            java.util.Map<String, BidTransaction> latestBidPerBidder = new java.util.HashMap<>();
+            // Find this bidder's latest bid in this auction
+            BidTransaction myBid = null;
             for (BidTransaction b : full.getBidHistory()) {
-                latestBidPerBidder.put(b.getBidder().getId(), b); 
-            }
-            
-            for (java.util.Map.Entry<String, BidTransaction> entry : latestBidPerBidder.entrySet()) {
-                String bidderId = entry.getKey();
-                BidTransaction myBid = entry.getValue();
-                
-                String result;
-                AuctionStatus status = full.getStatus();
-                if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN || status == AuctionStatus.PENDING) {
-                    result = "Đang tham gia";
-                } else {
-                    BidTransaction winner = full.getWinner();
-                    if (winner != null && winner.getBidder().getId().equals(bidderId)) {
-                        result = "Thắng";
-                    } else {
-                        result = "Thua";
-                    }
+                if (b.getBidder().getId().equals(bidderId)) {
+                    myBid = b; // keep last occurrence (latest bid)
                 }
-                rowsByBidder.computeIfAbsent(bidderId, k -> new java.util.ArrayList<>()).add(new BidRow(full, myBid, result));
+            }
+            if (myBid == null) continue;
+
+            String result;
+            AuctionStatus status = full.getStatus();
+            if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN) {
+                result = "Đang tham gia";
+            } else {
+                BidTransaction winner = full.getWinner();
+                if (winner != null && winner.getBidder().getId().equals(bidderId)) {
+                    result = "Thắng";
+                } else {
+                    result = "Thua";
+                }
+            }
+            rows.add(new BidRow(full, myBid, result));
+        }
+
+        long won = 0, active = 0;
+        double totalSpent = 0;
+        for (BidRow r : rows) {
+            if (r.result().contains("Thắng")) {
+                won++;
+                totalSpent += r.myBid().getAmount();
+            } else if (r.result().equals("Đang tham gia")) {
+                active++;
             }
         }
-        
-        for (java.util.Map.Entry<String, java.util.List<BidRow>> entry : rowsByBidder.entrySet()) {
-             String bidderId = entry.getKey();
-             java.util.List<BidRow> allRows = entry.getValue();
-             long won = 0, active = 0;
-             double totalSpent = 0;
-             
-             for (BidRow r : allRows) {
-                 if (r.result().contains("Thắng")) {
-                     won++;
-                     totalSpent += r.myBid().getAmount();
-                 } else if (r.result().equals("Đang tham gia")) {
-                     active++;
-                 }
-             }
-             
-             HistoryCache fresh = new HistoryCache();
-             fresh.rows = allRows;
-             fresh.totalBids = String.valueOf(allRows.size());
-             fresh.won = String.valueOf(won);
-             fresh.active = String.valueOf(active);
-             fresh.spent = String.format("%,.0f ₫", totalSpent);
-             cacheMap.put(bidderId, fresh);
-        }
+
+        HistoryCache fresh = new HistoryCache();
+        fresh.rows = rows;
+        fresh.totalBids = String.valueOf(rows.size());
+        fresh.won = String.valueOf(won);
+        fresh.active = String.valueOf(active);
+        fresh.spent = String.format("%,.0f ₫", totalSpent);
+        cacheMap.put(bidderId, fresh);
+    }
+
+    /** Clear all cached history — call on logout so the next user gets fresh data. */
+    public static void clearCache() {
+        cacheMap.clear();
     }
 
     public record BidRow(Auction auction, BidTransaction myBid, String result) {
@@ -287,7 +290,7 @@ public class BidHistoryController {
                     BidTransaction myBid = myLatest.get();
                     String result;
                     AuctionStatus status = full.getStatus();
-                    if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN || status == AuctionStatus.PENDING) {
+                    if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN) {
                         result = "Đang tham gia";
                     } else {
                         BidTransaction winner = full.getWinner();

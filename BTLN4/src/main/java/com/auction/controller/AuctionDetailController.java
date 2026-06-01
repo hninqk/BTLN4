@@ -952,7 +952,6 @@ public class AuctionDetailController
         // Countdown timer – compute the display string based on current status
         AuctionStatus status = currentAuction.getStatus();
         String countdownText = switch (status) {
-            case PENDING -> "Chờ Admin duyệt";
             case OPEN -> "Chờ Admin bắt đầu";
             case CLOSED, CANCELED -> {
                 // Shut down the scheduler – no more countdown updates needed
@@ -964,8 +963,10 @@ public class AuctionDetailController
                 Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
                 yield remaining.isNegative() ? "Hết giờ"
                         : String.format("%02d:%02d:%02d",
+
                                 remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart());
             }
+            default -> "";
         };
         setTextIfChanged(timeRemainingLabel, countdownText);
     }
@@ -1214,11 +1215,11 @@ public class AuctionDetailController
         AuctionStatus status = currentAuction.getStatus();
         setTextIfChanged(statusBadge, currentAuction.getStatusDisplay());
         String cls = switch (status) {
-            case PENDING -> "badge-pending";
             case OPEN -> "badge-open";
             case RUNNING -> "badge-running";
             case CLOSED -> "badge-closed";
             case CANCELED -> "badge-canceled";
+            default -> "badge-open";
         };
         // PERF: Only mutate the styleClass list if the badge class actually changed.
         // Each removeAll()/add() triggers CSS re-resolution for this node.

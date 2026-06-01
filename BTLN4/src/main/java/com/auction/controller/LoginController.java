@@ -82,7 +82,42 @@ public class LoginController {
         task.setOnSucceeded(e -> {
             Optional<User> result = task.getValue();
             if (result.isPresent()) {
-                SessionManager.getInstance().setCurrentUser(result.get());
+                User loggedIn = result.get();
+                SessionManager.getInstance().setCurrentUser(loggedIn);
+
+                // ── Per-user cache warm-up ──────────────────────────────────────
+                // Only Bidders have bid history — skip entirely for Sellers/Admins.
+                // Runs on a background thread so the navigation is not blocked.
+                if (loggedIn instanceof com.auction.model.Bidder bidder) {
+                    final String bidderId = bidder.getId();
+                    Thread cacheThread = new Thread(() -> {
+                        try {
+                            // Reuse the auction list cached during splash (no extra HTTP call).
+                            // If splash hasn't finished yet (very rare), fetch fresh.
+                            java.util.List<com.auction.model.Auction> auctions =
+                                    SplashController.cachedFullAuctions;
+                            if (auctions == null || auctions.isEmpty()) {
+                                auctions = AppFacade.getInstance().getAllAuctions();
+                                // Fetch full details for each shallow auction
+                                java.util.List<com.auction.model.Auction> full =
+                                        new java.util.ArrayList<>(auctions.size());
+                                for (com.auction.model.Auction a : auctions) {
+                                    AppFacade.getInstance().findAuctionById(a.getId())
+                                            .ifPresent(full::add);
+                                }
+                                auctions = full;
+                            }
+                            BidHistoryController.preloadCacheForUser(auctions, bidderId);
+                            UserProfileController.preloadCacheForUser(auctions, bidderId);
+                            System.out.println("[Login] Per-user cache warmed for bidder: " + bidderId);
+                        } catch (Exception ex) {
+                            System.err.println("[Login] Cache warm-up failed: " + ex.getMessage());
+                        }
+                    }, "login-cache-warmup");
+                    cacheThread.setDaemon(true);
+                    cacheThread.start();
+                }
+
                 try {
                     NavigationManager.getInstance().navigateTo(
                             NavigationManager.DASHBOARD, "Tổng quan", null);

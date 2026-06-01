@@ -13,9 +13,9 @@ import org.bouncycastle.crypto.params.Argon2Parameters;
  */
 public final class PasswordHashService {
 
-    private static final int MEMORY_KIB = 65_536;
-    private static final int ITERATIONS = 3;
-    private static final int PARALLELISM = 4;
+    private static final int MEMORY_KIB = 4_096;
+    private static final int ITERATIONS = 1;
+    private static final int PARALLELISM = 1;
     private static final int SALT_BYTES = 16;
     private static final int HASH_BYTES = 32;
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -71,6 +71,20 @@ public final class PasswordHashService {
 
     public static boolean isArgon2idHash(String value) {
         return value != null && value.startsWith("$argon2id$");
+    }
+
+    public static boolean needsRehash(String storedHash) {
+        if (!isArgon2idHash(storedHash)) {
+            return true;
+        }
+        try {
+            ParsedHash parsed = ParsedHash.parse(storedHash);
+            return parsed.memoryKiB() != MEMORY_KIB
+                    || parsed.iterations() != ITERATIONS
+                    || parsed.parallelism() != PARALLELISM;
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
     }
 
     private static byte[] hash(

@@ -235,7 +235,7 @@ public class SellerManagementController {
 
     private void setupFilterCombo() {
         statusFilter.setItems(FXCollections.observableArrayList(
-                "Tất cả", "Chờ duyệt", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
+                "Tất cả", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
         statusFilter.getSelectionModel().selectFirst();
         categoryCombo.setItems(FXCollections.observableArrayList("Điện tử", "Nghệ thuật", "Xe cộ"));
         categoryCombo.getSelectionModel().selectFirst();
@@ -285,7 +285,7 @@ public class SellerManagementController {
             return;
         }
         AuctionStatus status = sel.getStatus();
-        btnCancel.setDisable(status != AuctionStatus.PENDING && status != AuctionStatus.OPEN);
+        btnCancel.setDisable(status != AuctionStatus.OPEN);
         btnDelete.setDisable(status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN
                 || status == AuctionStatus.CLOSED);
     }

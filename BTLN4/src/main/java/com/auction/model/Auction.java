@@ -18,11 +18,11 @@ public class Auction extends Entity implements Subject {
     private List<Observer> observers = new CopyOnWriteArrayList<>();
 
     /**
-     * Seller creates a new auction — starts in PENDING, awaiting Admin approval.
+     * Seller creates a new auction — starts in OPEN immediately (no approval step).
      */
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
         super();
-        this.status = AuctionStatus.PENDING;
+        this.status = AuctionStatus.OPEN;
         this.seller = seller;
         this.item = item;
         this.highestBid = (item != null) ? item.getStartingPrice() : 0.0;
@@ -63,11 +63,11 @@ public class Auction extends Entity implements Subject {
 
     // ------- State transitions -------
 
-    /** Admin approves a PENDING auction → moves to OPEN (visible to bidders). */
+    /** Admin starts an OPEN auction → RUNNING (bidding begins, skips PENDING). */
     public void approveAuction() throws InvalidStatusException {
-        if (this.status != AuctionStatus.PENDING)
-            throw new InvalidStatusException("Chỉ có thể duyệt phiên đang chờ duyệt. Trạng thái hiện tại: " + status);
-        status = AuctionStatus.OPEN;
+        if (this.status != AuctionStatus.OPEN)
+            throw new InvalidStatusException("Chỉ có thể duyệt phiên đang ở trạng thái OPEN. Trạng thái hiện tại: " + status);
+        status = AuctionStatus.RUNNING;
     }
 
     /** Admin starts an OPEN auction → RUNNING (bidding begins). */
@@ -187,11 +187,11 @@ public class Auction extends Entity implements Subject {
 
     public String getStatusDisplay() {
         return switch (status) {
-            case PENDING -> "Chờ duyệt";
             case OPEN -> "Chờ bắt đầu";
             case RUNNING -> "Đang diễn ra";
             case CLOSED -> "Đã đóng";
             case CANCELED -> "Đã huỷ";
+            default -> status.name();
         };
     }
 }

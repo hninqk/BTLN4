@@ -64,7 +64,7 @@ public class AdminManagementController {
     @FXML private TableColumn<Auction, String> colAuctionPrice;
     @FXML private TableColumn<Auction, String> colAuctionEnd;
 
-    @FXML private Button btnApprove;
+
     @FXML private Button btnStart;
     @FXML private Button btnFinish;
     @FXML private Button btnCancel;
@@ -278,7 +278,7 @@ public class AdminManagementController {
         roleFilter.setItems(FXCollections.observableArrayList("Tất cả", "Bidder", "Seller", "Admin"));
         roleFilter.getSelectionModel().selectFirst();
         auctionStatusFilter.setItems(FXCollections.observableArrayList(
-                "Tất cả", "Chờ duyệt", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
+                "Tất cả", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
         auctionStatusFilter.getSelectionModel().selectFirst();
     }
 
@@ -320,7 +320,6 @@ public class AdminManagementController {
     // ── Button state ─────────────────────────────────────────────────────────
 
     private void disableAuctionButtons() {
-        btnApprove.setDisable(false);
         btnStart.setDisable(false);
         btnFinish.setDisable(false);
         btnCancel.setDisable(false);
@@ -419,9 +418,6 @@ public class AdminManagementController {
 
     // ── Auction tab actions (via WebSocket) ───────────────────────────────────
 
-    @FXML private void handleApprove(ActionEvent event) {
-        processBulkAction("DUYỆT", "duyệt", "Chờ duyệt", "approve");
-    }
 
     @FXML private void handleForceStart(ActionEvent event) {
         processBulkAction("BẮT ĐẦU", "bắt đầu", "Chờ bắt đầu", "start");
@@ -484,9 +480,8 @@ public class AdminManagementController {
     }
 
     private boolean isValidStatusForAction(AuctionStatus status, String action) {
-        return switch(action) {
-            case "approve" -> status == AuctionStatus.PENDING;
-            case "start" -> status == AuctionStatus.OPEN;
+        return switch (action) {
+            case "start"   -> status == AuctionStatus.OPEN;
             case "finish" -> status == AuctionStatus.RUNNING;
             case "cancel" -> status != AuctionStatus.CLOSED && status != AuctionStatus.CANCELED;
             default -> false;
@@ -542,8 +537,7 @@ public class AdminManagementController {
 
     private AuctionStatus statusAfterAdminAction(String action) {
         return switch (action) {
-            case "approve" -> AuctionStatus.OPEN;
-            case "start" -> AuctionStatus.RUNNING;
+            case "start"   -> AuctionStatus.RUNNING;
             case "finish" -> AuctionStatus.CLOSED;
             case "cancel" -> AuctionStatus.CANCELED;
             default -> null;
@@ -579,7 +573,7 @@ public class AdminManagementController {
         List<Auction> auctions = new ArrayList<>(auctionList);
         if (statTotalUsers    != null) statTotalUsers.setText(String.valueOf(users.size()));
         if (statTotalAuctions != null) statTotalAuctions.setText(String.valueOf(auctions.size()));
-        if (statPending  != null) statPending.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count()));
+        if (statPending  != null) statPending.setText("-");
         if (statOpen     != null) statOpen.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count()));
         if (statRunning  != null) statRunning.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count()));
         if (statFinished != null) statFinished.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CLOSED).count()));

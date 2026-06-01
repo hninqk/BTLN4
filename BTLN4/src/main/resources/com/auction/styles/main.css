@@ -429,8 +429,8 @@
     -fx-background-color: transparent;
 }
 
-.admin-tab-pane>.tab-header-area>.headers-region {
-    -fx-background-color: rgba(226, 232, 240, 0.70);
+.admin-tab-pane> .tab-header-area> .headers-region {
+    -fx-background-color: rgba(51, 65, 85, 0.85);
     -fx-background-radius: 10;
     -fx-padding: 4;
 }
@@ -442,8 +442,8 @@
     -fx-padding: 8 14 8 14;
 }
 
-.admin-tab-pane>.tab-header-area>.headers-region>.tab:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.58);
+.admin-tab-pane> .tab-header-area> .headers-region> .tab:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
 }
 
 .admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
@@ -452,7 +452,7 @@
 }
 
 .admin-tab-pane .tab-label {
-    -fx-text-fill: -theme-text-muted;
+    -fx-text-fill: #CBD5E1;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
 }
@@ -640,10 +640,7 @@
     -fx-font-weight: bold;
 }
 
-.badge-pending {
-    -fx-background-color: #FEF3C7;
-    -fx-text-fill: #92400E;
-}
+/* .badge-pending removed — PENDING status no longer used */
 
 .badge-open {
     -fx-background-color: #DBEAFE;

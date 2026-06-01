@@ -39,7 +39,14 @@ public class UserService {
         User found = user.get();
         String storedPassword = found.getPassword();
         if (PasswordHashService.isArgon2idHash(storedPassword)) {
-            return PasswordHashService.verify(storedPassword, password) ? user : Optional.empty();
+            if (PasswordHashService.verify(storedPassword, password)) {
+                if (PasswordHashService.needsRehash(storedPassword)) {
+                    found.setPassword(PasswordHashService.hash(password));
+                    userRepo.update(found);
+                }
+                return user;
+            }
+            return Optional.empty();
         }
 
         if (storedPassword != null && storedPassword.equals(password)) {

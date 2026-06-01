@@ -9,7 +9,6 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.animation.ScaleTransition;
-import javafx.animation.Animation;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -25,7 +24,8 @@ public class SplashController {
     @FXML private Label logStreamLabel;
     @FXML private javafx.scene.image.ImageView logoImageView;
 
-    private ScaleTransition logoPulse;
+    /** Full auction list cached during boot — reused by LoginController to warm per-user caches. */
+    public static volatile java.util.List<com.auction.model.Auction> cachedFullAuctions;
 
     private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
     private int wordIndex = 0;
@@ -54,18 +54,6 @@ public class SplashController {
                 fade.setToValue(1.0);
 
                 ParallelTransition entrance = new ParallelTransition(scale, fade);
-                entrance.setOnFinished(ev -> {
-                    // start a smooth pulsing scale animation after entrance
-                    logoPulse = new ScaleTransition(Duration.millis(1400), logoImageView);
-                    logoPulse.setFromX(1.0);
-                    logoPulse.setFromY(1.0);
-                    logoPulse.setToX(1.06);
-                    logoPulse.setToY(1.06);
-                    logoPulse.setAutoReverse(true);
-                    logoPulse.setCycleCount(Animation.INDEFINITE);
-                    logoPulse.setInterpolator(Interpolator.EASE_BOTH);
-                    logoPulse.play();
-                });
                 entrance.play();
             }
 
@@ -95,12 +83,10 @@ public class SplashController {
                 // Step 2: Confirm remote API is reachable; clients never open DB connections.
                 updateProgress(0.4, 1.0);
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đã kết nối máy chủ..."));
-                Thread.sleep(400); // Simulate/Wait for pool init
 
                 // Step 3: Fetch Configs
                 updateProgress(0.7, 1.0);
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải cấu hình Auto-Bid..."));
-                Thread.sleep(300);
 
                 // Step 4: Cache Assets
                 updateProgress(0.9, 1.0);
@@ -143,9 +129,9 @@ public class SplashController {
                             f.join().ifPresent(fullAuctions::add);
                         }
 
-                        // Sequential — each calls .clear() internally, must not overlap.
-                        UserProfileController.preloadCache(fullAuctions);
-                        BidHistoryController.preloadCache(fullAuctions);
+                        // Expose for LoginController — avoids a redundant re-fetch when
+                        // the user logs in.  Per-user caches are populated there instead.
+                        cachedFullAuctions = fullAuctions;
 
                         // ── Parallel image preload (3 threads, 3 sizes each) ────────────
                         java.util.List<com.auction.model.Auction> toPreload = new java.util.ArrayList<>();
@@ -202,8 +188,6 @@ public class SplashController {
                 updateProgress(1.0, 1.0);
                 updateMessage("Sẵn sàng.");
                 Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Quá trình khởi động hoàn tất trong " + String.format("%.2fs", 1.5) + "."));
-                Thread.sleep(200);
-                
                 return null;
             }
         };
