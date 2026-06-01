@@ -82,6 +82,12 @@ public class SellerManagementController {
     @FXML
     private Label formSuccessLabel;
     @FXML
+    private DatePicker startDatePicker;
+    @FXML
+    private Spinner<Integer> startHourSpinner;
+    @FXML
+    private Spinner<Integer> startMinuteSpinner;
+    @FXML
     private DatePicker endDatePicker;
     @FXML
     private Spinner<Integer> hourSpinner;
@@ -108,17 +114,37 @@ public class SellerManagementController {
 
         DesktopHeaderController.setTitleAndSubtitle("Quản lí sản phẩm", null);
 
-        // Cấu hình Spinner Giờ (0–23, mặc định 20)
+        LocalDateTime defaultStart = TimeSyncManager.getNow().plusMinutes(5);
+        LocalDateTime defaultEnd = defaultStart.plusHours(1);
+
+        startDatePicker.setValue(defaultStart.toLocalDate());
+        endDatePicker.setValue(defaultEnd.toLocalDate());
+
+        SpinnerValueFactory<Integer> startHourFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, defaultStart.getHour());
+        startHourSpinner.setValueFactory(startHourFactory);
+
+        SpinnerValueFactory<Integer> startMinuteFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, defaultStart.getMinute());
+        startMinuteSpinner.setValueFactory(startMinuteFactory);
+
+        // Cấu hình Spinner Giờ kết thúc
         SpinnerValueFactory<Integer> hourFactory =
-                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, 20);
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, defaultEnd.getHour());
         hourSpinner.setValueFactory(hourFactory);
 
-        // Cấu hình Spinner Phút (0–59, mặc định 30)
+        // Cấu hình Spinner Phút kết thúc
         SpinnerValueFactory<Integer> minuteFactory =
-                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, 30);
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, defaultEnd.getMinute());
         minuteSpinner.setValueFactory(minuteFactory);
 
         // Commit text khi mất focus (editable spinner)
+        startHourSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) startHourSpinner.increment(0);
+        });
+        startMinuteSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) startMinuteSpinner.increment(0);
+        });
         hourSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
             if (!isNowFocused) hourSpinner.increment(0);
         });
@@ -189,7 +215,7 @@ public class SellerManagementController {
         buildMinimalAuction(json, mySeller).ifPresent(a -> {
             sellerAuctions.add(0, a);
             auctionTable.refresh();
-            showFormSuccess("Đã gửi lên server thành công! Đang chờ Admin duyệt.");
+            showFormSuccess("Đã đăng bán thành công. Phiên sẽ tự chuyển trạng thái theo thời gian đã đặt.");
             System.out.println("[SellerMgmt] Auction created confirmed: " + a.getId());
         });
     }
@@ -200,6 +226,7 @@ public class SellerManagementController {
         String newStatusStr = json.get("newStatus").getAsString();
         double highestBid = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
         String startTimeStr = json.has("startTime") ? json.get("startTime").getAsString() : "";
+        String endTimeStr = json.has("endTime") ? json.get("endTime").getAsString() : "";
 
         AuctionStatus newStatus;
         try {
@@ -220,6 +247,12 @@ public class SellerManagementController {
                     } catch (Exception ignored) {
                     }
                 }
+                if (!endTimeStr.isEmpty()) {
+                    try {
+                        a.setEndTime(LocalDateTime.parse(endTimeStr));
+                    } catch (Exception ignored) {
+                    }
+                }
                 break;
             }
         }
@@ -235,7 +268,7 @@ public class SellerManagementController {
 
     private void setupFilterCombo() {
         statusFilter.setItems(FXCollections.observableArrayList(
-                "Tất cả", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
+                "Tất cả", "Sắp diễn ra", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
         statusFilter.getSelectionModel().selectFirst();
         categoryCombo.setItems(FXCollections.observableArrayList("Điện tử", "Nghệ thuật", "Xe cộ"));
         categoryCombo.getSelectionModel().selectFirst();
@@ -285,8 +318,8 @@ public class SellerManagementController {
             return;
         }
         AuctionStatus status = sel.getStatus();
-        btnCancel.setDisable(status != AuctionStatus.OPEN);
-        btnDelete.setDisable(status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN
+        btnCancel.setDisable(status != AuctionStatus.UPCOMING && status != AuctionStatus.OPEN);
+        btnDelete.setDisable(status == AuctionStatus.RUNNING || status == AuctionStatus.UPCOMING || status == AuctionStatus.OPEN
                 || status == AuctionStatus.CLOSED);
     }
 
@@ -426,11 +459,16 @@ public class SellerManagementController {
         // (local path fallback removed – every client must be able to load it)
 
         String priceStr = startPriceField.getText().trim();
-        LocalDate selDate = endDatePicker.getValue();
-        Integer hour   = hourSpinner.getValue();
-        Integer minute = minuteSpinner.getValue();
+        LocalDate startDate = startDatePicker.getValue();
+        Integer startHour = startHourSpinner.getValue();
+        Integer startMinute = startMinuteSpinner.getValue();
+        LocalDate endDate = endDatePicker.getValue();
+        Integer endHour   = hourSpinner.getValue();
+        Integer endMinute = minuteSpinner.getValue();
 
-        if (name.isEmpty() || priceStr.isEmpty() || selDate == null || hour == null || minute == null) {
+        if (name.isEmpty() || priceStr.isEmpty()
+                || startDate == null || startHour == null || startMinute == null
+                || endDate == null || endHour == null || endMinute == null) {
             showFormError("Vui lòng điền đầy đủ các trường bắt buộc (*)");
             return;
         }
@@ -445,14 +483,22 @@ public class SellerManagementController {
             return;
         }
 
+        LocalDateTime startTime;
         LocalDateTime endTime;
         try {
-            LocalTime time = LocalTime.of(hour, minute);
-            endTime = LocalDateTime.of(selDate, time);
-            if (endTime.isBefore(TimeSyncManager.getNow()))
-                throw new Exception("past");
+            startTime = LocalDateTime.of(startDate, LocalTime.of(startHour, startMinute));
+            endTime = LocalDateTime.of(endDate, LocalTime.of(endHour, endMinute));
         } catch (Exception e) {
-            showFormError("Thời gian kết thúc không hợp lệ hoặc đã qua.");
+            showFormError("Thời gian bắt đầu hoặc kết thúc không hợp lệ.");
+            return;
+        }
+        LocalDateTime now = TimeSyncManager.getNow();
+        if (startTime.isBefore(now)) {
+            showFormError("Thời gian bắt đầu phải lớn hơn hoặc bằng thời gian hiện tại.");
+            return;
+        }
+        if (!endTime.isAfter(startTime)) {
+            showFormError("Thời gian kết thúc phải sau thời gian bắt đầu.");
             return;
         }
 
@@ -467,6 +513,7 @@ public class SellerManagementController {
             req.addProperty("description", description);
             req.addProperty("imageUrl", imageUrl);
             req.addProperty("startPrice", startPrice);
+            req.addProperty("startTime", startTime.toString());
             req.addProperty("endTime", endTime.toString());
             wsClient.send(req.toString());
             handleClearForm(event);
@@ -484,9 +531,14 @@ public class SellerManagementController {
         itemImageField.clear();
         startPriceField.clear();
         categoryCombo.getSelectionModel().selectFirst();
-        endDatePicker.setValue(null);
-        hourSpinner.getValueFactory().setValue(20);
-        minuteSpinner.getValueFactory().setValue(30);
+        LocalDateTime defaultStart = TimeSyncManager.getNow().plusMinutes(5);
+        LocalDateTime defaultEnd = defaultStart.plusHours(1);
+        startDatePicker.setValue(defaultStart.toLocalDate());
+        startHourSpinner.getValueFactory().setValue(defaultStart.getHour());
+        startMinuteSpinner.getValueFactory().setValue(defaultStart.getMinute());
+        endDatePicker.setValue(defaultEnd.toLocalDate());
+        hourSpinner.getValueFactory().setValue(defaultEnd.getHour());
+        minuteSpinner.getValueFactory().setValue(defaultEnd.getMinute());
         clearFormMessages();
     }
 
@@ -516,6 +568,7 @@ public class SellerManagementController {
             String auctionId = json.get("auctionId").getAsString();
             String itemName = json.get("itemName").getAsString();
             String endTimeStr = json.get("endTime").getAsString();
+            String startTimeStr = json.has("startTime") ? json.get("startTime").getAsString() : "";
             double highestBid = json.get("highestBid").getAsDouble();
             String statusStr = json.get("status").getAsString();
             String createdStr = json.has("auctionCreatedAt") ? json.get("auctionCreatedAt").getAsString()
@@ -537,7 +590,8 @@ public class SellerManagementController {
                     LocalDateTime.parse(createdStr),
                     seller, item,
                     AuctionStatus.valueOf(statusStr),
-                    highestBid, null,
+                    highestBid,
+                    startTimeStr.isEmpty() ? null : LocalDateTime.parse(startTimeStr),
                     LocalDateTime.parse(endTimeStr));
             return java.util.Optional.of(a);
         } catch (Exception e) {

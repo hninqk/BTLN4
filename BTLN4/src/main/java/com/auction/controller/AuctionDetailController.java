@@ -665,6 +665,7 @@ public class AuctionDetailController
         String newStatusStr = json.get("newStatus").getAsString();
         double highestBid = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
         String startTimeStr = json.has("startTime") ? json.get("startTime").getAsString() : "";
+        String endTimeStr = json.has("endTime") ? json.get("endTime").getAsString() : "";
 
         AuctionStatus previousStatus = currentAuction != null ? currentAuction.getStatus() : null;
 
@@ -683,6 +684,12 @@ public class AuctionDetailController
             if (!startTimeStr.isEmpty()) {
                 try {
                     currentAuction.setStartTime(LocalDateTime.parse(startTimeStr));
+                } catch (Exception ignored) {
+                }
+            }
+            if (!endTimeStr.isEmpty()) {
+                try {
+                    currentAuction.setEndTime(LocalDateTime.parse(endTimeStr));
                 } catch (Exception ignored) {
                 }
             }
@@ -961,7 +968,7 @@ public class AuctionDetailController
      * to just 2 labels, we reduce the per-tick FX thread work from ~20 property
      * mutations to at most 2. The setTextIfChanged guard further eliminates
      * invalidations when the text hasn't changed (e.g. stable "Hết giờ" or
-     * "⏳ Chờ Admin duyệt" states).
+     * scheduled states).
      */
     private void refreshCountdown() {
         if (currentAuction == null)
@@ -972,7 +979,17 @@ public class AuctionDetailController
         // Countdown timer – compute the display string based on current status
         AuctionStatus status = currentAuction.getStatus();
         String countdownText = switch (status) {
-            case OPEN -> "Chờ Admin bắt đầu";
+            case UPCOMING, OPEN -> {
+                LocalDateTime start = currentAuction.getStartTime();
+                if (start == null) {
+                    yield "Sắp diễn ra";
+                }
+                Duration remaining = Duration.between(TimeSyncManager.getNow(), start);
+                yield remaining.isNegative() || remaining.isZero()
+                        ? "Đang chuẩn bị bắt đầu"
+                        : String.format("Bắt đầu sau %02d:%02d:%02d",
+                                remaining.toHours(), remaining.toMinutesPart(), remaining.toSecondsPart());
+            }
             case CLOSED, CANCELED -> {
                 // Shut down the scheduler – no more countdown updates needed
                 if (scheduler != null && !scheduler.isShutdown())
@@ -1235,7 +1252,7 @@ public class AuctionDetailController
         AuctionStatus status = currentAuction.getStatus();
         setTextIfChanged(statusBadge, currentAuction.getStatusDisplay());
         String cls = switch (status) {
-            case OPEN -> "badge-open";
+            case UPCOMING, OPEN -> "badge-open";
             case RUNNING -> "badge-running";
             case CLOSED -> "badge-closed";
             case CANCELED -> "badge-canceled";

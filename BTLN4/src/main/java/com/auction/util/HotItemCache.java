@@ -54,13 +54,12 @@ public final class HotItemCache {
 
     /**
      * Seed the cache from a full auction list (called on FULL_SYNC or initial load).
-     * Only RUNNING/OPEN auctions are tracked. Existing counts are preserved for
+     * Only RUNNING auctions are tracked. Existing counts are preserved for
      * already-tracked IDs; new auctions start at their current bid-history size.
      */
     public void seedFromList(List<Auction> auctions) {
         for (Auction a : auctions) {
-            if (a.getStatus() == AuctionStatus.RUNNING
-                    || a.getStatus() == AuctionStatus.OPEN) {
+            if (a.getStatus() == AuctionStatus.RUNNING) {
                 bidCounts.computeIfAbsent(a.getId(),
                         k -> new AtomicInteger(a.getBidHistory().size()));
             }
@@ -112,8 +111,7 @@ public final class HotItemCache {
         // Build set of active IDs
         var activeIds = new java.util.HashSet<String>();
         for (Auction a : auctions) {
-            if (a.getStatus() == AuctionStatus.RUNNING
-                    || a.getStatus() == AuctionStatus.OPEN) {
+            if (a.getStatus() == AuctionStatus.RUNNING) {
                 activeIds.add(a.getId());
             }
         }

@@ -53,7 +53,7 @@ public class DashboardController {
     @FXML
     private Label newsLabel;
     @FXML
-    private FlowPane hotItemsBox;
+    private VBox hotItemsBox;
     // Bidder stat cards
     @FXML
     private VBox cardRunning;
@@ -79,7 +79,7 @@ public class DashboardController {
     @FXML
     private Label sellerNewsLabel;
     @FXML
-    private FlowPane sellerHotItemsBox;
+    private VBox sellerHotItemsBox;
     @FXML
     private Label sellerEarningLabel;
     @FXML
@@ -131,6 +131,8 @@ public class DashboardController {
     private javafx.animation.Timeline newsTimeline;
     private javafx.animation.Timeline sellerNewsTimeline;
 
+    private static final int DASHBOARD_PAGE_SIZE = 5;
+
     private final HotItemCache hotCache = HotItemCache.getInstance();
     private Timeline hotRefreshTimeline;
     private Timeline hotCountdownTimeline;
@@ -138,6 +140,14 @@ public class DashboardController {
     private Timeline sellerHotCountdownTimeline;
     private final Map<String, Auction> visibleHotAuctions = new HashMap<>();
     private final Map<String, Auction> visibleSellerHotAuctions = new HashMap<>();
+    private List<Auction> runningDashboardAuctions = List.of();
+    private List<Auction> upcomingDashboardAuctions = List.of();
+    private List<Auction> sellerRunningDashboardAuctions = List.of();
+    private List<Auction> sellerUpcomingDashboardAuctions = List.of();
+    private int runningPageIndex = 0;
+    private int upcomingPageIndex = 0;
+    private int sellerRunningPageIndex = 0;
+    private int sellerUpcomingPageIndex = 0;
     private volatile boolean isRefreshing = false;
     private volatile boolean isSellerRefreshing = false;
 
@@ -215,7 +225,7 @@ public class DashboardController {
                 exploreButton.setManaged(true);
             }
 
-            if (user instanceof Seller) {
+            if (user instanceof Seller seller) {
                 // Setup Seller View
                 if (bidderView != null) {
                     bidderView.setVisible(false);
@@ -225,7 +235,7 @@ public class DashboardController {
                     sellerView.setVisible(true);
                     sellerView.setManaged(true);
                 }
-                setupStatCardsByRole(user.getRole(), false); // Seller: only RUNNING + OPEN
+                setupStatCardsByRole(user.getRole(), false); // Seller: only RUNNING + UPCOMING
                 startSellerNewsTicker();
                 startSellerHotCountdownRefresh();
                 loadSellerStats((Seller) user);
@@ -236,15 +246,16 @@ public class DashboardController {
 
                     @Override
                     protected Void call() {
-                        all = app.getAllAuctions();
+                        all = app.getAuctionsBySeller(seller);
                         hotCache.seedFromList(all);
                         return null;
                     }
 
                     @Override
                     protected void succeeded() {
-                        long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                        long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                        LocalDateTime now = TimeSyncManager.getNow();
+                        long running = all.stream().filter(a -> isRunningByTime(a, now)).count();
+                        long open    = all.stream().filter(DashboardController.this::isUpcoming).count();
                         if (sellerDashStatRunning != null) sellerDashStatRunning.setText(String.valueOf(running));
                         if (sellerDashStatOpen    != null) sellerDashStatOpen.setText(String.valueOf(open));
                         refreshSellerHotItems(all);
@@ -279,7 +290,9 @@ public class DashboardController {
 
                     @Override
                     protected Void call() {
-                        all = app.getAllAuctions();
+                        all = user.getRole().equalsIgnoreCase("Admin")
+                                ? app.getAllAuctions()
+                                : app.getPublicAuctions();
                         hotCache.seedFromList(all);
                         if (user.getRole().equalsIgnoreCase("Admin")) {
                             totalUsers = app.getAllUsers().size();
@@ -289,8 +302,9 @@ public class DashboardController {
 
                     @Override
                     protected void succeeded() {
-                        long running = all.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count();
-                        long open    = all.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count();
+                        LocalDateTime now = TimeSyncManager.getNow();
+                        long running = all.stream().filter(a -> isRunningByTime(a, now)).count();
+                        long open    = all.stream().filter(DashboardController.this::isUpcoming).count();
                         long pending = all.stream().filter(a -> a.getStatus() == AuctionStatus.PENDING).count();
                         if (dashStatRunning      != null) dashStatRunning.setText(String.valueOf(running));
                         if (dashStatOpen         != null) dashStatOpen.setText(String.valueOf(open));
@@ -316,7 +330,7 @@ public class DashboardController {
     /**
      * Shows or hides the stat cards based on user role.
      * ADMIN → all 5 cards visible.
-     * SELLER / BIDDER → only card 1 (RUNNING) and card 2 (OPEN) visible;
+     * SELLER / BIDDER → only card 1 (RUNNING) and card 2 (UPCOMING) visible;
      * cards 3-5 are hidden AND unmanaged to free layout space.
      *
      * @param role         the role string of the current user (e.g. "Admin",
@@ -560,120 +574,190 @@ public class DashboardController {
     }
 
     private void refreshHotItems(List<Auction> all) {
-        List<Auction> hotList = all.stream()
-                .filter(a -> a.getStatus() == AuctionStatus.OPEN
-                        || a.getStatus() == AuctionStatus.RUNNING)
-                .sorted(Comparator
-                        .comparing((Auction a) -> endTimeOrMax(a))
-                        .thenComparing(a -> a.getItem().getName()))
-                .limit(5)
-                .toList();
+        LocalDateTime now = TimeSyncManager.getNow();
+        runningDashboardAuctions = runningAuctions(all, now);
+        upcomingDashboardAuctions = upcomingAuctions(all, now);
+        runningPageIndex = clampPage(runningPageIndex, runningDashboardAuctions.size());
+        upcomingPageIndex = clampPage(upcomingPageIndex, upcomingDashboardAuctions.size());
 
         visibleHotAuctions.clear();
-        hotList.forEach(a -> visibleHotAuctions.put(a.getId(), a));
-
-        boolean changed = false;
-        if (hotItemsBox.getChildren().size() != hotList.size()) {
-            changed = true;
-        } else {
-            for (int i = 0; i < hotList.size(); i++) {
-                VBox card = (VBox) hotItemsBox.getChildren().get(i);
-                if (!hotList.get(i).getId().equals(card.getUserData())) {
-                    changed = true;
-                    break;
-                }
-            }
-        }
-
-        if (changed) {
-            hotItemsBox.getChildren().clear();
-            for (Auction a : hotList) {
-                VBox card = createHotItemCard(a);
-                card.setUserData(a.getId());
-                hotItemsBox.getChildren().add(card);
-            }
-        } else {
-            for (int i = 0; i < hotList.size(); i++) {
-                Auction a = hotList.get(i);
-                VBox card = (VBox) hotItemsBox.getChildren().get(i);
-                if (card.getChildren().size() >= 5) {
-                    Label price = (Label) card.getChildren().get(2);
-                    price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
-
-                    Label status = (Label) card.getChildren().get(3);
-                    status.setText(a.getStatusDisplay());
-
-                    status.getStyleClass().removeAll("badge-running", "badge-open");
-                    status.getStyleClass().add(
-                            a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
-
-                    Label countdown = (Label) card.getChildren().get(4);
-                    countdown.setText(formatCountdown(a));
-                }
-            }
-        }
+        hotItemsBox.getChildren().setAll(
+                createCarouselSection("🔥 Đang Diễn Ra", runningDashboardAuctions, runningPageIndex,
+                        false, true, visibleHotAuctions),
+                createCarouselSection("⏳ Sắp Diễn Ra", upcomingDashboardAuctions, upcomingPageIndex,
+                        false, false, visibleHotAuctions));
     }
 
     private void refreshSellerHotItems(List<Auction> all) {
         if (sellerHotItemsBox == null)
             return;
 
-        List<Auction> hotList = all.stream()
-                .filter(a -> a.getStatus() == AuctionStatus.OPEN
-                        || a.getStatus() == AuctionStatus.RUNNING)
+        LocalDateTime now = TimeSyncManager.getNow();
+        sellerRunningDashboardAuctions = runningAuctions(all, now);
+        sellerUpcomingDashboardAuctions = upcomingAuctions(all, now);
+        sellerRunningPageIndex = clampPage(sellerRunningPageIndex, sellerRunningDashboardAuctions.size());
+        sellerUpcomingPageIndex = clampPage(sellerUpcomingPageIndex, sellerUpcomingDashboardAuctions.size());
+
+        visibleSellerHotAuctions.clear();
+        sellerHotItemsBox.getChildren().setAll(
+                createCarouselSection("🔥 Đang Diễn Ra", sellerRunningDashboardAuctions, sellerRunningPageIndex,
+                        true, true, visibleSellerHotAuctions),
+                createCarouselSection("⏳ Sắp Diễn Ra", sellerUpcomingDashboardAuctions, sellerUpcomingPageIndex,
+                        true, false, visibleSellerHotAuctions));
+    }
+
+    private List<Auction> runningAuctions(List<Auction> all, LocalDateTime now) {
+        return all.stream()
+                .filter(a -> isRunningByTime(a, now))
                 .sorted(Comparator
                         .comparing((Auction a) -> endTimeOrMax(a))
                         .thenComparing(a -> a.getItem().getName()))
-                .limit(5)
                 .toList();
+    }
 
-        visibleSellerHotAuctions.clear();
-        hotList.forEach(a -> visibleSellerHotAuctions.put(a.getId(), a));
+    private List<Auction> upcomingAuctions(List<Auction> all, LocalDateTime now) {
+        return all.stream()
+                .filter(a -> isUpcomingByTimeOrStatus(a, now))
+                .sorted(Comparator
+                        .comparing((Auction a) -> startTimeOrMax(a))
+                        .thenComparing(a -> a.getItem().getName()))
+                .toList();
+    }
 
-        boolean changed = false;
-        if (sellerHotItemsBox.getChildren().size() != hotList.size()) {
-            changed = true;
+    private boolean isRunningByTime(Auction auction, LocalDateTime now) {
+        LocalDateTime start = auction.getStartTime();
+        LocalDateTime end = auction.getEndTime();
+        if (start == null || end == null || !now.isBefore(end)) {
+            return false;
+        }
+        return auction.getStatus() == AuctionStatus.RUNNING
+                || (!now.isBefore(start) && auction.getStatus() != AuctionStatus.UPCOMING);
+    }
+
+    private boolean isUpcomingByTimeOrStatus(Auction auction, LocalDateTime now) {
+        LocalDateTime end = auction.getEndTime();
+        if (end != null && !now.isBefore(end)) {
+            return false;
+        }
+        LocalDateTime start = auction.getStartTime();
+        if (start == null) {
+            return auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN;
+        }
+        return start.isAfter(now)
+                || ((auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN)
+                        && start.isAfter(now.minusMinutes(1)));
+    }
+
+    private VBox createCarouselSection(String title, List<Auction> auctions, int pageIndex,
+                                       boolean sellerView, boolean runningRow,
+                                       Map<String, Auction> visibleMap) {
+        VBox section = new VBox(10);
+        section.setMaxWidth(Double.MAX_VALUE);
+        section.setStyle("-fx-background-color: -theme-surface; -fx-background-radius: 16; "
+                + "-fx-border-color: -theme-border; -fx-border-radius: 16; -fx-padding: 14;");
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("section-title");
+        Label countLabel = new Label(auctions.size() + " sản phẩm");
+        countLabel.getStyleClass().add("label-subtle");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        HBox header = new HBox(10, titleLabel, spacer, countLabel);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        HBox cards = new HBox(14);
+        cards.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        HBox.setHgrow(cards, javafx.scene.layout.Priority.ALWAYS);
+
+        int from = Math.min(pageIndex * DASHBOARD_PAGE_SIZE, auctions.size());
+        int to = Math.min(from + DASHBOARD_PAGE_SIZE, auctions.size());
+        if (auctions.isEmpty()) {
+            Label empty = new Label(runningRow ? "Hiện chưa có phiên đang diễn ra." : "Hiện chưa có phiên sắp diễn ra.");
+            empty.getStyleClass().add("label-subtle");
+            cards.getChildren().add(empty);
         } else {
-            for (int i = 0; i < hotList.size(); i++) {
-                VBox card = (VBox) sellerHotItemsBox.getChildren().get(i);
-                if (!hotList.get(i).getId().equals(card.getUserData())) {
-                    changed = true;
-                    break;
-                }
+            for (Auction auction : auctions.subList(from, to)) {
+                VBox card = createHotItemCard(auction);
+                card.setUserData(auction.getId());
+                visibleMap.put(auction.getId(), auction);
+                cards.getChildren().add(card);
             }
         }
 
-        if (changed) {
-            sellerHotItemsBox.getChildren().clear();
-            for (Auction a : hotList) {
-                VBox card = createHotItemCard(a);
-                card.setUserData(a.getId());
-                sellerHotItemsBox.getChildren().add(card);
+        Button previous = new Button("‹");
+        Button next = new Button("›");
+        previous.getStyleClass().addAll("btn-secondary", "carousel-arrow");
+        next.getStyleClass().addAll("btn-secondary", "carousel-arrow");
+        previous.setDisable(pageIndex <= 0);
+        next.setDisable(to >= auctions.size());
+        previous.setVisible(auctions.size() > DASHBOARD_PAGE_SIZE);
+        next.setVisible(auctions.size() > DASHBOARD_PAGE_SIZE);
+        previous.setManaged(auctions.size() > DASHBOARD_PAGE_SIZE);
+        next.setManaged(auctions.size() > DASHBOARD_PAGE_SIZE);
+        previous.setOnAction(e -> turnCarouselPage(sellerView, runningRow, -1));
+        next.setOnAction(e -> turnCarouselPage(sellerView, runningRow, 1));
+
+        HBox body = new HBox(10, previous, cards, next);
+        body.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        animateCards(cards);
+        section.getChildren().addAll(header, body);
+        return section;
+    }
+
+    private void turnCarouselPage(boolean sellerView, boolean runningRow, int delta) {
+        if (sellerView) {
+            if (runningRow) {
+                sellerRunningPageIndex = clampPage(sellerRunningPageIndex + delta, sellerRunningDashboardAuctions.size());
+            } else {
+                sellerUpcomingPageIndex = clampPage(sellerUpcomingPageIndex + delta, sellerUpcomingDashboardAuctions.size());
             }
+            refreshSellerHotItems(sellerRunningDashboardAuctions.isEmpty() && sellerUpcomingDashboardAuctions.isEmpty()
+                    ? List.of() : mergeDashboardLists(sellerRunningDashboardAuctions, sellerUpcomingDashboardAuctions));
         } else {
-            for (int i = 0; i < hotList.size(); i++) {
-                Auction a = hotList.get(i);
-                VBox card = (VBox) sellerHotItemsBox.getChildren().get(i);
-                if (card.getChildren().size() >= 5) {
-                    Label price = (Label) card.getChildren().get(2);
-                    price.setText(String.format("Giá: %,.0f ₫", a.getHighestBid()));
-
-                    Label status = (Label) card.getChildren().get(3);
-                    status.setText(a.getStatusDisplay());
-
-                    status.getStyleClass().removeAll("badge-running", "badge-open");
-                    status.getStyleClass().add(
-                            a.getStatus() == com.auction.model.AuctionStatus.RUNNING ? "badge-running" : "badge-open");
-
-                    Label countdown = (Label) card.getChildren().get(4);
-                    countdown.setText(formatCountdown(a));
-                }
+            if (runningRow) {
+                runningPageIndex = clampPage(runningPageIndex + delta, runningDashboardAuctions.size());
+            } else {
+                upcomingPageIndex = clampPage(upcomingPageIndex + delta, upcomingDashboardAuctions.size());
             }
+            refreshHotItems(runningDashboardAuctions.isEmpty() && upcomingDashboardAuctions.isEmpty()
+                    ? List.of() : mergeDashboardLists(runningDashboardAuctions, upcomingDashboardAuctions));
         }
+    }
+
+    private List<Auction> mergeDashboardLists(List<Auction> first, List<Auction> second) {
+        java.util.ArrayList<Auction> merged = new java.util.ArrayList<>(first.size() + second.size());
+        merged.addAll(first);
+        merged.addAll(second);
+        return merged;
+    }
+
+    private int clampPage(int pageIndex, int itemCount) {
+        int maxPage = Math.max(0, (int) Math.ceil(itemCount / (double) DASHBOARD_PAGE_SIZE) - 1);
+        return Math.max(0, Math.min(pageIndex, maxPage));
+    }
+
+    private void animateCards(HBox cards) {
+        cards.setOpacity(0.0);
+        cards.setTranslateX(24);
+        javafx.animation.FadeTransition fade = new javafx.animation.FadeTransition(Duration.millis(180), cards);
+        fade.setFromValue(0.0);
+        fade.setToValue(1.0);
+        javafx.animation.TranslateTransition slide = new javafx.animation.TranslateTransition(Duration.millis(180), cards);
+        slide.setFromX(24);
+        slide.setToX(0);
+        new javafx.animation.ParallelTransition(fade, slide).play();
     }
 
     private LocalDateTime endTimeOrMax(Auction auction) {
         return auction.getEndTime() == null ? LocalDateTime.MAX : auction.getEndTime();
+    }
+
+    private LocalDateTime startTimeOrMax(Auction auction) {
+        return auction.getStartTime() == null ? LocalDateTime.MAX : auction.getStartTime();
+    }
+
+    private boolean isUpcoming(Auction auction) {
+        return isUpcomingByTimeOrStatus(auction, TimeSyncManager.getNow());
     }
 
     private void startHotItemRefresh() {
@@ -684,7 +768,13 @@ public class DashboardController {
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
                 @Override
                 protected List<Auction> call() {
-                    return app.getAllAuctions();
+                    User user = SessionManager.getInstance().getCurrentUser();
+                    if (user instanceof Seller seller) {
+                        return app.getAuctionsBySeller(seller);
+                    }
+                    return user != null && user.getRole().equalsIgnoreCase("Admin")
+                            ? app.getAllAuctions()
+                            : app.getPublicAuctions();
                 }
             };
             refreshTask.setOnSucceeded(ev -> {
@@ -709,7 +799,13 @@ public class DashboardController {
             javafx.concurrent.Task<List<Auction>> refreshTask = new javafx.concurrent.Task<>() {
                 @Override
                 protected List<Auction> call() {
-                    return app.getAllAuctions();
+                    User user = SessionManager.getInstance().getCurrentUser();
+                    if (user instanceof Seller seller) {
+                        return app.getAuctionsBySeller(seller);
+                    }
+                    return user != null && user.getRole().equalsIgnoreCase("Admin")
+                            ? app.getAllAuctions()
+                            : app.getPublicAuctions();
                 }
             };
             refreshTask.setOnSucceeded(ev -> {
@@ -740,32 +836,29 @@ public class DashboardController {
     }
 
     private void updateHotCountdownLabels() {
-        for (javafx.scene.Node node : hotItemsBox.getChildren()) {
-            if (!(node instanceof VBox card) || !(card.getUserData() instanceof String auctionId)) {
-                continue;
-            }
-            Auction auction = visibleHotAuctions.get(auctionId);
-            if (auction == null || card.getChildren().size() < 5) {
-                continue;
-            }
-            Label countdown = (Label) card.getChildren().get(4);
-            countdown.setText(formatCountdown(auction));
-        }
+        updateCountdownLabelsIn(hotItemsBox, visibleHotAuctions);
     }
 
     private void updateSellerHotCountdownLabels() {
         if (sellerHotItemsBox == null)
             return;
-        for (javafx.scene.Node node : sellerHotItemsBox.getChildren()) {
-            if (!(node instanceof VBox card) || !(card.getUserData() instanceof String auctionId)) {
-                continue;
+        updateCountdownLabelsIn(sellerHotItemsBox, visibleSellerHotAuctions);
+    }
+
+    private void updateCountdownLabelsIn(Parent root, Map<String, Auction> visibleAuctions) {
+        if (root == null)
+            return;
+        for (Node node : root.getChildrenUnmodifiable()) {
+            if (node instanceof VBox card && card.getUserData() instanceof String auctionId) {
+                Auction auction = visibleAuctions.get(auctionId);
+                if (auction != null && card.getChildren().size() >= 5) {
+                    Label countdown = (Label) card.getChildren().get(4);
+                    countdown.setText(formatCountdown(auction));
+                }
             }
-            Auction auction = visibleSellerHotAuctions.get(auctionId);
-            if (auction == null || card.getChildren().size() < 5) {
-                continue;
+            if (node instanceof Parent parent) {
+                updateCountdownLabelsIn(parent, visibleAuctions);
             }
-            Label countdown = (Label) card.getChildren().get(4);
-            countdown.setText(formatCountdown(auction));
         }
     }
 
@@ -773,12 +866,12 @@ public class DashboardController {
         VBox card = new VBox(8);
         card.getStyleClass().add("card");
         card.setStyle(
-                "-fx-background-radius: 16; -fx-border-radius: 16; -fx-min-width: 240; -fx-pref-width: 240; -fx-alignment: center;");
+                "-fx-background-radius: 16; -fx-border-radius: 16; -fx-min-width: 188; -fx-pref-width: 188; -fx-max-width: 188; -fx-alignment: center;");
         card.setCursor(Cursor.HAND);
 
         ImageView iv = new ImageView();
-        iv.setFitWidth(200);
-        iv.setFitHeight(120);
+        iv.setFitWidth(166);
+        iv.setFitHeight(104);
         iv.setPreserveRatio(true);
         String imgUrl = auction.getItem() != null ? auction.getItem().getImageUrl() : null;
         if (imgUrl != null && !imgUrl.isEmpty()) {
@@ -843,23 +936,29 @@ public class DashboardController {
     }
 
     private String formatCountdown(Auction auction) {
+        LocalDateTime now = TimeSyncManager.getNow();
+        if (auction.getStartTime() != null && auction.getStartTime().isAfter(now)) {
+            return formatDuration("Bắt đầu sau", java.time.Duration.between(now, auction.getStartTime()));
+        }
         if (auction.getEndTime() == null)
             return "Chưa có hạn kết thúc";
 
-        java.time.Duration remaining = java.time.Duration.between(TimeSyncManager.getNow(), auction.getEndTime());
+        java.time.Duration remaining = java.time.Duration.between(now, auction.getEndTime());
         if (remaining.isNegative() || remaining.isZero()) {
             return "Sắp kết thúc";
         }
+        return formatDuration("Còn", remaining);
+    }
 
-        long days = remaining.toDays();
-        long hours = remaining.toHoursPart();
-        long minutes = remaining.toMinutesPart();
-        long seconds = remaining.toSecondsPart();
-
+    private String formatDuration(String prefix, java.time.Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.toHoursPart();
+        long minutes = duration.toMinutesPart();
+        long seconds = duration.toSecondsPart();
         if (days > 0) {
-            return String.format("Còn %dd %02dh %02dm", days, hours, minutes);
+            return String.format("%s %dd %02dh %02dm", prefix, days, hours, minutes);
         }
-        return String.format("Còn %02d:%02d:%02d", remaining.toHours(), minutes, seconds);
+        return String.format("%s %02d:%02d:%02d", prefix, duration.toHours(), minutes, seconds);
     }
 
     public void cleanup() {

@@ -20,9 +20,8 @@ import java.util.Map;
  * AuctionService – quản lý toàn bộ vòng đời phiên đấu giá.
  *
  * Status flow:
- * Seller tạo → PENDING
- * Admin duyệt → OPEN (hiển thị với bidder)
- * Admin bắt đầu → RUNNING (nhận bid)
+ * Seller tạo lịch → UPCOMING hoặc RUNNING tùy startTime
+ * Server tự động chuyển UPCOMING → RUNNING khi đến startTime
  * Admin kết thúc → CLOSED (trừ tiền winner)
  * Admin/Seller → CANCELED
  *
@@ -80,18 +79,19 @@ public class AuctionService {
     }
 
     /**
-     * OPEN + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see
+     * UPCOMING + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see
      * finished results).
      */
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
-                .filter(a -> a.getStatus() == AuctionStatus.OPEN
+                .filter(a -> a.getStatus() == AuctionStatus.UPCOMING
+                        || a.getStatus() == AuctionStatus.OPEN
                         || a.getStatus() == AuctionStatus.RUNNING
                         || a.getStatus() == AuctionStatus.CLOSED)
                 .toList();
     }
 
-    /** All auctions for a seller, including PENDING. */
+    /** All auctions for a seller, including scheduled and closed auctions. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
         return auctionRepo.findBySellerId(seller.getId());
     }
@@ -107,10 +107,26 @@ public class AuctionService {
 
     // ── Create / Delete ───────────────────────────────────────────────────────
 
-    /** Seller submits → saved as PENDING, awaiting Admin approval. */
+    /** Legacy create path: starts immediately. */
     public Auction createAuction(Seller seller, Item item, LocalDateTime endTime) {
-        Auction auction = new Auction(seller, item, endTime);
-        auctionRepo.save(auction);
+        LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
+        if (endTime == null || !endTime.isAfter(now)) {
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian hiện tại.");
+        }
+        Auction auction = new Auction(seller, item, now, endTime);
+        if (!auctionRepo.save(auction)) {
+            throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
+        }
+        return auction;
+    }
+
+    /** Seller schedules the auction start/end time; Admin no longer owns startTime. */
+    public Auction createAuction(Seller seller, Item item, LocalDateTime startTime, LocalDateTime endTime) {
+        validateAuctionTimes(startTime, endTime);
+        Auction auction = new Auction(seller, item, startTime, endTime);
+        if (!auctionRepo.save(auction)) {
+            throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
+        }
         return auction;
     }
 
@@ -120,7 +136,7 @@ public class AuctionService {
 
     // ── Status transitions ────────────────────────────────────────────────────
 
-    /** Admin: PENDING → OPEN */
+    /** Legacy approval path only. */
     public void approveAuction(Auction auction) throws InvalidStatusException {
         auction.approveAuction();
         auctionCache.put(auction.getId(), auction);
@@ -129,14 +145,54 @@ public class AuctionService {
     }
 
     /**
-     * Admin: OPEN → RUNNING.
-     * Sets startTime = now() in the model, then persists it to DB.
+     * Legacy/manual start path retained for internal compatibility.
      */
     public void startAuction(Auction auction) throws InvalidStatusException {
-        auction.startAuction(); // model sets startTime = com.auction.util.TimeSyncManager.getNow()
+        auction.startAuction();
         auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
+    }
+
+    /** Server scheduler: UPCOMING/legacy OPEN → RUNNING when seller startTime arrives. */
+    public boolean startScheduledIfDue(Auction auction, LocalDateTime now) throws InvalidStatusException {
+        if (auction.getStatus() != AuctionStatus.UPCOMING && auction.getStatus() != AuctionStatus.OPEN) {
+            return false;
+        }
+        if (auction.getEndTime() != null && !now.isBefore(auction.getEndTime())) {
+            return false;
+        }
+        LocalDateTime startTime = auction.getStartTime();
+        if (startTime == null || !now.isBefore(startTime)) {
+            auction.goLive();
+            auctionCache.put(auction.getId(), auction);
+            auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
+                    auction.getHighestBid(), auction.getStartTime());
+            return true;
+        }
+        return false;
+    }
+
+    /** Server scheduler: close any auction whose endTime has passed, even if it never went live. */
+    public boolean closeExpiredIfDue(Auction auction, LocalDateTime now) throws InvalidStatusException {
+        if (auction.getEndTime() == null || now.isBefore(auction.getEndTime())) {
+            return false;
+        }
+        if (auction.getStatus() == AuctionStatus.CLOSED || auction.getStatus() == AuctionStatus.CANCELED) {
+            return false;
+        }
+        if (auction.getStatus() == AuctionStatus.RUNNING) {
+            finishAuction(auction);
+            return true;
+        }
+        if (auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN) {
+            auction.setStatus(AuctionStatus.CLOSED);
+            auctionCache.put(auction.getId(), auction);
+            auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
+                    auction.getHighestBid(), auction.getStartTime());
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -312,6 +368,19 @@ public class AuctionService {
      */
     private ReentrantLock getUserLock(String userId) {
         return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true));
+    }
+
+    private void validateAuctionTimes(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Thời gian bắt đầu và kết thúc là bắt buộc.");
+        }
+        LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
+        if (startTime.isBefore(now)) {
+            throw new IllegalArgumentException("Thời gian bắt đầu phải lớn hơn hoặc bằng thời gian hiện tại.");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian bắt đầu.");
+        }
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────

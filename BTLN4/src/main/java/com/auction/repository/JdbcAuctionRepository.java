@@ -59,7 +59,7 @@ public class JdbcAuctionRepository {
      * Lưu Auction (và Item của nó) vào DB.
      * Seller phải đã tồn tại trong bảng users.
      */
-    public void save(Auction auction) {
+    public boolean save(Auction auction) {
         // 1. Lưu item trước
         new JdbcItemRepository().save(auction.getItem(), auction.getSeller());
 
@@ -90,10 +90,15 @@ public class JdbcAuctionRepository {
             ps.setString(6, auction.getStartTime() != null ? auction.getStartTime().toString() : null);
             ps.setString(7, auction.getEndTime().toString());
             ps.setString(8, auction.getCreatedAt().toString());
-            ps.executeUpdate();
+            int affectedRows = ps.executeUpdate();
+            if (affectedRows > 0) {
+                return true;
+            }
+            return findById(auction.getId()).isPresent();
 
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] save error: " + e.getMessage());
+            return false;
         }
     }
 

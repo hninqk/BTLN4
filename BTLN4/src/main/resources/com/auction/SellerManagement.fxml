@@ -23,7 +23,7 @@
                 <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
                 <!-- Notice -->
-                <Label text="Sau khi tạo, phiên đấu giá sẽ hiển thị ngay và Admin có thể bắt đầu đấu giá bất cứ lúc nào."
+                <Label text="Seller tự đặt thời gian bắt đầu và kết thúc. Phiên sẽ ở trạng thái Sắp diễn ra cho đến khi tới giờ."
                        styleClass="label-subtle" wrapText="true">
                     <graphic>
                         <FontIcon iconLiteral="fas-info-circle" iconSize="13" styleClass="button-icon"/>
@@ -115,6 +115,21 @@
                             <Label text="Giá khởi điểm (₫) *" styleClass="form-label"/>
                             <TextField fx:id="startPriceField" promptText="VD: 1000000"
                                        styleClass="text-field" maxWidth="Infinity"/>
+                        </VBox>
+
+                        <VBox spacing="6">
+                            <Label text="Thời gian bắt đầu *" styleClass="form-label"/>
+                            <VBox spacing="10">
+                                <DatePicker fx:id="startDatePicker" promptText="Chọn ngày"
+                                            maxWidth="1.7976931348623157E308" styleClass="date-picker"/>
+                                <HBox alignment="CENTER" spacing="10">
+                                    <Spinner fx:id="startHourSpinner" editable="true"
+                                             maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
+                                    <Label text=":" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+                                    <Spinner fx:id="startMinuteSpinner" editable="true"
+                                             maxWidth="1.7976931348623157E308" HBox.hgrow="ALWAYS"/>
+                                </HBox>
+                            </VBox>
                         </VBox>
 
                         <VBox spacing="6">

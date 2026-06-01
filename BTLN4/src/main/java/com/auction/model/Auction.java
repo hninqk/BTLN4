@@ -18,16 +18,27 @@ public class Auction extends Entity implements Subject {
     private List<Observer> observers = new CopyOnWriteArrayList<>();
 
     /**
-     * Seller creates a new auction — starts in OPEN immediately (no approval step).
+     * Legacy constructor: create a live auction immediately.
      */
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
+        this(seller, item, com.auction.util.TimeSyncManager.getNow(), endTime);
+    }
+
+    /**
+     * Seller creates a scheduled auction. If startTime has arrived on the server,
+     * it is live immediately; otherwise it waits in UPCOMING.
+     */
+    public Auction(Seller seller, Item item, LocalDateTime startTime, LocalDateTime endTime) {
         super();
-        this.status = AuctionStatus.OPEN;
         this.seller = seller;
         this.item = item;
         this.highestBid = (item != null) ? item.getStartingPrice() : 0.0;
-        this.startTime = null;
+        this.startTime = startTime;
         this.endTime = endTime;
+        LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
+        this.status = startTime != null && !startTime.isAfter(now)
+                ? AuctionStatus.RUNNING
+                : AuctionStatus.UPCOMING;
     }
 
     /** DB reconstruction constructor */
@@ -63,18 +74,24 @@ public class Auction extends Entity implements Subject {
 
     // ------- State transitions -------
 
-    /** Admin starts an OPEN auction → RUNNING (bidding begins, skips PENDING). */
+    /** Legacy approval path: PENDING/OPEN → UPCOMING. */
     public void approveAuction() throws InvalidStatusException {
-        if (this.status != AuctionStatus.OPEN)
-            throw new InvalidStatusException("Chỉ có thể duyệt phiên đang ở trạng thái OPEN. Trạng thái hiện tại: " + status);
-        status = AuctionStatus.RUNNING;
+        if (this.status != AuctionStatus.PENDING && this.status != AuctionStatus.OPEN)
+            throw new InvalidStatusException("Chỉ có thể duyệt phiên đang chờ. Trạng thái hiện tại: " + status);
+        status = AuctionStatus.UPCOMING;
     }
 
-    /** Admin starts an OPEN auction → RUNNING (bidding begins). */
+    /** Legacy/manual start entry point retained for internal compatibility. */
     public void startAuction() throws InvalidStatusException {
-        if (this.status != AuctionStatus.OPEN)
-            throw new InvalidStatusException("Chỉ có thể bắt đầu phiên đã được duyệt. Trạng thái hiện tại: " + status);
-        this.startTime = com.auction.util.TimeSyncManager.getNow();
+        goLive();
+    }
+
+    /** Server scheduler promotes a seller-scheduled auction to RUNNING. */
+    public void goLive() throws InvalidStatusException {
+        if (this.status != AuctionStatus.UPCOMING && this.status != AuctionStatus.OPEN)
+            throw new InvalidStatusException("Chỉ có thể bắt đầu phiên sắp diễn ra. Trạng thái hiện tại: " + status);
+        if (this.startTime == null)
+            this.startTime = com.auction.util.TimeSyncManager.getNow();
         status = AuctionStatus.RUNNING;
     }
 
@@ -187,7 +204,7 @@ public class Auction extends Entity implements Subject {
 
     public String getStatusDisplay() {
         return switch (status) {
-            case OPEN -> "Chờ bắt đầu";
+            case UPCOMING, OPEN -> "Sắp diễn ra";
             case RUNNING -> "Đang diễn ra";
             case CLOSED -> "Đã đóng";
             case CANCELED -> "Đã huỷ";

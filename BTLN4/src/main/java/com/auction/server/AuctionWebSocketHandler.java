@@ -51,7 +51,7 @@ public class AuctionWebSocketHandler {
     // Map<bidderId, latestOutbidItemName>
     private final Map<String, String> outbidCache = new ConcurrentHashMap<>();
 
-    // Scheduler for auto-finishing expired auctions
+    // Scheduler for auto-starting scheduled auctions and auto-finishing expired auctions
     private final ScheduledExecutorService autoFinishScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "AutoFinish-Scheduler");
         t.setDaemon(true);
@@ -65,9 +65,8 @@ public class AuctionWebSocketHandler {
     }
 
     /**
-     * Chạy mỗi 30 giây: tự động kết thúc các phiên RUNNING đã hết giờ.
-     * Đây là cơ chế đảm bảo tiền được trừ ngay khi auction hết giờ,
-     * thay vì phải chờ Admin bấm nút "Kết thúc".
+     * Chạy định kỳ: tự động đóng phiên đã hết giờ trước, sau đó đưa phiên
+     * UPCOMING/OPEN vào RUNNING khi đến giờ bắt đầu.
      */
     private void startAutoFinishScheduler() {
         autoFinishScheduler.scheduleAtFixedRate(() -> {
@@ -75,25 +74,29 @@ public class AuctionWebSocketHandler {
                 List<Auction> all = auctionService.getAllAuctions();
                 LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
                 for (Auction a : all) {
-                    if (a.getStatus() == AuctionStatus.RUNNING
-                            && a.getEndTime() != null
-                            && now.isAfter(a.getEndTime())) {
-                        try {
-                            BidTransaction preWinner = a.getWinner();
-                            auctionService.finishAuction(a);
-                            broadcastFinishResult(a, preWinner);
-                            System.out.printf("[AutoFinish] Auto-closed auction %s%n", a.getId());
-                        } catch (Exception e) {
-                            System.err.printf("[AutoFinish] Failed to finish auction %s: %s%n",
-                                    a.getId(), e.getMessage());
+                    try {
+                        BidTransaction preWinner = a.getWinner();
+                        if (auctionService.closeExpiredIfDue(a, now)) {
+                            Auction fresh = auctionService.findById(a.getId()).orElse(a);
+                            broadcastFinishResult(fresh, preWinner);
+                            System.out.printf("[AutoLifecycle] Auto-closed auction %s%n", a.getId());
+                            continue;
                         }
+                        if (auctionService.startScheduledIfDue(a, now)) {
+                            Auction fresh = auctionService.findById(a.getId()).orElse(a);
+                            broadcastStatusChanged(fresh);
+                            System.out.printf("[AutoLifecycle] Auto-started auction %s%n", a.getId());
+                        }
+                    } catch (Exception e) {
+                        System.err.printf("[AutoLifecycle] Failed to update auction %s: %s%n",
+                                a.getId(), e.getMessage());
                     }
                 }
             } catch (Exception e) {
-                System.err.println("[AutoFinish] Scheduler error: " + e.getMessage());
+                System.err.println("[AutoLifecycle] Scheduler error: " + e.getMessage());
             }
-        }, 30, 30, TimeUnit.SECONDS);
-        System.out.println("[Server] Auto-finish scheduler started (every 30s).");
+        }, 5, 5, TimeUnit.SECONDS);
+        System.out.println("[Server] Auto lifecycle scheduler started (every 5s).");
     }
 
     /**
@@ -141,6 +144,22 @@ public class AuctionWebSocketHandler {
             broadcast.addProperty("winnerUsername", preWinner.getBidder().getUsername());
             broadcast.addProperty("winnerBid",      preWinner.getAmount());
         }
+        broadcastAll(broadcast.toString());
+    }
+
+    private void broadcastStatusChanged(Auction fresh) {
+        JsonObject broadcast = new JsonObject();
+        broadcast.addProperty("type",        "AUCTION_STATUS_CHANGED");
+        broadcast.addProperty("auctionId",   fresh.getId());
+        broadcast.addProperty("newStatus",   fresh.getStatus().name());
+        broadcast.addProperty("highestBid",  fresh.getHighestBid());
+        BidTransaction winner = fresh.getWinner();
+        broadcast.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
+        broadcast.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
+        broadcast.addProperty("startTime",   fresh.getStartTime() != null
+                ? fresh.getStartTime().toString() : "");
+        broadcast.addProperty("endTime",     fresh.getEndTime() != null
+                ? fresh.getEndTime().toString() : "");
         broadcastAll(broadcast.toString());
     }
 
@@ -442,7 +461,9 @@ public class AuctionWebSocketHandler {
             String desc       = req.has("description") ? req.get("description").getAsString() : "";
             String imageUrl   = req.has("imageUrl")    ? req.get("imageUrl").getAsString()    : "";
             double startPrice = req.get("startPrice").getAsDouble();
+            String startTimeStr = req.get("startTime").getAsString();
             String endTimeStr = req.get("endTime").getAsString();
+            LocalDateTime startTime = LocalDateTime.parse(startTimeStr);
             LocalDateTime endTime = LocalDateTime.parse(endTimeStr);
 
             // ── Load seller from server DB ──
@@ -458,8 +479,8 @@ public class AuctionWebSocketHandler {
             };
             item.setImageUrl(imageUrl);
 
-            // ── Create auction (PENDING status) ──
-            Auction auction = auctionService.createAuction(seller, item, endTime);
+            // ── Create auction; seller owns start/end time ──
+            Auction auction = auctionService.createAuction(seller, item, startTime, endTime);
 
             // ── Broadcast AUCTION_CREATED to ALL clients ──
             JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction, false);
@@ -480,15 +501,15 @@ public class AuctionWebSocketHandler {
 
     private void handleAdminAction(WsMessageContext ctx, JsonObject req) {
         try {
-            String action    = req.get("action").getAsString();    // approve|start|finish|cancel
+            String action    = req.get("action").getAsString();    // finish|cancel (start is scheduler-owned)
             String auctionId = req.get("auctionId").getAsString();
 
             Auction auction = auctionService.findById(auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
 
             switch (action) {
-                case "approve" -> auctionService.approveAuction(auction);
-                case "start"   -> auctionService.startAuction(auction);
+                case "approve", "start" -> throw new InvalidStatusException(
+                        "Admin không còn quyền bắt đầu phiên. Phiên sẽ tự bắt đầu theo thời gian Seller đã đặt.");
                 case "finish"  -> {
                     BidTransaction preWinner = auction.getWinner();
                     auctionService.finishAuction(auction);
@@ -506,18 +527,8 @@ public class AuctionWebSocketHandler {
             // Reload fresh auction state from DB after the operation
             Auction fresh = auctionService.findById(auctionId).orElse(auction);
 
-            // ── Broadcast AUCTION_STATUS_CHANGED to ALL (approve/start/cancel) ──
-            JsonObject broadcast = new JsonObject();
-            broadcast.addProperty("type",        "AUCTION_STATUS_CHANGED");
-            broadcast.addProperty("auctionId",   fresh.getId());
-            broadcast.addProperty("newStatus",   fresh.getStatus().name());
-            broadcast.addProperty("highestBid",  fresh.getHighestBid());
-            BidTransaction winner = fresh.getWinner();
-            broadcast.addProperty("highestBidderId", winner != null ? winner.getBidder().getId() : "");
-            broadcast.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
-            broadcast.addProperty("startTime",   fresh.getStartTime() != null
-                    ? fresh.getStartTime().toString() : "");
-            broadcastAll(broadcast.toString());
+            // ── Broadcast AUCTION_STATUS_CHANGED to ALL (cancel) ──
+            broadcastStatusChanged(fresh);
 
             System.out.printf("[Server] AUCTION_STATUS_CHANGED  id=%s  action=%s  status=%s%n",
                     auctionId, action, fresh.getStatus().name());

@@ -277,7 +277,7 @@ public class LiveBiddingController implements DataReceiver {
                 "badge-pending", "badge-open", "badge-running", "badge-closed", "badge-canceled");
         switch (currentAuction.getStatus()) {
             case PENDING -> statusBadge.getStyleClass().add("badge-pending");
-            case OPEN -> statusBadge.getStyleClass().add("badge-open");
+            case UPCOMING, OPEN -> statusBadge.getStyleClass().add("badge-open");
             case RUNNING -> statusBadge.getStyleClass().add("badge-running");
             case CLOSED -> statusBadge.getStyleClass().add("badge-closed");
             case CANCELED -> statusBadge.getStyleClass().add("badge-canceled");

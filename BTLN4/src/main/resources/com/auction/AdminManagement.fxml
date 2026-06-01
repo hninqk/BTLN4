@@ -103,8 +103,6 @@
 
                         <!-- Action buttons — contextually enabled by row selection -->
                         <HBox spacing="8" styleClass="admin-action-bar">
-                            <Button fx:id="btnStart"   text="Bắt đầu"
-                                    onAction="#handleForceStart"  styleClass="btn-success"/>
                             <Button fx:id="btnFinish"  text="Kết thúc"
                                     onAction="#handleForceFinish" styleClass="btn-warning"/>
                             <Button fx:id="btnCancel"  text="Huỷ"
@@ -148,7 +146,7 @@
                                     <Label fx:id="statPending"  text="-" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
-                                    <Label text="Chờ bắt đầu" styleClass="stat-label"/>
+                                    <Label text="Sắp diễn ra" styleClass="stat-label"/>
                                     <Label fx:id="statOpen"     text="0" styleClass="stat-value"/>
                                 </VBox>
                                 <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">

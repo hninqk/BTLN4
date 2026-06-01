@@ -206,12 +206,12 @@ public final class AppFacade {
         return fetchAuctions("/api/auctions");
     }
 
-    /** Only OPEN + RUNNING — what bidders see. */
+    /** UPCOMING + RUNNING + CLOSED — what bidders see. */
     public List<Auction> getPublicAuctions() {
         return fetchAuctions("/api/auctions?filter=public");
     }
 
-    /** All auctions for a specific seller (including PENDING). */
+    /** All auctions for a specific seller. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
         return fetchAuctions("/api/users/" + seller.getId() + "/auctions");
     }

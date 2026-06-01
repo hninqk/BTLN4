@@ -106,7 +106,7 @@ public class BidHistoryController {
 
             String result;
             AuctionStatus status = full.getStatus();
-            if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN) {
+            if (status == AuctionStatus.RUNNING || status == AuctionStatus.UPCOMING || status == AuctionStatus.OPEN) {
                 result = "Đang tham gia";
             } else {
                 BidTransaction winner = full.getWinner();
@@ -240,7 +240,7 @@ public class BidHistoryController {
             case "Đang diễn ra" -> "badge-status-running";
             case "Đã đóng"      -> "badge-status-closed";
             case "Chờ duyệt"    -> "badge-status-pending";
-            case "Chờ bắt đầu"  -> "badge-status-open";
+            case "Sắp diễn ra"  -> "badge-status-open";
             case "Đã huỷ"       -> "badge-status-canceled";
             default              -> "badge-status-other";
         };
@@ -290,7 +290,7 @@ public class BidHistoryController {
                     BidTransaction myBid = myLatest.get();
                     String result;
                     AuctionStatus status = full.getStatus();
-                    if (status == AuctionStatus.RUNNING || status == AuctionStatus.OPEN) {
+                    if (status == AuctionStatus.RUNNING || status == AuctionStatus.UPCOMING || status == AuctionStatus.OPEN) {
                         result = "Đang tham gia";
                     } else {
                         BidTransaction winner = full.getWinner();

@@ -6,6 +6,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,26 @@ public class DatabaseConnection {
         return connection;
     }
 
+    private static void migrateAuctionStatusConstraint(Statement st) {
+        String sql = """
+                SELECT conname
+                FROM pg_constraint
+                WHERE conrelid = 'auctions'::regclass
+                  AND contype = 'c'
+                  AND pg_get_constraintdef(oid) ILIKE '%status%'
+                  AND pg_get_constraintdef(oid) NOT ILIKE '%UPCOMING%'
+                """;
+        try (ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String constraintName = rs.getString("conname").replace("\"", "\"\"");
+                st.execute("ALTER TABLE auctions DROP CONSTRAINT IF EXISTS \"" + constraintName + "\"");
+                log.info("Migration applied: dropped outdated auctions status constraint {}", constraintName);
+            }
+        } catch (Exception ignored) {
+            // Existing deployments without a status CHECK need no migration.
+        }
+    }
+
     public static void initialize() {
         try (Connection conn = getConnection()) {
             log.info("Database ready (HikariCP pool active)");
@@ -136,6 +157,8 @@ public class DatabaseConnection {
                     + "created_at  TEXT NOT NULL, "
                     + "FOREIGN KEY (seller_id) REFERENCES users(id), "
                     + "FOREIGN KEY (item_id)   REFERENCES items(id))");
+
+            migrateAuctionStatusConstraint(st);
 
             st.execute("CREATE TABLE IF NOT EXISTS bid_transactions ("
                     + "id         TEXT PRIMARY KEY, "

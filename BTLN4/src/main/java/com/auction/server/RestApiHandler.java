@@ -35,7 +35,7 @@ import java.util.Optional;
  * GET /api/auctions – list auctions (?filter=public | all)
  * GET /api/auctions/{id} – single auction
  * POST /api/auctions – create auction (seller)
- * POST /api/auctions/{id}/action – admin approve/start/finish/cancel
+ * POST /api/auctions/{id}/action – admin finish/cancel
  * DELETE /api/auctions/{id} – remove auction
  * GET /api/users – list all users (admin)
  * GET /api/users/{id} – get single user
@@ -193,6 +193,7 @@ public class RestApiHandler {
             String desc = body.has("description") ? body.get("description").getAsString() : "";
             String imageUrl = body.has("imageUrl") ? body.get("imageUrl").getAsString() : "";
             double startPrice = body.get("startPrice").getAsDouble();
+            LocalDateTime startTime = LocalDateTime.parse(body.get("startTime").getAsString());
             LocalDateTime endTime = LocalDateTime.parse(body.get("endTime").getAsString());
 
             Seller seller = (Seller) userService.findById(sellerId)
@@ -206,7 +207,7 @@ public class RestApiHandler {
             };
             item.setImageUrl(imageUrl);
 
-            Auction auction = auctionService.createAuction(seller, item, endTime);
+            Auction auction = auctionService.createAuction(seller, item, startTime, endTime);
             ctx.status(201).contentType("application/json")
                     .result(AuctionSerializer.auctionToJson(auction, true).toString());
         } catch (Exception e) {
@@ -225,8 +226,8 @@ public class RestApiHandler {
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
 
             switch (action) {
-                case "approve" -> auctionService.approveAuction(auction);
-                case "start" -> auctionService.startAuction(auction);
+                case "approve", "start" -> throw new Exception(
+                        "Admin không còn quyền bắt đầu phiên. Phiên sẽ tự bắt đầu theo thời gian Seller đã đặt.");
                 case "finish" -> auctionService.finishAuction(auction);
                 case "cancel" -> auctionService.cancelAuction(auction);
                 default -> throw new Exception("Unknown action: " + action);

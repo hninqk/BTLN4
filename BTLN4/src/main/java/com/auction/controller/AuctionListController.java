@@ -100,10 +100,10 @@ public class AuctionListController {
     private void setupFilters() {
         if (isAdmin()) {
             statusFilter.setItems(FXCollections.observableArrayList(
-                    "Tất cả", "Chờ duyệt", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
+                    "Tất cả", "Chờ duyệt", "Sắp diễn ra", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
         } else {
             statusFilter.setItems(FXCollections.observableArrayList(
-                    "Tất cả", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng"));
+                    "Tất cả", "Sắp diễn ra", "Đang diễn ra", "Đã đóng"));
         }
         statusFilter.getSelectionModel().selectFirst();
         categoryFilter.setItems(FXCollections.observableArrayList("Tất cả", "Điện tử", "Nghệ thuật", "Xe cộ"));
@@ -175,7 +175,7 @@ public class AuctionListController {
             case "Đang diễn ra" -> "badge-status-running";
             case "Đã đóng"      -> "badge-status-closed";
             case "Chờ duyệt"    -> "badge-status-pending";
-            case "Chờ bắt đầu"  -> "badge-status-open";
+            case "Sắp diễn ra"  -> "badge-status-open";
             case "Đã huỷ"       -> "badge-status-canceled";
             default              -> "badge-status-other";
         };

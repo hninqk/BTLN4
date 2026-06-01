@@ -1470,7 +1470,7 @@
     -fx-text-fill: #78350F;
 }
 
-/* Status: Chờ bắt đầu – soft blue */
+/* Status: Sắp diễn ra - soft blue */
 .badge-status-open {
     -fx-background-color: #DBEAFE;
     -fx-text-fill: #1E3A8A;

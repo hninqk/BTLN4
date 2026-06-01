@@ -107,6 +107,11 @@ public class AdminManagementController {
         loadUsers();               // async REST load
         loadAuctionsFromServer();  // async REST load; overridden by FULL_SYNC once WS connects
         disableAuctionButtons();
+        if (btnStart != null) {
+            btnStart.setVisible(false);
+            btnStart.setManaged(false);
+            btnStart.setDisable(true);
+        }
 
         allAuctionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nw) -> updateAuctionButtons(nw));
@@ -217,6 +222,7 @@ public class AdminManagementController {
         String newStatusStr = json.get("newStatus").getAsString();
         double highestBid   = json.has("highestBid") ? json.get("highestBid").getAsDouble() : -1;
         String startTimeStr = json.has("startTime")  ? json.get("startTime").getAsString()  : "";
+        String endTimeStr   = json.has("endTime")    ? json.get("endTime").getAsString()    : "";
 
         AuctionStatus newStatus;
         try { newStatus = AuctionStatus.valueOf(newStatusStr); }
@@ -231,6 +237,9 @@ public class AdminManagementController {
                 if (highestBid >= 0) a.setHighestBid(highestBid);
                 if (!startTimeStr.isEmpty()) {
                     try { a.setStartTime(LocalDateTime.parse(startTimeStr)); } catch (Exception ignored) {}
+                }
+                if (!endTimeStr.isEmpty()) {
+                    try { a.setEndTime(LocalDateTime.parse(endTimeStr)); } catch (Exception ignored) {}
                 }
                 break;
             }
@@ -278,7 +287,7 @@ public class AdminManagementController {
         roleFilter.setItems(FXCollections.observableArrayList("Tất cả", "Bidder", "Seller", "Admin"));
         roleFilter.getSelectionModel().selectFirst();
         auctionStatusFilter.setItems(FXCollections.observableArrayList(
-                "Tất cả", "Chờ bắt đầu", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
+                "Tất cả", "Sắp diễn ra", "Đang diễn ra", "Đã đóng", "Đã huỷ"));
         auctionStatusFilter.getSelectionModel().selectFirst();
     }
 
@@ -320,9 +329,9 @@ public class AdminManagementController {
     // ── Button state ─────────────────────────────────────────────────────────
 
     private void disableAuctionButtons() {
-        btnStart.setDisable(false);
-        btnFinish.setDisable(false);
-        btnCancel.setDisable(false);
+        if (btnStart != null) btnStart.setDisable(true);
+        if (btnFinish != null) btnFinish.setDisable(false);
+        if (btnCancel != null) btnCancel.setDisable(false);
     }
 
     private void updateAuctionButtons(Auction a) {
@@ -420,7 +429,8 @@ public class AdminManagementController {
 
 
     @FXML private void handleForceStart(ActionEvent event) {
-        processBulkAction("BẮT ĐẦU", "bắt đầu", "Chờ bắt đầu", "start");
+        showAlert(Alert.AlertType.INFORMATION, "Không còn thao tác",
+                "Phiên đấu giá sẽ tự bắt đầu theo thời gian Seller đã đặt.");
     }
 
     @FXML private void handleForceFinish(ActionEvent event) {
@@ -481,7 +491,7 @@ public class AdminManagementController {
 
     private boolean isValidStatusForAction(AuctionStatus status, String action) {
         return switch (action) {
-            case "start"   -> status == AuctionStatus.OPEN;
+            case "start"   -> false;
             case "finish" -> status == AuctionStatus.RUNNING;
             case "cancel" -> status != AuctionStatus.CLOSED && status != AuctionStatus.CANCELED;
             default -> false;
@@ -537,7 +547,6 @@ public class AdminManagementController {
 
     private AuctionStatus statusAfterAdminAction(String action) {
         return switch (action) {
-            case "start"   -> AuctionStatus.RUNNING;
             case "finish" -> AuctionStatus.CLOSED;
             case "cancel" -> AuctionStatus.CANCELED;
             default -> null;
@@ -574,7 +583,8 @@ public class AdminManagementController {
         if (statTotalUsers    != null) statTotalUsers.setText(String.valueOf(users.size()));
         if (statTotalAuctions != null) statTotalAuctions.setText(String.valueOf(auctions.size()));
         if (statPending  != null) statPending.setText("-");
-        if (statOpen     != null) statOpen.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.OPEN).count()));
+        if (statOpen     != null) statOpen.setText(String.valueOf(auctions.stream()
+                .filter(a -> a.getStatus() == AuctionStatus.UPCOMING || a.getStatus() == AuctionStatus.OPEN).count()));
         if (statRunning  != null) statRunning.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.RUNNING).count()));
         if (statFinished != null) statFinished.setText(String.valueOf(auctions.stream().filter(a -> a.getStatus() == AuctionStatus.CLOSED).count()));
         if (statBidders  != null) statBidders.setText(String.valueOf(users.stream().filter(u -> u instanceof Bidder).count()));
