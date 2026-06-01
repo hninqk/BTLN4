@@ -34,7 +34,7 @@ import javafx.util.Duration;
 import com.auction.util.ImageLoaderUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.collections.ListChangeListener;
+
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.effect.DropShadow;
@@ -113,16 +113,11 @@ public class DashboardController {
     private final AppFacade app = AppFacade.getInstance();
     private Tooltip activeHeatmapTooltip;
 
-    // Pie chart color palettes — 3 distinct categorical colors
-    private final String[] lightPieColors = new String[] {
+    // Pie chart color palette — 3 distinct categorical colors
+    private final String[] pieColors = new String[] {
             "#3B82F6", // Blue
             "#22C55E", // Green
             "#F97316"  // Orange
-    };
-    private final String[] darkPieColors = new String[] {
-            "#60A5FA", // Blue
-            "#4ADE80", // Green
-            "#FB923C"  // Orange
     };
 
     private final String[] newsHeadlines = {
@@ -428,19 +423,6 @@ public class DashboardController {
 
                 // Ensure colors are applied after nodes are created
                 Platform.runLater(() -> applyPieColors());
-
-                // Attach listener to theme changes so pie colors update when dark-mode toggles
-                if (sellerCategoryPieChart.getScene() != null) {
-                    Parent root = sellerCategoryPieChart.getScene().getRoot();
-                    root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
-                } else {
-                    sellerCategoryPieChart.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                        if (newScene != null) {
-                            Parent root = newScene.getRoot();
-                            root.getStyleClass().addListener((ListChangeListener<String>) change -> applyPieColors());
-                        }
-                    });
-                }
             }
 
             double maxDay = byDay.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
@@ -504,22 +486,14 @@ public class DashboardController {
         return "heatmap-level-4";
     }
 
-    // Determine current theme by checking root style class
-    private boolean isDarkMode() {
-        if (sellerCategoryPieChart == null || sellerCategoryPieChart.getScene() == null)
-            return false;
-        Parent root = sellerCategoryPieChart.getScene().getRoot();
-        return root.getStyleClass().contains("dark-mode");
-    }
-
-    // Apply colors to pie chart slices according to current theme
+    // Apply colors to pie chart slices
     private void applyPieColors() {
         if (sellerCategoryPieChart == null)
             return;
         ObservableList<PieChart.Data> data = sellerCategoryPieChart.getData();
         if (data == null)
             return;
-        String[] palette = isDarkMode() ? darkPieColors : lightPieColors;
+        String[] palette = pieColors;
         Platform.runLater(() -> {
             double total = data.stream().mapToDouble(PieChart.Data::getPieValue).sum();
             if (sellerPieLegend != null)

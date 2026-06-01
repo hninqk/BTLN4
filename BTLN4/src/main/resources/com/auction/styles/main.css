@@ -7,32 +7,7 @@
 .root {
     -fx-font-family: "Segoe UI", "Arial", sans-serif;
     -fx-font-size: 13px;
-    -fx-background-color: #F5F6FA;
-    -theme-bg: #F5F6FA;
-    -theme-surface: #FFFFFF;
-    -theme-text: #1E293B;
-    -theme-text-muted: #64748B;
-    -theme-border: #E2E8F0;
-    -theme-primary: #2563EB;
-
-    /* Table Glassmorphism (Light Mode) */
-    -theme-table-row: rgba(255, 255, 255, 0.5);
-    -theme-table-row-odd: rgba(248, 250, 252, 0.55);
-    -theme-table-text: #1E293B;
-    -theme-table-row-selected: rgba(219, 234, 254, 0.85);
-    -theme-table-row-hover: rgba(239, 246, 255, 0.7);
-
-    /* Bid Panel Glassmorphism */
-    -theme-bid-panel: #EFF6FF;
-    -theme-bid-border: #BFDBFE;
-
-    /* Success Card / Winner Banner Theme (Light Mode) */
-    -theme-success-bg: #F0FDF4;
-    -theme-success-border: #86EFAC;
-    -theme-success-text: #15803D;
-}
-
-.dark-mode {
+    -fx-background-color: #0F172A;
     -theme-bg: #0F172A;
     -theme-surface: #1E293B;
     -theme-text: #F8FAFC;
@@ -40,7 +15,7 @@
     -theme-border: #334155;
     -theme-primary: #3B82F6;
 
-    /* Table Glassmorphism (Dark Mode) */
+    /* Table Glassmorphism */
     -theme-table-row: rgba(30, 41, 59, 0.5);
     -theme-table-row-odd: rgba(15, 23, 42, 0.55);
     -theme-table-text: #F8FAFC;
@@ -51,11 +26,13 @@
     -theme-bid-panel: rgba(59, 130, 246, 0.15);
     -theme-bid-border: rgba(59, 130, 246, 0.3);
 
-    /* Success Card / Winner Banner Theme (Dark Mode) */
+    /* Success Card / Winner Banner Theme */
     -theme-success-bg: rgba(22, 163, 74, 0.15);
     -theme-success-border: rgba(22, 163, 74, 0.3);
     -theme-success-text: #4ADE80;
 }
+
+
 
 /* ---------- Colors (via style classes) ---------- */
 /* Primary: #2563EB (blue)  Surface: #FFFFFF  Border: #E2E8F0 */
@@ -512,21 +489,7 @@
     -fx-min-width: 72;
 }
 
-.dark-mode .admin-tab-pane>.tab-header-area>.headers-region {
-    -fx-background-color: rgba(15, 23, 42, 0.72);
-    -fx-border-color: rgba(51, 65, 85, 0.78);
-    -fx-border-width: 1;
-    -fx-border-radius: 10;
-}
 
-.dark-mode .admin-tab-pane>.tab-header-area>.headers-region>.tab:hover {
-    -fx-background-color: rgba(51, 65, 85, 0.74);
-}
-
-.dark-mode .admin-tab-pane>.tab-header-area>.headers-region>.tab:selected {
-    -fx-background-color: rgba(30, 41, 59, 0.96);
-    /* -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 12, 0.18, 0, 2); */
-}
 
 /* ---------- Disabled Button States ---------- */
 /* JavaFX applies :disabled when setDisable(true) is called.
@@ -758,10 +721,7 @@
     -fx-text-fill: -theme-text;
 }
 
-.dark-mode .seller-summary-card {
-    -fx-background-color: rgba(30, 41, 59, 0.64);
-    -fx-border-color: rgba(71, 85, 105, 0.56);
-}
+
 
 /* ---------- Pie Card and Donut Hole ---------- */
 .pie-card {
@@ -789,10 +749,7 @@
     -fx-opacity: 0.98;
 }
 
-.dark-mode .pie-donut-hole {
-    -fx-background-color: transparent;
-    -fx-border-color: rgba(0, 0, 0, 0.18);
-}
+
 
 /* Legend styling when placed on the navy pie card */
 .stat-card-navy .chart-legend {
@@ -843,57 +800,33 @@
     /* -fx-effect: dropshadow(three-pass-box, rgba(255,255,255,0.3), 4, 0.0, 0, 0); */
 }
 
-/* Tone màu xanh dương cho heatmap (Light mode) */
+/* Tone màu xanh dương cho heatmap (Dark mode) */
 .heatmap-level-0 {
-    -fx-background-color: #f1f5f9;
+    -fx-background-color: #1e2b3c;
     /* Không có doanh thu */
 }
 
 .heatmap-level-1 {
-    -fx-background-color: #bfdbfe;
+    -fx-background-color: #1e3a8a;
     /* Doanh thu thấp */
 }
 
 .heatmap-level-2 {
-    -fx-background-color: #60a5fa;
+    -fx-background-color: #2563eb;
     /* Doanh thu trung bình */
 }
 
 .heatmap-level-3 {
-    -fx-background-color: #2563eb;
+    -fx-background-color: #3b82f6;
     /* Doanh thu cao */
 }
 
 .heatmap-level-4 {
-    -fx-background-color: #1e3a8a;
+    -fx-background-color: #93c5fd;
     /* Doanh thu rất cao (Đột phá) */
 }
 
-/* Tone màu xanh dương cho heatmap (Dark mode - Đảo ngược độ sáng giống nút bấm) */
-.dark-mode .heatmap-level-0 {
-    -fx-background-color: #1e2b3c;
-    /* Nền tối không hoạt động */
-}
 
-.dark-mode .heatmap-level-1 {
-    -fx-background-color: #1e3a8a;
-    /* Xanh dương tối */
-}
-
-.dark-mode .heatmap-level-2 {
-    -fx-background-color: #2563eb;
-    /* Xanh dương trung bình (Primary light) */
-}
-
-.dark-mode .heatmap-level-3 {
-    -fx-background-color: #3b82f6;
-    /* Xanh dương sáng (Primary dark) */
-}
-
-.dark-mode .heatmap-level-4 {
-    -fx-background-color: #93c5fd;
-    /* Xanh dương rất sáng */
-}
 
 /* Nhãn thứ trong tuần của heatmap */
 .heatmap-day-label {
@@ -1114,17 +1047,7 @@
     -fx-background-color: transparent;
 }
 
-.dark-mode .scroll-bar .track {
-    -fx-background-color: rgba(15, 23, 42, 0.78);
-}
 
-.dark-mode .scroll-bar .thumb {
-    -fx-background-color: rgba(96, 165, 250, 0.40);
-}
-
-.dark-mode .scroll-bar .thumb:hover {
-    -fx-background-color: rgba(96, 165, 250, 0.66);
-}
 
 /* ---------- ListBox / Panels ---------- */
 .list-view {
@@ -1160,7 +1083,7 @@
 }
 
 .feed-list {
-    -fx-background-color: rgba(248, 250, 252, 0.72);
+    -fx-background-color: rgba(15, 23, 42, 0.42);
     -fx-border-color: transparent;
     -fx-border-width: 0;
     -fx-border-radius: 8;
@@ -1187,17 +1110,17 @@
 }
 
 .feed-list .scroll-bar:vertical .track {
-    -fx-background-color: rgba(226, 232, 240, 0.6);
+    -fx-background-color: rgba(15, 23, 42, 0.72);
     -fx-background-radius: 999;
 }
 
 .feed-list .scroll-bar:vertical .thumb {
-    -fx-background-color: rgba(37, 99, 235, 0.42);
+    -fx-background-color: rgba(96, 165, 250, 0.45);
     -fx-background-radius: 999;
 }
 
 .feed-list .scroll-bar:vertical .thumb:hover {
-    -fx-background-color: rgba(37, 99, 235, 0.62);
+    -fx-background-color: rgba(96, 165, 250, 0.72);
 }
 
 .feed-list .scroll-bar:horizontal {
@@ -1223,8 +1146,8 @@
 
 .feed-entry,
 .feed-entry-auto {
-    -fx-background-color: rgba(255, 255, 255, 0.78);
-    -fx-border-color: rgba(148, 163, 184, 0.28);
+    -fx-background-color: rgba(30, 41, 59, 0.72);
+    -fx-border-color: rgba(71, 85, 105, 0.70);
     -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
@@ -1232,34 +1155,10 @@
 }
 
 .feed-entry-auto {
-    -fx-background-color: rgba(240, 249, 255, 0.82);
-}
-
-.dark-mode .feed-list {
-    -fx-background-color: rgba(15, 23, 42, 0.42);
-}
-
-.dark-mode .feed-list .scroll-bar:vertical .track {
-    -fx-background-color: rgba(15, 23, 42, 0.72);
-}
-
-.dark-mode .feed-list .scroll-bar:vertical .thumb {
-    -fx-background-color: rgba(96, 165, 250, 0.45);
-}
-
-.dark-mode .feed-list .scroll-bar:vertical .thumb:hover {
-    -fx-background-color: rgba(96, 165, 250, 0.72);
-}
-
-.dark-mode .feed-entry,
-.dark-mode .feed-entry-auto {
-    -fx-background-color: rgba(30, 41, 59, 0.72);
-    -fx-border-color: rgba(71, 85, 105, 0.70);
-}
-
-.dark-mode .feed-entry-auto {
     -fx-background-color: rgba(30, 58, 95, 0.52);
 }
+
+
 
 .feed-icon-bid {
     -fx-icon-color: #2563EB;
@@ -1270,27 +1169,22 @@
 }
 
 .feed-time {
-    -fx-background-color: #EFF6FF;
+    -fx-background-color: rgba(59, 130, 246, 0.18);
     -fx-background-radius: 999;
     -fx-padding: 2 8 2 8;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1D4ED8;
-}
-
-.dark-mode .feed-time {
-    -fx-background-color: rgba(59, 130, 246, 0.18);
     -fx-text-fill: #BFDBFE;
 }
+
+
 
 .feed-actor {
     -fx-font-weight: bold;
     -fx-text-fill: -theme-text;
 }
 
-.dark-mode .feed-actor {
-    -fx-text-fill: #F8FAFC;
-}
+
 
 .feed-message,
 .feed-message-auto {
@@ -1302,24 +1196,18 @@
     -fx-text-fill: #92400E;
 }
 
-.dark-mode .feed-message,
-.dark-mode .feed-message-auto {
-    -fx-text-fill: #CBD5E1;
-}
+
 
 .feed-amount {
-    -fx-background-color: #ECFDF5;
+    -fx-background-color: rgba(16, 185, 129, 0.16);
     -fx-background-radius: 999;
     -fx-padding: 4 10 4 10;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: #047857;
-}
-
-.dark-mode .feed-amount {
-    -fx-background-color: rgba(16, 185, 129, 0.16);
     -fx-text-fill: #6EE7B7;
 }
+
+
 
 /* ---------- Combo Box ---------- */
 .combo-box .list-cell {
@@ -1401,10 +1289,7 @@
     -fx-text-fill: -theme-primary;
 }
 
-.dark-mode .hot-countdown {
-    -fx-background-color: rgba(96, 165, 250, 0.16);
-    -fx-text-fill: #BFDBFE;
-}
+
 
 /* ---------- Divider line ---------- */
 .h-separator {
@@ -1420,12 +1305,12 @@
 }
 
 .chart-plot-background {
-    -fx-background-color: rgba(248, 250, 252, 0.82);
+    -fx-background-color: rgba(15, 23, 42, 0.70);
 }
 
 .chart-vertical-grid-lines,
 .chart-horizontal-grid-lines {
-    -fx-stroke: rgba(100, 116, 139, 0.18);
+    -fx-stroke: rgba(255, 255, 255, 0.05);
 }
 
 .chart-alternative-row-fill,
@@ -1435,65 +1320,30 @@
 }
 
 .axis {
-    -fx-tick-label-fill: #475569;
+    -fx-tick-label-fill: #a0aec0;
 }
 
 .axis-label {
-    -fx-text-fill: #475569;
+    -fx-text-fill: #CBD5E1;
 }
 
 .axis-tick-mark,
 .axis-minor-tick-mark {
-    -fx-stroke: rgba(100, 116, 139, 0.32);
+    -fx-stroke: rgba(255, 255, 255, 0.1);
 }
 
 .chart-series-line {
-    -fx-stroke: #2563EB;
+    -fx-stroke: #60A5FA;
     -fx-stroke-width: 2.5px;
 }
 
 .chart-line-symbol {
-    -fx-background-color: #2563EB, #FFFFFF;
+    -fx-background-color: #60A5FA, #0F172A;
     -fx-background-radius: 6px;
     -fx-padding: 4px;
 }
 
-/* ---------- Chart Styling (Dark Mode) ---------- */
-.dark-mode .chart-plot-background {
-    -fx-background-color: rgba(15, 23, 42, 0.70);
-}
 
-.dark-mode .chart-vertical-grid-lines,
-.dark-mode .chart-horizontal-grid-lines {
-    -fx-stroke: rgba(255, 255, 255, 0.05);
-}
-
-.dark-mode .chart-alternative-row-fill,
-.dark-mode .chart-alternative-column-fill {
-    -fx-fill: transparent;
-    -fx-stroke: transparent;
-}
-
-.dark-mode .axis {
-    -fx-tick-label-fill: #a0aec0;
-}
-
-.dark-mode .axis-tick-mark,
-.dark-mode .axis-minor-tick-mark {
-    -fx-stroke: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode .axis-label {
-    -fx-text-fill: #CBD5E1;
-}
-
-.dark-mode .chart-series-line {
-    -fx-stroke: #60A5FA;
-}
-
-.dark-mode .chart-line-symbol {
-    -fx-background-color: #60A5FA, #0F172A;
-}
 
 /* ---------- DatePicker Styling ---------- */
 .date-picker {
@@ -1573,37 +1423,7 @@
     -fx-background-color: #ffffff;
 }
 
-.dark-mode .date-picker-popup {
-    -fx-background-color: -theme-surface;
-    -fx-border-color: -theme-border;
-}
 
-.dark-mode .date-picker-popup .month-year-pane {
-    -fx-background-color: -theme-bg;
-}
-
-.dark-mode .date-picker-popup .calendar-grid {
-    -fx-background-color: -theme-surface;
-}
-
-.dark-mode .date-picker-popup .day-cell {
-    -fx-text-fill: -theme-text;
-    -fx-background-color: transparent;
-}
-
-.dark-mode .date-picker-popup .day-cell:hover {
-    -fx-background-color: -theme-table-row-hover;
-}
-
-.dark-mode .date-picker-popup .selected {
-    -fx-background-color: -theme-primary;
-    -fx-text-fill: white;
-}
-
-.dark-mode .date-picker-popup .day-name-cell,
-.dark-mode .date-picker-popup .week-number-cell {
-    -fx-text-fill: -theme-text-muted;
-}
 
 /* Dynamic GUI Effects */
 .progress-bar {
@@ -1750,10 +1570,7 @@
     -fx-padding: 6 12;
 }
 
-.dark-mode .balance-pill {
-    -fx-background-color: rgba(74, 222, 128, 0.15);
-    -fx-border-color: rgba(74, 222, 128, 0.3);
-}
+
 
 /* ══════════════════════════════════════════════════════════════════════
    Desktop Header – Clock + Notification Bell
@@ -1768,9 +1585,7 @@
     -fx-max-height: 44;
 }
 
-.dark-mode .desktop-header {
-    -fx-background-color: rgba(15, 23, 42, 0.60);
-}
+
 
 /* Clock label */
 .header-clock {
@@ -1794,26 +1609,10 @@
     -fx-min-height: 44;
     -fx-pref-height: 44;
     -fx-max-height: 44;
-    -fx-translate-y: -2;
-}
-
-.dark-mode .bell-button {
-    -fx-background-color: transparent;
-    -fx-border-width: 0;
-}
-
-/* No glowing effect, badgeLabel handles the red dot */
-.bell-unread {
-}
-
-.dark-mode .bell-unread {
+    -fx-translate-y: 3;
 }
 
 .bell-button:hover {
-    -fx-background-color: transparent;
-}
-
-.dark-mode .bell-button:hover {
     -fx-background-color: transparent;
 }
 
@@ -1909,7 +1708,7 @@
 /* Style cho chữ bên trong (Nội dung thông báo) */
 .modern-alert.dialog-pane > .content.label {
     -fx-font-size: 15px;
-    -fx-text-fill: #1E293B; /* Đổi thành trắng #F8FAFC nếu Dark mode */
+    -fx-text-fill: #1E293B;
     -fx-line-spacing: 6px;
     -fx-padding: 10 0 15 34; /* padding left = 34 để thẳng hàng với Title (sau Icon) */
     -fx-wrap-text: true; /* Hiển thị hết text dài mà không bị ... */

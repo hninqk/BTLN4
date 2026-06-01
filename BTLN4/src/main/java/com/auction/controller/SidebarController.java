@@ -61,8 +61,6 @@ public class SidebarController {
     @FXML
     private Button btnProfile;
     @FXML
-    private Button btnSettings;
-    @FXML
     private Button btnLogout;
     @FXML
     private Label lblMain;
@@ -131,7 +129,7 @@ public class SidebarController {
     }
 
     private void setActiveTab(String screen) {
-        Button[] allButtons = {btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile, btnSettings};
+        Button[] allButtons = {btnDashboard, btnAuctionList, btnHistory, btnSeller, btnAdmin, btnProfile};
         for (Button b : allButtons) {
             if (b != null) {
                 b.getStyleClass().remove("active-tab");
@@ -145,7 +143,6 @@ public class SidebarController {
             case NavigationManager.SELLER_MGMT -> btnSeller;
             case NavigationManager.ADMIN_MGMT -> btnAdmin;
             case NavigationManager.USER_PROFILE -> btnProfile;
-            case NavigationManager.SETTINGS -> btnSettings;
             default -> null;
         };
 
@@ -180,7 +177,6 @@ public class SidebarController {
         configureNavButton(btnSeller, FontAwesomeSolid.BOX_OPEN);
         configureNavButton(btnAdmin, FontAwesomeSolid.USERS_COG);
         configureNavButton(btnProfile, FontAwesomeSolid.USER_CIRCLE);
-        configureNavButton(btnSettings, FontAwesomeSolid.COG);
         configureNavButton(btnLogout, FontAwesomeSolid.SIGN_OUT_ALT);
     }
 
@@ -234,11 +230,6 @@ public class SidebarController {
     @FXML
     private void handleProfile(ActionEvent event) {
         navigate(NavigationManager.USER_PROFILE, "Hồ sơ cá nhân");
-    }
-
-    @FXML
-    private void handleSettings(ActionEvent event) {
-        navigate(NavigationManager.SETTINGS, "Cài đặt");
     }
 
     @FXML

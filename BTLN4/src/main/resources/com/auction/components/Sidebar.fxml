@@ -46,8 +46,6 @@
 
     <Button fx:id="btnProfile" text="Hồ sơ cá nhân"
             onAction="#handleProfile" styleClass="nav-button" maxWidth="Infinity"/>
-    <Button fx:id="btnSettings" text="Cài đặt"
-            onAction="#handleSettings" styleClass="nav-button" maxWidth="Infinity"/>
 
     <Region VBox.vgrow="ALWAYS"/>
 

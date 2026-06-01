@@ -27,7 +27,7 @@
 
     <HBox alignment="CENTER_RIGHT" spacing="8">
         
-        <HBox alignment="CENTER_RIGHT" spacing="7">
+        <HBox alignment="CENTER_RIGHT" spacing="7" style="-fx-translate-y: 3;">
             <Circle fx:id="onlineDot" radius="4.5" fill="#10b981"/>
             <Label fx:id="clockLabel"
                    text="--:--:--"

@@ -339,9 +339,6 @@ public class UserProfileController {
         dialogRoot.setAlignment(Pos.TOP_CENTER);
         dialogRoot.setFillWidth(true);
         dialogRoot.getStyleClass().add("main-container");
-        if (NavigationManager.getInstance().isDarkMode()) {
-            dialogRoot.getStyleClass().add("dark-mode");
-        }
 
         // ── Header ───────────────────────────────────────────────────────────────
         Label titleLabel = new Label("🏦  QUÉT MÃ ĐỂ NẠP TIỀN");
@@ -522,9 +519,6 @@ public class UserProfileController {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.getStyleClass().add("main-container");
-        if (NavigationManager.getInstance().isDarkMode()) {
-            scrollPane.getStyleClass().add("dark-mode");
-        }
 
         Scene qrScene = new Scene(scrollPane, 460, 610);
         qrScene.getStylesheets().add(

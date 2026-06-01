@@ -97,26 +97,12 @@ public final class AnimationUtil {
                     return;
                 }
 
-                // Determine theme by checking if parent or scene root has "dark-mode"
-                boolean isDark = parent.getStyleClass().contains("dark-mode");
-                if (!isDark && parent.getScene() != null && parent.getScene().getRoot() != null) {
-                    isDark = parent.getScene().getRoot().getStyleClass().contains("dark-mode");
-                }
-
-                // Set background and wave colors based on theme
-                if (isDark) {
-                    gc.setFill(javafx.scene.paint.Color.web("#0F172A")); // Match -theme-bg
-                    gc.fillRect(0, 0, w, h);
-                    drawWave(gc, w, h, t, 0.5, 0.005, h * 0.1, javafx.scene.paint.Color.web("#3B82F6", 0.2));
-                    drawWave(gc, w, h, t, 0.8, 0.004, h * 0.15, javafx.scene.paint.Color.web("#00f2fe", 0.15));
-                    drawWave(gc, w, h, t, 1.2, 0.006, h * 0.05, javafx.scene.paint.Color.web("#ffffff", 0.05));
-                } else {
-                    gc.setFill(javafx.scene.paint.Color.web("#F5F6FA")); // Match -theme-bg (Light)
-                    gc.fillRect(0, 0, w, h);
-                    drawWave(gc, w, h, t, 0.5, 0.005, h * 0.1, javafx.scene.paint.Color.web("#2563EB", 0.2));
-                    drawWave(gc, w, h, t, 0.8, 0.004, h * 0.15, javafx.scene.paint.Color.web("#4facfe", 0.15));
-                    drawWave(gc, w, h, t, 1.2, 0.006, h * 0.05, javafx.scene.paint.Color.web("#1E293B", 0.05));
-                }
+                // Set background and wave colors (dark theme)
+                gc.setFill(javafx.scene.paint.Color.web("#0F172A"));
+                gc.fillRect(0, 0, w, h);
+                drawWave(gc, w, h, t, 0.5, 0.005, h * 0.1, javafx.scene.paint.Color.web("#3B82F6", 0.2));
+                drawWave(gc, w, h, t, 0.8, 0.004, h * 0.15, javafx.scene.paint.Color.web("#00f2fe", 0.15));
+                drawWave(gc, w, h, t, 1.2, 0.006, h * 0.05, javafx.scene.paint.Color.web("#ffffff", 0.05));
             }
         };
         timer.start();

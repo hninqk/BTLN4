@@ -33,7 +33,6 @@ public class NavigationManager {
     private Stage primaryStage;
     private Object currentController; // tracks the active controller for cleanup
     private String currentScreen = DASHBOARD; // tracks the active screen name
-    private boolean isDarkMode = true; // Persistent theme state
     private double dragOffsetX;
     private double dragOffsetY;
     private double normalX;
@@ -58,17 +57,6 @@ public class NavigationManager {
 
     public Stage getPrimaryStage() {
         return primaryStage;
-    }
-
-    public boolean isDarkMode() {
-        return isDarkMode;
-    }
-
-    public void setDarkMode(boolean darkMode) {
-        this.isDarkMode = darkMode;
-        if (primaryStage != null && primaryStage.getScene() != null && primaryStage.getScene().getRoot() != null) {
-            applyDarkMode(primaryStage.getScene().getRoot(), darkMode);
-        }
     }
 
     public String getCurrentScreen() {
@@ -122,9 +110,6 @@ public class NavigationManager {
         } else {
             scene.setRoot(framedRoot);
         }
-
-        applyDarkMode(framedRoot, isDarkMode);
-        applyDarkMode(root, isDarkMode);
 
         if (title != null) {
             primaryStage.setTitle("Hệ thống Đấu giá - " + title);
@@ -235,22 +220,6 @@ public class NavigationManager {
         return button;
     }
 
-    private void applyDarkMode(Parent root, boolean darkMode) {
-        if (root == null) {
-            return;
-        }
-        if (darkMode && !root.getStyleClass().contains("dark-mode")) {
-            root.getStyleClass().add("dark-mode");
-        } else if (!darkMode) {
-            root.getStyleClass().remove("dark-mode");
-        }
-        for (javafx.scene.Node child : root.getChildrenUnmodifiable()) {
-            if (child instanceof Parent parent) {
-                applyDarkMode(parent, darkMode);
-            }
-        }
-    }
-
     /**
      * Create an FXMLLoader for the given screen name.
      */
@@ -270,6 +239,5 @@ public class NavigationManager {
     public static final String ADMIN_MGMT = "AdminManagement";
     public static final String USER_PROFILE = "UserProfile";
     public static final String HISTORY = "BidHistory";
-    public static final String SETTINGS = "Settings";
     public static final String LOGOUT = "Logout";
 }
