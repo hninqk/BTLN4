@@ -340,6 +340,37 @@ public class AuctionDetailController
         }
 
         liveFeedList.setCellFactory(list -> new ListCell<>() {
+            private HBox row;
+            private FontIcon icon;
+            private Label time;
+            private Label actor;
+            private Label amount;
+            private Label message;
+
+            {
+                icon = new FontIcon();
+                icon.setIconSize(14);
+
+                time = new Label();
+                time.getStyleClass().add("feed-time");
+
+                actor = new Label();
+                actor.getStyleClass().add("feed-actor");
+
+                amount = new Label();
+                amount.getStyleClass().add("feed-amount");
+
+                message = new Label();
+                message.setWrapText(true);
+
+                VBox textBox = new VBox(3);
+                textBox.getChildren().addAll(new HBox(8, time, actor), message);
+                HBox.setHgrow(textBox, javafx.scene.layout.Priority.ALWAYS);
+
+                row = new HBox(10, icon, textBox, amount);
+                row.setAlignment(Pos.CENTER_LEFT);
+            }
+
             @Override
             protected void updateItem(String entry, boolean empty) {
                 super.updateItem(entry, empty);
@@ -350,42 +381,31 @@ public class AuctionDetailController
                 }
 
                 setText(null);
-                setGraphic(createFeedEntry(entry));
+
+                FeedEntry parsed = parseFeedEntry(entry);
+                boolean autoBid = parsed.amount().isBlank();
+
+                icon.setIconCode(autoBid ? FontAwesomeSolid.BOLT : FontAwesomeSolid.GAVEL);
+                icon.getStyleClass().removeAll("feed-icon-auto", "feed-icon-bid");
+                icon.getStyleClass().add(autoBid ? "feed-icon-auto" : "feed-icon-bid");
+
+                message.getStyleClass().removeAll("feed-message-auto", "feed-message");
+                message.getStyleClass().add(autoBid ? "feed-message-auto" : "feed-message");
+
+                row.getStyleClass().removeAll("feed-entry-auto", "feed-entry");
+                row.getStyleClass().add(autoBid ? "feed-entry-auto" : "feed-entry");
+
+                time.setText(parsed.time());
+                actor.setText(parsed.actor());
+                amount.setText(parsed.amount());
+                message.setText(parsed.message());
+
+                amount.setVisible(!autoBid);
+                amount.setManaged(!autoBid);
+
+                setGraphic(row);
             }
         });
-    }
-
-    private Node createFeedEntry(String entry) {
-        FeedEntry parsed = parseFeedEntry(entry);
-        boolean autoBid = parsed.amount().isBlank();
-
-        FontIcon icon = new FontIcon(autoBid ? FontAwesomeSolid.BOLT : FontAwesomeSolid.GAVEL);
-        icon.setIconSize(14);
-        icon.getStyleClass().add(autoBid ? "feed-icon-auto" : "feed-icon-bid");
-
-        Label time = new Label(parsed.time());
-        time.getStyleClass().add("feed-time");
-
-        Label actor = new Label(parsed.actor());
-        actor.getStyleClass().add("feed-actor");
-
-        Label amount = new Label(parsed.amount());
-        amount.getStyleClass().add("feed-amount");
-        amount.setVisible(!autoBid);
-        amount.setManaged(!autoBid);
-
-        Label message = new Label(parsed.message());
-        message.getStyleClass().add(autoBid ? "feed-message-auto" : "feed-message");
-        message.setWrapText(true);
-
-        VBox textBox = new VBox(3);
-        textBox.getChildren().addAll(new HBox(8, time, actor), message);
-        HBox.setHgrow(textBox, javafx.scene.layout.Priority.ALWAYS);
-
-        HBox row = new HBox(10, icon, textBox, amount);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.getStyleClass().add(autoBid ? "feed-entry-auto" : "feed-entry");
-        return row;
     }
 
     private FeedEntry parseFeedEntry(String entry) {
