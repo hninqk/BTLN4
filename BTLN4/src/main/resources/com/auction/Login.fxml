@@ -2,24 +2,30 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.*?>
 
-<StackPane xmlns:fx="http://javafx.com/fxml/1"
+<StackPane fx:id="rootPane"
+           xmlns:fx="http://javafx.com/fxml/1"
            xmlns="http://javafx.com/javafx/21"
-           fx:controller="com.auction.controller.LoginController"
+           fx:controller="com.auction.ui.controller.LoginController"
            styleClass="auth-container"
            stylesheets="@styles/main.css"
            style="-fx-padding: 0;">
 
     <ScrollPane fitToWidth="true" fitToHeight="true" style="-fx-background-color:transparent;">
         <VBox alignment="CENTER" fillWidth="true" style="-fx-padding:40 0 40 0;">
-            <VBox alignment="CENTER" spacing="0" maxWidth="440" minHeight="600" fillWidth="true"
+            <VBox alignment="CENTER" spacing="0" maxWidth="440" fillWidth="true"
                   styleClass="auth-card">
 
         <!-- Header & Branding -->
         <VBox alignment="CENTER" spacing="12">
+            <ImageView fitWidth="100" fitHeight="100" preserveRatio="true" smooth="true">
+                <image>
+                    <Image url="@images/logo.png"/>
+                </image>
+            </ImageView>
             <Label text="Đấu Giá Trực Tuyến" styleClass="auth-title"/>
             <Label text="Đăng nhập để tiếp tục" styleClass="auth-subtitle"/>
         </VBox>

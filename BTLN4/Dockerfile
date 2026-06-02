@@ -23,4 +23,4 @@ EXPOSE 7000
 
 # Run the server
 # We explicitly point to com.auction.ServerMain so it doesn't try to start the JavaFX UI
-CMD ["java", "-Dauction.server.url=ws://0.0.0.0:7000/auction", "-cp", "/app/app.jar", "com.auction.ServerMain"]
+CMD ["java", "-Duser.timezone=Asia/Ho_Chi_Minh", "-Dauction.server.url=ws://0.0.0.0:7000/auction", "-cp", "/app/app.jar", "com.auction.ServerMain"]

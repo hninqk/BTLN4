@@ -1,0 +1,24 @@
+# Maven
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Database
+*.dbtarget/
+db.auction
+db.auction-shm
+db.auction-wal
+
+# Context & Logs
+CONTEXT.md
+*.log
+
+# Antigravity CLI
+.antigravitycli/
+
+# Claude
+.claude/

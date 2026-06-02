@@ -1,11 +1,11 @@
 package com.auction.service;
 
-import com.auction.client.ApiClient;
-import com.auction.model.Auction;
-import com.auction.model.Bidder;
-import com.auction.model.Seller;
-import com.auction.model.User;
-import com.auction.server.AuctionSerializer;
+import com.auction.api.http.ApiClient;
+import com.auction.core.model.Auction;
+import com.auction.core.model.Bidder;
+import com.auction.core.model.Seller;
+import com.auction.core.model.User;
+import com.auction.api.server.AuctionSerializer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
@@ -17,7 +17,7 @@ import java.util.Optional;
  * AppFacade – the single entry-point all Controllers use.
  *
  * Architecture (NEW – 3-Tier):
- *   Controllers → AppFacade → ApiClient (HTTP) → Javalin Server → SQLite
+ *   Controllers → AppFacade → ApiClient (HTTP) → Render Javalin Server → Render PostgreSQL
  *
  * Key rules enforced here:
  *   • Controllers MUST NOT import ApiClient, AuctionService, UserService, or
@@ -26,7 +26,7 @@ import java.util.Optional;
  *     must be called from a background thread (javafx.concurrent.Task or
  *     CompletableFuture).  Platform.runLater() must be used to push results
  *     back to the FX thread.
- *   • The Server machine is the ONLY entity that ever touches SQLite.
+ *   • The Render server is the ONLY entity that ever touches PostgreSQL.
  *     No database driver is needed in the Client runtime.
  */
 public final class AppFacade {
@@ -206,12 +206,12 @@ public final class AppFacade {
         return fetchAuctions("/api/auctions");
     }
 
-    /** Only OPEN + RUNNING — what bidders see. */
+    /** UPCOMING + RUNNING + CLOSED — what bidders see. */
     public List<Auction> getPublicAuctions() {
         return fetchAuctions("/api/auctions?filter=public");
     }
 
-    /** All auctions for a specific seller (including PENDING). */
+    /** All auctions for a specific seller. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
         return fetchAuctions("/api/users/" + seller.getId() + "/auctions");
     }

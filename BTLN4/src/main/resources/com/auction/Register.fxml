@@ -4,9 +4,10 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<StackPane xmlns:fx="http://javafx.com/fxml/1"
+<StackPane fx:id="rootPane"
+           xmlns:fx="http://javafx.com/fxml/1"
            xmlns="http://javafx.com/javafx/21"
-           fx:controller="com.auction.controller.RegisterController"
+           fx:controller="com.auction.ui.controller.RegisterController"
            styleClass="auth-container"
            stylesheets="@styles/main.css">
 

@@ -5,20 +5,21 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
 
-<StackPane xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="com.auction.controller.SplashController"
+<StackPane fx:id="splashRoot"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.auction.ui.controller.SplashController"
            style="-fx-background-color: #0F172A;" prefWidth="900" prefHeight="600">
     <VBox alignment="CENTER" spacing="30">
         <!-- Word animation slot – slides in/out above the logo -->
         <Label fx:id="animatedWordLabel" text=""
                style="-fx-text-fill: #F8FAFC; -fx-font-size: 46px; -fx-font-weight: bold; -fx-opacity: 0;"/>
 
-        <!-- Abstract / Geometric Logo (original) -->
-        <HBox fx:id="loadingBox" alignment="CENTER" spacing="12">
-            <Rectangle fx:id="sq1" width="24" height="24" fill="#3B82F6" arcWidth="8" arcHeight="8"/>
-            <Rectangle fx:id="sq2" width="24" height="24" fill="#60A5FA" arcWidth="8" arcHeight="8"/>
-            <Rectangle fx:id="sq3" width="24" height="24" fill="#93C5FD" arcWidth="8" arcHeight="8"/>
-        </HBox>
+        <!-- Logo Image -->
+        <javafx.scene.image.ImageView fx:id="logoImageView" fitWidth="120" fitHeight="120" preserveRatio="true">
+            <image>
+                <javafx.scene.image.Image url="@images/logo.png"/>
+            </image>
+        </javafx.scene.image.ImageView>
         <VBox alignment="CENTER" spacing="8">
             <Label text="AUCTIONSYS" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 32px; -fx-letter-spacing: 6px;"/>
             <Label text="PREMIUM BIDDING PLATFORM" style="-fx-text-fill: #94A3B8; -fx-font-size: 14px; -fx-letter-spacing: 2px;"/>

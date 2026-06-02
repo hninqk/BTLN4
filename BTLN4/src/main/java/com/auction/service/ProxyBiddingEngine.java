@@ -1,12 +1,12 @@
 package com.auction.service;
 
-import com.auction.exception.InvalidBidException;
-import com.auction.model.Auction;
-import com.auction.model.AutoBid;
-import com.auction.model.BidTransaction;
-import com.auction.model.Bidder;
-import com.auction.repository.JdbcAutoBidRepository;
-import com.auction.repository.JdbcUserRepository;
+import com.auction.core.exception.InvalidBidException;
+import com.auction.core.model.Auction;
+import com.auction.core.model.AutoBid;
+import com.auction.core.model.BidTransaction;
+import com.auction.core.model.Bidder;
+import com.auction.infra.repository.JdbcAutoBidRepository;
+import com.auction.infra.repository.JdbcUserRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,15 +30,15 @@ public class ProxyBiddingEngine {
 
     private final JdbcAutoBidRepository autoBidRepo;
     private final JdbcUserRepository userRepo;
-    private final AuctionService auctionService;
+    private final BiddingService biddingService;
 
     public ProxyBiddingEngine(
             JdbcAutoBidRepository autoBidRepo,
             JdbcUserRepository userRepo,
-            AuctionService auctionService) {
+            BiddingService biddingService) {
         this.autoBidRepo = autoBidRepo;
         this.userRepo = userRepo;
-        this.auctionService = auctionService;
+        this.biddingService = biddingService;
     }
 
     /** Entry point – call after any manual bid or new auto-bid registration. */
@@ -89,13 +89,16 @@ public class ProxyBiddingEngine {
 
             AutoBid top1 = validBids.get(0);
 
-            // ── 3. KEY FIX: top1 is already current winner → war resolved ────
-            if (top1.getBidderId().equals(currentWinnerId)) break;
+            // ── 3. KEY FIX: top1 is already current winner AND no one can challenge ────
+            if (validBids.size() == 1 && top1.getBidderId().equals(currentWinnerId)) {
+                break;
+            }
 
             Bidder top1Bidder = (Bidder) userRepo.findById(top1.getBidderId()).orElse(null);
             if (top1Bidder == null) {
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
                 continue;
             }
 
@@ -105,7 +108,8 @@ public class ProxyBiddingEngine {
 
             if (validBids.size() == 1) {
                 // Single proxy bidder vs a manual high bid
-                targetBid = Math.min(currentHighest + top1.getIncrement(), top1.getMaxBid());
+                double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentHighest);
+                targetBid = Math.min(currentHighest + step, top1.getMaxBid());
                 logMsg = String.format("[Auto-Bid] %s tự động đặt %,.0f ₫",
                         top1Bidder.getUsername(), targetBid);
             } else {
@@ -115,13 +119,37 @@ public class ProxyBiddingEngine {
                 if (top2Bidder == null) {
                     autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                     activeBids.remove(top2);
+                    result.deactivatedBidderIds.add(top2.getBidderId());
                     continue;
+                }
+
+                if (top2.getMaxBid() > currentHighest && !top2.getBidderId().equals(currentWinnerId)) {
+                    // Let top2 place its max bid to defend/challenge and create history
+                    try {
+                        BidTransaction b2 = biddingService.placeBid(auction, top2Bidder, top2.getMaxBid());
+                        Bidder unfrozen2 = biddingService.processOutbidUnfreeze();
+                        result.newBids.add(b2);
+                        if (unfrozen2 != null) unfrozenMap.put(unfrozen2.getId(), unfrozen2);
+                        result.virtualLogs.add(String.format("[Auto-Bid] %s tự động đẩy giá lên %,.0f ₫", 
+                                top2Bidder.getUsername(), top2.getMaxBid()));
+                        currentHighest = top2.getMaxBid(); // Update for top1's logic
+                    } catch (Exception e) {
+                        // If it fails (e.g. balance issues), remove top2 and let loop continue
+                        autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
+                        activeBids.remove(top2);
+                        result.deactivatedBidderIds.add(top2.getBidderId());
+                        top2Bidder.unfreezeFunds(top2.getMaxBid());
+                        userRepo.updateFrozenBalance(top2Bidder.getId(), top2Bidder.getFrozenBalance());
+                        unfrozenMap.put(top2Bidder.getId(), top2Bidder);
+                        continue;
+                    }
                 }
 
                 if (Double.compare(top1.getMaxBid(), top2.getMaxBid()) == 0) {
                     targetBid = top1.getMaxBid();    // Tie: top1 wins (placed first)
                 } else {
-                    targetBid = Math.min(top2.getMaxBid() + top1.getIncrement(), top1.getMaxBid());
+                    double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(top2.getMaxBid());
+                    targetBid = Math.min(top2.getMaxBid() + step, top1.getMaxBid());
                 }
                 logMsg = String.format("[Auto-Bid] %s vượt qua %s với giá %,.0f ₫",
                         top1Bidder.getUsername(), top2Bidder.getUsername(), targetBid);
@@ -130,6 +158,7 @@ public class ProxyBiddingEngine {
                 if (targetBid >= top2.getMaxBid()) {
                     autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top2.getBidderId());
                     activeBids.remove(top2);
+                    result.deactivatedBidderIds.add(top2.getBidderId());
                     top2Bidder.unfreezeFunds(top2.getMaxBid());
                     userRepo.updateFrozenBalance(top2Bidder.getId(), top2Bidder.getFrozenBalance());
                     unfrozenMap.put(top2Bidder.getId(), top2Bidder);
@@ -141,8 +170,8 @@ public class ProxyBiddingEngine {
 
             // ── 6 & 7. Place the bid ─────────────────────────────────────────
             try {
-                BidTransaction b = auctionService.placeBid(auction, top1Bidder, targetBid);
-                Bidder unfrozen = auctionService.processOutbidUnfreeze();
+                BidTransaction b = biddingService.placeBid(auction, top1Bidder, targetBid);
+                Bidder unfrozen = biddingService.processOutbidUnfreeze();
                 result.newBids.add(b);
                 if (unfrozen != null) unfrozenMap.put(unfrozen.getId(), unfrozen);
                 result.virtualLogs.add(logMsg);
@@ -157,6 +186,7 @@ public class ProxyBiddingEngine {
                 // Real error (e.g., insufficient funds): invalidate top1's auto-bid
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
                 top1Bidder.unfreezeFunds(top1.getMaxBid());
                 userRepo.updateFrozenBalance(top1Bidder.getId(), top1Bidder.getFrozenBalance());
                 unfrozenMap.put(top1Bidder.getId(), top1Bidder);
@@ -166,6 +196,7 @@ public class ProxyBiddingEngine {
                 System.err.println("[ProxyBiddingEngine] Unexpected error: " + e.getMessage());
                 autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), top1.getBidderId());
                 activeBids.remove(top1);
+                result.deactivatedBidderIds.add(top1.getBidderId());
             }
         }
 

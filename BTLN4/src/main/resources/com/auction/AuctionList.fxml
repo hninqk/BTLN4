@@ -6,7 +6,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
-            fx:controller="com.auction.controller.AuctionListController"
+            fx:controller="com.auction.ui.controller.AuctionListController"
             stylesheets="@styles/main.css"
             styleClass="main-container">
 
@@ -25,24 +25,19 @@
             
             <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
 
-            <!-- Header row -->
-            <HBox alignment="CENTER_LEFT" spacing="12">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Danh sách Đấu giá" styleClass="page-title"/>
-                    <Label text="Tìm kiếm và tham gia các phiên đấu giá" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
+            <!-- Desktop Header: Clock + Notification Bell -->
+            <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
             <!-- Filters toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <TextField fx:id="searchField" promptText="🔍  Tìm kiếm sản phẩm..."
-                           styleClass="text-field" prefWidth="260"/>
+                <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."
+                           styleClass="text-field" prefWidth="260" prefHeight="36"/>
                 <ComboBox fx:id="statusFilter" promptText="Trạng thái"
-                          styleClass="combo-box" prefWidth="150"/>
+                          styleClass="combo-box" prefWidth="150" prefHeight="36"/>
                 <ComboBox fx:id="categoryFilter" promptText="Danh mục"
-                          styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary"/>
-                <Button text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary"/>
+                          styleClass="combo-box" prefWidth="150" prefHeight="36"/>
+                <Button fx:id="searchButton" text="Tìm kiếm" onAction="#handleSearch" styleClass="btn-primary" prefHeight="36"/>
+                <Button fx:id="resetButton" text="Đặt lại"  onAction="#handleReset"  styleClass="btn-secondary" prefHeight="36"/>
             </HBox>
 
             <!-- Table -->
@@ -68,6 +63,8 @@
             <HBox alignment="CENTER_LEFT">
                 <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
             </HBox>
+
+            <HBox fx:id="paginationBox" alignment="CENTER" spacing="6" styleClass="pagination-bar"/>
 
         </VBox>
         </StackPane>

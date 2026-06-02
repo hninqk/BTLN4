@@ -1,13 +1,13 @@
 package com.auction.service;
 
-import com.auction.exception.InvalidBidException;
-import com.auction.exception.InvalidStatusException;
-import com.auction.model.*;
-import com.auction.repository.JdbcAuctionRepository;
-import com.auction.repository.JdbcBidRepository;
-import com.auction.repository.JdbcUserRepository;
-import com.auction.repository.JdbcAutoBidRepository;
-import com.auction.util.SessionManager;
+import com.auction.core.exception.InvalidBidException;
+import com.auction.core.exception.InvalidStatusException;
+import com.auction.core.model.*;
+import com.auction.infra.repository.JdbcAuctionRepository;
+import com.auction.infra.repository.JdbcBidRepository;
+import com.auction.infra.repository.JdbcUserRepository;
+import com.auction.infra.repository.JdbcAutoBidRepository;
+import com.auction.infra.util.SessionManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,9 +20,8 @@ import java.util.Map;
  * AuctionService – quản lý toàn bộ vòng đời phiên đấu giá.
  *
  * Status flow:
- * Seller tạo → PENDING
- * Admin duyệt → OPEN (hiển thị với bidder)
- * Admin bắt đầu → RUNNING (nhận bid)
+ * Seller tạo lịch → UPCOMING hoặc RUNNING tùy startTime
+ * Server tự động chuyển UPCOMING → RUNNING khi đến startTime
  * Admin kết thúc → CLOSED (trừ tiền winner)
  * Admin/Seller → CANCELED
  *
@@ -58,16 +57,11 @@ public class AuctionService {
      */
     private final ConcurrentHashMap<String, ReentrantLock> userLocks = new ConcurrentHashMap<>();
 
-    /**
-     * Lock per-auction để tránh race condition khi 2+ user đăng ký auto-bid
-     * cùng lúc trên cùng 1 phiên đấu giá.
-     */
-    private final ConcurrentHashMap<String, ReentrantLock> auctionLocks = new ConcurrentHashMap<>();
-
-    private final ProxyBiddingEngine proxyBiddingEngine;
+    private final BiddingService biddingService;
 
     private AuctionService() {
-        this.proxyBiddingEngine = new ProxyBiddingEngine(autoBidRepo, userRepo, this);
+        this.biddingService = new BiddingService(
+                auctionRepo, bidRepo, userRepo, autoBidRepo, auctionCache, userLocks);
         ensureSeeded();
     }
 
@@ -85,18 +79,19 @@ public class AuctionService {
     }
 
     /**
-     * OPEN + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see
+     * UPCOMING + RUNNING + CLOSED — visible to public bidders (CLOSED so users can see
      * finished results).
      */
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
-                .filter(a -> a.getStatus() == AuctionStatus.OPEN
+                .filter(a -> a.getStatus() == AuctionStatus.UPCOMING
+                        || a.getStatus() == AuctionStatus.OPEN
                         || a.getStatus() == AuctionStatus.RUNNING
                         || a.getStatus() == AuctionStatus.CLOSED)
                 .toList();
     }
 
-    /** All auctions for a seller, including PENDING. */
+    /** All auctions for a seller, including scheduled and closed auctions. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
         return auctionRepo.findBySellerId(seller.getId());
     }
@@ -112,10 +107,26 @@ public class AuctionService {
 
     // ── Create / Delete ───────────────────────────────────────────────────────
 
-    /** Seller submits → saved as PENDING, awaiting Admin approval. */
+    /** Legacy create path: starts immediately. */
     public Auction createAuction(Seller seller, Item item, LocalDateTime endTime) {
-        Auction auction = new Auction(seller, item, endTime);
-        auctionRepo.save(auction);
+        LocalDateTime now = com.auction.infra.util.TimeSyncManager.getNow();
+        if (endTime == null || !endTime.isAfter(now)) {
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian hiện tại.");
+        }
+        Auction auction = new Auction(seller, item, now, endTime);
+        if (!auctionRepo.save(auction)) {
+            throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
+        }
+        return auction;
+    }
+
+    /** Seller schedules the auction start/end time; Admin no longer owns startTime. */
+    public Auction createAuction(Seller seller, Item item, LocalDateTime startTime, LocalDateTime endTime) {
+        validateAuctionTimes(startTime, endTime);
+        Auction auction = new Auction(seller, item, startTime, endTime);
+        if (!auctionRepo.save(auction)) {
+            throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
+        }
         return auction;
     }
 
@@ -125,7 +136,7 @@ public class AuctionService {
 
     // ── Status transitions ────────────────────────────────────────────────────
 
-    /** Admin: PENDING → OPEN */
+    /** Legacy approval path only. */
     public void approveAuction(Auction auction) throws InvalidStatusException {
         auction.approveAuction();
         auctionCache.put(auction.getId(), auction);
@@ -134,14 +145,54 @@ public class AuctionService {
     }
 
     /**
-     * Admin: OPEN → RUNNING.
-     * Sets startTime = now() in the model, then persists it to DB.
+     * Legacy/manual start path retained for internal compatibility.
      */
     public void startAuction(Auction auction) throws InvalidStatusException {
-        auction.startAuction(); // model sets startTime = LocalDateTime.now()
+        auction.startAuction();
         auctionCache.put(auction.getId(), auction);
         auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
                 auction.getHighestBid(), auction.getStartTime());
+    }
+
+    /** Server scheduler: UPCOMING/legacy OPEN → RUNNING when seller startTime arrives. */
+    public boolean startScheduledIfDue(Auction auction, LocalDateTime now) throws InvalidStatusException {
+        if (auction.getStatus() != AuctionStatus.UPCOMING && auction.getStatus() != AuctionStatus.OPEN) {
+            return false;
+        }
+        if (auction.getEndTime() != null && !now.isBefore(auction.getEndTime())) {
+            return false;
+        }
+        LocalDateTime startTime = auction.getStartTime();
+        if (startTime == null || !now.isBefore(startTime)) {
+            auction.goLive();
+            auctionCache.put(auction.getId(), auction);
+            auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
+                    auction.getHighestBid(), auction.getStartTime());
+            return true;
+        }
+        return false;
+    }
+
+    /** Server scheduler: close any auction whose endTime has passed, even if it never went live. */
+    public boolean closeExpiredIfDue(Auction auction, LocalDateTime now) throws InvalidStatusException {
+        if (auction.getEndTime() == null || now.isBefore(auction.getEndTime())) {
+            return false;
+        }
+        if (auction.getStatus() == AuctionStatus.CLOSED || auction.getStatus() == AuctionStatus.CANCELED) {
+            return false;
+        }
+        if (auction.getStatus() == AuctionStatus.RUNNING) {
+            finishAuction(auction);
+            return true;
+        }
+        if (auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN) {
+            auction.setStatus(AuctionStatus.CLOSED);
+            auctionCache.put(auction.getId(), auction);
+            auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
+                    auction.getHighestBid(), auction.getStartTime());
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -279,195 +330,14 @@ public class AuctionService {
         }
     }
 
-    // ── Bidding ───────────────────────────────────────────────────────────────
-
-    /**
-     * Bidder đặt giá.
-     *
-     * Luồng xử lý (thread-safe):
-     * 1. Lock user theo bidderId
-     * 2. Load bidder fresh từ DB (balance chính xác nhất)
-     * 3. Kiểm tra bidder có đang là highest bidder không → chặn double-bid
-     * 4. Kiểm tra availableBalance >= amount → từ chối nếu không đủ
-     * 5. Lưu thông tin old highest bidder (để unfreeze sau)
-     * 6. Freeze tiền bidder mới: frozenBalance += amount → persist DB
-     * 7. auction.placeBid() [synchronized trong Auction model]
-     * 8. Unfreeze old highest bidder (nếu có và khác bidder mới)
-     * 9. Unlock
-     *
-     * @param auction phiên đấu giá
-     * @param bidder  người đặt giá (có thể stale — sẽ reload fresh từ DB)
-     * @param amount  mức giá đặt
-     * @return BidTransaction được tạo
-     */
     public BidTransaction placeBid(Auction auction, Bidder bidder, double amount)
             throws InvalidBidException, InvalidStatusException {
-
-        String bidderId = bidder.getId();
-        ReentrantLock lock = getUserLock(bidderId);
-        lock.lock();
-        try {
-            // ── 1. Load bidder fresh từ DB (balance authoritative) ──
-            Bidder freshBidder = (Bidder) userRepo.findById(bidderId)
-                    .filter(u -> u instanceof Bidder)
-                    .orElse(bidder); // fallback nếu chưa có trong DB
-
-            // ── 2. Chặn double-bid: không cho bidder đặt giá nếu đang là highest ──
-            BidTransaction currentHighest = auction.getWinner();
-            if (currentHighest != null
-                    && currentHighest.getBidder().getUsername().equals(freshBidder.getUsername())) {
-                throw new InvalidBidException(
-                        "Bạn đang là người ra giá cao nhất (" +
-                                String.format("%,.0f ₫", currentHighest.getAmount()) +
-                                "), không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
-            }
-
-            // ── 2.5 Kiểm tra số tiền đặt tối thiểu ──
-            if (amount <= auction.getHighestBid()) {
-                throw new InvalidBidException("Số tiền đặt giá chưa đủ!");
-            }
-
-            // ── 3. Kiểm tra số dư khả dụng ──
-            double available = freshBidder.getAvailableBalance();
-            if (amount > available) {
-                throw new InvalidBidException(
-                        String.format("Số dư khả dụng không đủ. " +
-                                "Khả dụng: %,.0f ₫ | Đóng băng: %,.0f ₫ | Giá đặt: %,.0f ₫",
-                                available,
-                                freshBidder.getFrozenBalance(),
-                                amount));
-            }
-
-            // ── 4. Lưu old highest bidder trước khi đặt giá mới ──
-            Bidder oldHighestBidder = null;
-            double oldHighestAmount = 0;
-            if (currentHighest != null) {
-                oldHighestAmount = currentHighest.getAmount();
-                String oldId = currentHighest.getBidder().getId();
-                // Chỉ unfreeze nếu old bidder là người khác
-                if (!oldId.equals(bidderId)) {
-                    oldHighestBidder = (Bidder) userRepo.findById(oldId)
-                            .filter(u -> u instanceof Bidder)
-                            .orElse(null);
-                }
-            }
-
-            // ── 5. Đóng băng tiền bidder mới ──
-            boolean hasAutoBid = autoBidRepo.findByAuctionId(auction.getId()).stream()
-                    .anyMatch(ab -> ab.getBidderId().equals(freshBidder.getId()));
-            
-            if (!hasAutoBid) {
-                freshBidder.freezeFunds(amount);
-                userRepo.updateFrozenBalance(bidderId, freshBidder.getFrozenBalance());
-                System.out.printf("[AuctionService] FREEZE bidder=%s amount=%,.0f ₫ | " +
-                        "frozen=%.0f ₫ | available=%.0f ₫%n",
-                        freshBidder.getUsername(), amount,
-                        freshBidder.getFrozenBalance(),
-                        freshBidder.getAvailableBalance());
-            }
-
-            // Ghi nhớ auctionId để unfreeze
-            this.pendingUnfreezeAuctionId.set(auction.getId());
-
-            // ── 6. Tạo bid transaction và ghi vào auction (synchronized) ──
-            BidTransaction bid = new BidTransaction(
-                    java.util.UUID.randomUUID().toString(),
-                    LocalDateTime.now(),
-                    freshBidder,
-                    auction,
-                    amount);
-
-            // Throws InvalidBidException nếu amount ≤ highest, InvalidStatusException nếu
-            // không RUNNING
-            auction.placeBid(bid);
-
-            // --- Anti-Sniping (Bid Extension) ---
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime endTime = auction.getEndTime();
-            if (endTime != null && java.time.Duration.between(now, endTime).getSeconds() <= 60) {
-                auction.setEndTime(endTime.plusMinutes(3));
-                auctionRepo.updateEndTime(auction.getId(), auction.getEndTime());
-                System.out.printf("[AuctionService] Anti-Sniping activated for auction %s: Extended end time by 3 minutes.%n", auction.getId());
-            }
-
-            // Cập nhật cache
-            auctionCache.put(auction.getId(), auction);
-
-            // Persist bid + highest_bid bất đồng bộ
-            final BidTransaction bidToSave = bid;
-            new Thread(() -> {
-                bidRepo.save(bidToSave);
-                auctionRepo.updateStatus(auction.getId(), auction.getStatus(),
-                        auction.getHighestBid(), auction.getStartTime());
-            }, "BidPersist-" + bidderId).start();
-
-            // ── 7. Ghi nhận thông tin old bidder để WebSocket handler xử lý unfreeze ──
-            // Sử dụng ThreadLocal để an toàn khi nhiều luồng cùng gọi placeBid()
-            this.pendingUnfreezeId.set((oldHighestBidder != null) ? oldHighestBidder.getId() : null);
-            this.pendingUnfreezeAmount.set(oldHighestAmount);
-
-            return bid;
-
-        } finally {
-            lock.unlock();
-        }
+        return biddingService.placeBid(auction, bidder, amount);
     }
 
-    /**
-     * Hoàn trả tiền đóng băng cho old highest bidder sau khi họ bị outbid.
-     *
-     * Phải được gọi NGAY SAU placeBid() từ cùng luồng (WebSocket handler).
-     * Thực thi đồng bộ với ReentrantLock riêng của old bidder.
-     *
-     * @return old bidder đã được unfreeze (để broadcast BALANCE_UPDATE), hoặc null
-     */
     public Bidder processOutbidUnfreeze() {
-        String oldId = this.pendingUnfreezeId.get();
-        double oldAmount = this.pendingUnfreezeAmount.get();
-        String auctionId = this.pendingUnfreezeAuctionId.get();
-        this.pendingUnfreezeId.remove();
-        this.pendingUnfreezeAmount.remove();
-        this.pendingUnfreezeAuctionId.remove();
-
-        if (oldId == null || oldAmount <= 0) {
-            return null;
-        }
-
-        ReentrantLock oldLock = getUserLock(oldId);
-        oldLock.lock();
-        try {
-            Bidder freshOld = (Bidder) userRepo.findById(oldId)
-                    .filter(u -> u instanceof Bidder)
-                    .orElse(null);
-            if (freshOld == null)
-                return null;
-
-            boolean oldHasAutoBid = auctionId != null && autoBidRepo.findByAuctionId(auctionId).stream()
-                    .anyMatch(ab -> ab.getBidderId().equals(freshOld.getId()));
-
-            if (!oldHasAutoBid) {
-                freshOld.unfreezeFunds(oldAmount);
-                userRepo.updateFrozenBalance(freshOld.getId(), freshOld.getFrozenBalance());
-                System.out.printf("[AuctionService] UNFREEZE (outbid) bidder=%s amount=%,.0f ₫ | " +
-                        "frozen=%.0f ₫ | available=%.0f ₫%n",
-                        freshOld.getUsername(), oldAmount,
-                        freshOld.getFrozenBalance(), freshOld.getAvailableBalance());
-            } else {
-                System.out.printf("[AuctionService] SKIP UNFREEZE (AutoBid active) bidder=%s amount=%,.0f ₫%n",
-                        freshOld.getUsername(), oldAmount);
-            }
-            return freshOld;
-        } finally {
-            oldLock.unlock();
-        }
+        return biddingService.processOutbidUnfreeze();
     }
-
-    /**
-     * Thông tin old bidder cần unfreeze – ThreadLocal để an toàn giữa các luồng.
-     */
-    private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
-    private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
-    private final ThreadLocal<String> pendingUnfreezeAuctionId = new ThreadLocal<>();
 
     // ── Auto-Bidding ──────────────────────────────────────────────────────────
 
@@ -475,50 +345,19 @@ public class AuctionService {
         public List<BidTransaction> newBids = new java.util.ArrayList<>();
         public List<Bidder> unfrozenBidders = new java.util.ArrayList<>();
         public List<String> virtualLogs = new java.util.ArrayList<>();
+        public List<String> deactivatedBidderIds = new java.util.ArrayList<>();
     }
 
     public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {
-        if (maxBid <= auction.getHighestBid()) {
-            throw new InvalidBidException("Max Bid phải lớn hơn giá hiện tại.");
-        }
-        if (bidder.getAvailableBalance() < maxBid) {
-            throw new InvalidBidException("Số dư không đủ. Cần " + String.format("%,.0f ₫", maxBid) + " để đặt Auto-Bid.");
-        }
-        
-        // Remove existing autobid if any, and unfreeze its old maxBid
-        AutoBid existing = autoBidRepo.findByAuctionId(auction.getId()).stream()
-                .filter(ab -> ab.getBidderId().equals(bidder.getId())).findFirst().orElse(null);
-        if (existing != null) {
-            autoBidRepo.deleteByAuctionIdAndBidderId(auction.getId(), bidder.getId());
-            bidder.unfreezeFunds(existing.getMaxBid());
-            userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
-        }
-        
-        // Freeze new maxBid immediately (Dong Bang)
-        bidder.freezeFunds(maxBid);
-        userRepo.updateFrozenBalance(bidder.getId(), bidder.getFrozenBalance());
-        
-        AutoBid ab = new AutoBid(
-            java.util.UUID.randomUUID().toString(),
-            auction.getId(),
-            bidder.getId(),
-            maxBid,
-            increment,
-            LocalDateTime.now()
-        );
-        autoBidRepo.save(ab);
-        
-        return resolveBiddingWar(auction);
+        return biddingService.registerAutoBid(auction, bidder, maxBid, increment);
     }
 
     public AutoBidResult resolveBiddingWar(Auction auction) {
-        ReentrantLock lock = getAuctionLock(auction.getId());
-        lock.lock();
-        try {
-            return proxyBiddingEngine.resolveBiddingWar(auction);
-        } finally {
-            lock.unlock();
-        }
+        return biddingService.resolveBiddingWar(auction);
+    }
+
+    public AutoBid findAutoBid(String auctionId, String bidderId) {
+        return autoBidRepo.findByAuctionIdAndBidderId(auctionId, bidderId);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -531,8 +370,17 @@ public class AuctionService {
         return userLocks.computeIfAbsent(userId, id -> new ReentrantLock(true));
     }
 
-    private ReentrantLock getAuctionLock(String auctionId) {
-        return auctionLocks.computeIfAbsent(auctionId, id -> new ReentrantLock(true));
+    private void validateAuctionTimes(LocalDateTime startTime, LocalDateTime endTime) {
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("Thời gian bắt đầu và kết thúc là bắt buộc.");
+        }
+        LocalDateTime now = com.auction.infra.util.TimeSyncManager.getNow();
+        if (startTime.isBefore(now)) {
+            throw new IllegalArgumentException("Thời gian bắt đầu phải lớn hơn hoặc bằng thời gian hiện tại.");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian bắt đầu.");
+        }
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────
@@ -552,28 +400,28 @@ public class AuctionService {
 
         // Items — deterministic IDs by item name
         Electronics laptop = new Electronics(did("item-laptop"), seed, "Laptop Dell XPS 15",
-                "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol, 0);
+                "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol);
         Electronics phone = new Electronics(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
-                28_000_000, carol, 0);
+                28_000_000, carol);
         Art painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
-                5_000_000, dave, "", 0);
+                5_000_000, dave, "");
         Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
-                800_000_000, dave, 0.0, 0);
+                800_000_000, dave);
 
-        Auction a1 = createAuction(carol, laptop, LocalDateTime.now().plusDays(2));
-        Auction a2 = createAuction(carol, phone, LocalDateTime.now().plusHours(5));
-        Auction a3 = createAuction(dave, painting, LocalDateTime.now().plusDays(7));
-        Auction a4 = createAuction(dave, car, LocalDateTime.now().plusDays(1));
+        Auction a1 = createAuction(carol, laptop, com.auction.infra.util.TimeSyncManager.getNow().plusDays(2));
+        Auction a2 = createAuction(carol, phone, com.auction.infra.util.TimeSyncManager.getNow().plusHours(5));
+        Auction a3 = createAuction(dave, painting, com.auction.infra.util.TimeSyncManager.getNow().plusDays(7));
+        Auction a4 = createAuction(dave, car, com.auction.infra.util.TimeSyncManager.getNow().plusDays(1));
 
         auctionRepo.deleteById(a1.getId());
         auctionRepo.deleteById(a2.getId());
         auctionRepo.deleteById(a3.getId());
         auctionRepo.deleteById(a4.getId());
 
-        LocalDateTime end1 = LocalDateTime.now().plusDays(2);
-        LocalDateTime end2 = LocalDateTime.now().plusHours(5);
-        LocalDateTime end3 = LocalDateTime.now().plusDays(7);
-        LocalDateTime end4 = LocalDateTime.now().plusDays(1);
+        LocalDateTime end1 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(2);
+        LocalDateTime end2 = com.auction.infra.util.TimeSyncManager.getNow().plusHours(5);
+        LocalDateTime end3 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(7);
+        LocalDateTime end4 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(1);
 
         Auction b1 = new Auction(did("auction-laptop"), seed, carol, laptop, AuctionStatus.PENDING,
                 laptop.getBasePrice(), null, end1);

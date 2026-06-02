@@ -6,7 +6,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
-            fx:controller="com.auction.controller.BidHistoryController"
+            fx:controller="com.auction.ui.controller.BidHistoryController"
             stylesheets="@styles/main.css"
             styleClass="main-container">
 
@@ -24,13 +24,8 @@
             </Pane>
             <VBox styleClass="content-area" style="-fx-background-color: transparent;" spacing="16" fillWidth="true">
 
-            <!-- Header -->
-            <HBox alignment="CENTER_LEFT">
-                <VBox spacing="4" HBox.hgrow="ALWAYS">
-                    <Label text="Lịch sử Đấu giá" styleClass="page-title"/>
-                    <Label text="Xem lại các lượt đặt giá của bạn" styleClass="label-subtle"/>
-                </VBox>
-            </HBox>
+            <!-- Desktop Header: Clock + Notification Bell -->
+            <fx:include source="components/DesktopHeader.fxml" fx:id="desktopHeader"/>
 
             <!-- Summary stats -->
             <HBox spacing="16">
@@ -62,12 +57,12 @@
 
             <!-- Filter bar -->
             <HBox spacing="8" alignment="CENTER_LEFT">
-                <TextField fx:id="searchField" promptText="🔍 Tìm kiếm sản phẩm..."
-                           styleClass="text-field" prefWidth="240"/>
+                <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm..."
+                           styleClass="text-field" prefWidth="240" prefHeight="36"/>
                 <ComboBox fx:id="resultFilter" promptText="Kết quả"
-                          styleClass="combo-box" prefWidth="150"/>
-                <Button text="Tìm" onAction="#handleSearch" styleClass="btn-secondary"/>
-                <Button text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary"/>
+                          styleClass="combo-box" prefWidth="150" prefHeight="36"/>
+                <Button fx:id="searchButton" text="Tìm" onAction="#handleSearch" styleClass="btn-secondary" prefHeight="36"/>
+                <Button fx:id="resetButton" text="Đặt lại" onAction="#handleReset" styleClass="btn-secondary" prefHeight="36"/>
             </HBox>
 
             <!-- History table -->
@@ -78,12 +73,12 @@
                     <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
                 </columnResizePolicy>
                 <columns>
-                        <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="210"/>
-                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="120"/>
-                        <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="130"/>
-                        <TableColumn fx:id="colFinalBid"  text="Giá chốt"      prefWidth="130"/>
-                        <TableColumn fx:id="colResult"    text="Kết quả"        prefWidth="100"/>
-                        <TableColumn fx:id="colStatus"    text="Trạng thái"    prefWidth="110"/>
+                        <TableColumn fx:id="colItem"      text="Sản phẩm"       prefWidth="200"/>
+                        <TableColumn fx:id="colSeller"    text="Người bán"      prefWidth="110"/>
+                        <TableColumn fx:id="colMyBid"     text="Giá tôi đặt"   prefWidth="125"/>
+                        <TableColumn fx:id="colFinalBid"  text="Giá chốt"      prefWidth="125"/>
+                        <TableColumn fx:id="colResult"    text="Kết quả"        prefWidth="125"/>
+                        <TableColumn fx:id="colStatus"    text="Trạng thái"    prefWidth="115"/>
                         <TableColumn fx:id="colBidTime"   text="Thời gian đặt" prefWidth="160"/>
                     </columns>
                     <placeholder>
@@ -94,9 +89,11 @@
             <HBox alignment="CENTER_LEFT">
                 <Label fx:id="statusLabel" text="" styleClass="label-subtle"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="Xem chi tiết phiên →" fx:id="viewDetailButton"
+                <Button text="Xem chi tiết phiên" fx:id="viewDetailButton"
                         onAction="#handleViewDetail" styleClass="btn-link" visible="false"/>
             </HBox>
+
+            <HBox fx:id="paginationBox" alignment="CENTER" spacing="6" styleClass="pagination-bar"/>
 
         </VBox>
         </StackPane>
