@@ -7,15 +7,13 @@ public class AutoBid {
     private String auctionId;
     private String bidderId;
     private double maxBid;
-    private double increment;
     private LocalDateTime createdAt;
 
-    public AutoBid(String id, String auctionId, String bidderId, double maxBid, double increment, LocalDateTime createdAt) {
+    public AutoBid(String id, String auctionId, String bidderId, double maxBid, LocalDateTime createdAt) {
         this.id = id;
         this.auctionId = auctionId;
         this.bidderId = bidderId;
         this.maxBid = maxBid;
-        this.increment = increment;
         this.createdAt = createdAt;
     }
 
@@ -30,9 +28,6 @@ public class AutoBid {
 
     public double getMaxBid() { return maxBid; }
     public void setMaxBid(double maxBid) { this.maxBid = maxBid; }
-
-    public double getIncrement() { return increment; }
-    public void setIncrement(double increment) { this.increment = increment; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

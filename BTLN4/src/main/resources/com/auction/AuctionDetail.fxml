@@ -247,12 +247,6 @@
                     <TextField fx:id="autoMaxBidField" promptText="Ví dụ: 50,000,000"
                                styleClass="text-field"
                                GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.hgrow="ALWAYS"/>
-
-                    <Label text="Bước giá (₫):" styleClass="form-label"
-                           GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                    <TextField fx:id="autoIncrementField" promptText="Ví dụ: 100,000"
-                               styleClass="text-field"
-                               GridPane.columnIndex="1" GridPane.rowIndex="1" GridPane.hgrow="ALWAYS"/>
                 </GridPane>
 
                 <Label fx:id="autoBidErrorLabel" text="" styleClass="label-error" wrapText="true"/>

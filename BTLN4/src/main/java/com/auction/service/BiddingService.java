@@ -193,8 +193,7 @@ public final class BiddingService {
     public AuctionService.AutoBidResult registerAutoBid(
             Auction auction,
             Bidder bidder,
-            double maxBid,
-            double increment) throws InvalidBidException {
+            double maxBid) throws InvalidBidException {
         ReentrantLock lock = getUserLock(bidder.getId());
         lock.lock();
         try {
@@ -230,11 +229,10 @@ public final class BiddingService {
                     auction.getId(),
                     freshBidder.getId(),
                     maxBid,
-                    increment,
                     TimeSyncManager.getNow());
             autoBidRepo.save(autoBid);
-            log.info("Auto-bid registered auctionId={} bidderId={} maxBid={} increment={}",
-                    auction.getId(), freshBidder.getId(), maxBid, increment);
+            log.info("Auto-bid registered auctionId={} bidderId={} maxBid={}",
+                    auction.getId(), freshBidder.getId(), maxBid);
         } finally {
             lock.unlock();
         }

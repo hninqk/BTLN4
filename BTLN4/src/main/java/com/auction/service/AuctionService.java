@@ -349,8 +349,8 @@ public class AuctionService {
         public List<String> deactivatedBidderIds = new java.util.ArrayList<>();
     }
 
-    public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid, double increment) throws InvalidBidException {
-        return biddingService.registerAutoBid(auction, bidder, maxBid, increment);
+    public AutoBidResult registerAutoBid(Auction auction, Bidder bidder, double maxBid) throws InvalidBidException {
+        return biddingService.registerAutoBid(auction, bidder, maxBid);
     }
 
     public AutoBidResult resolveBiddingWar(Auction auction) {

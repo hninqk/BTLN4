@@ -15,9 +15,20 @@ public final class FxBackgroundTaskRunner implements BackgroundTaskRunner {
                 return task.call();
             }
         };
-        fxTask.setOnSucceeded(event -> onSuccess.accept(fxTask.getValue()));
-        fxTask.setOnFailed(event -> Platform.runLater(() -> onFailure.accept(fxTask.getException())));
-
+        fxTask.setOnSucceeded(event -> {
+            if (onSuccess != null) {
+                onSuccess.accept(fxTask.getValue());
+            }
+        });
+        fxTask.setOnFailed(event -> {
+            if (onFailure != null) {
+                Platform.runLater(() -> onFailure.accept(fxTask.getException()));
+            } else {
+                // Default error logging if no handler is provided
+                Throwable ex = fxTask.getException();
+                if (ex != null) ex.printStackTrace();
+            }
+        });
         Thread thread = new Thread(fxTask, threadName);
         thread.setDaemon(true);
         thread.start();

@@ -350,7 +350,6 @@ public class AuctionWebSocketHandler {
             String auctionId = req.get("auctionId").getAsString();
             String bidderId  = req.get("bidderId").getAsString();
             double maxBid    = req.get("maxBid").getAsDouble();
-            double increment = req.get("increment").getAsDouble();
             
             Auction auction = auctionService.findById(auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
@@ -359,7 +358,7 @@ public class AuctionWebSocketHandler {
                     .filter(u -> u instanceof Bidder)
                     .orElseThrow(() -> new Exception("Bidder not found: " + bidderId));
                     
-            AuctionService.AutoBidResult abResult = auctionService.registerAutoBid(auction, bidder, maxBid, increment);
+            AuctionService.AutoBidResult result = auctionService.registerAutoBid(auction, bidder, maxBid);
             
             JsonObject ack = new JsonObject();
             ack.addProperty("type", "AUTO_BID_ACK");
@@ -375,7 +374,7 @@ public class AuctionWebSocketHandler {
             balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
             broadcastAll(balUpdate.toString());
             
-            broadcastAutoBidResult(abResult, auction.getId());
+            broadcastAutoBidResult(result, auction.getId());
             
         } catch (InvalidBidException | InvalidStatusException e) {
             sendError(ctx, e.getMessage());
@@ -595,7 +594,6 @@ public class AuctionWebSocketHandler {
                 resp.addProperty("type", "AUTO_BID_STATUS");
                 resp.addProperty("auctionId", auctionId);
                 resp.addProperty("maxBid", activeBid.getMaxBid());
-                resp.addProperty("increment", activeBid.getIncrement());
                 ctx.send(resp.toString());
             }
         } catch (Exception e) {

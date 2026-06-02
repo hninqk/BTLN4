@@ -14,14 +14,14 @@ public class JdbcAutoBidRepository {
         String sql;
         if (DatabaseConnection.isPostgres()) {
             sql = """
-                INSERT INTO auto_bids (id, auction_id, bidder_id, max_bid, increment, created_at)
-                VALUES (?,?,?,?,?,?)
-                ON CONFLICT (id) DO UPDATE SET max_bid = EXCLUDED.max_bid, increment = EXCLUDED.increment, created_at = EXCLUDED.created_at
+                INSERT INTO auto_bids (id, auction_id, bidder_id, max_bid, created_at)
+                VALUES (?,?,?,?,?)
+                ON CONFLICT (id) DO UPDATE SET max_bid = EXCLUDED.max_bid, created_at = EXCLUDED.created_at
                 """;
         } else {
             sql = """
-                INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, increment, created_at)
-                VALUES (?,?,?,?,?,?)
+                INSERT OR REPLACE INTO auto_bids (id, auction_id, bidder_id, max_bid, created_at)
+                VALUES (?,?,?,?,?)
                 """;
         }
         try (Connection conn = DatabaseConnection.getConnection();
@@ -31,8 +31,7 @@ public class JdbcAutoBidRepository {
             ps.setString(2, autoBid.getAuctionId());
             ps.setString(3, autoBid.getBidderId());
             ps.setDouble(4, autoBid.getMaxBid());
-            ps.setDouble(5, autoBid.getIncrement());
-            ps.setString(6, autoBid.getCreatedAt().toString());
+            ps.setString(5, autoBid.getCreatedAt().toString());
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -53,7 +52,6 @@ public class JdbcAutoBidRepository {
                             rs.getString("auction_id"),
                             rs.getString("bidder_id"),
                             rs.getDouble("max_bid"),
-                            rs.getDouble("increment"),
                             LocalDateTime.parse(rs.getString("created_at"))
                     );
                 }
@@ -77,7 +75,6 @@ public class JdbcAutoBidRepository {
                             rs.getString("auction_id"),
                             rs.getString("bidder_id"),
                             rs.getDouble("max_bid"),
-                            rs.getDouble("increment"),
                             LocalDateTime.parse(rs.getString("created_at"))
                     );
                     list.add(ab);

@@ -175,7 +175,6 @@ public class DatabaseConnection {
                     + "auction_id TEXT NOT NULL, "
                     + "bidder_id  TEXT NOT NULL, "
                     + "max_bid    " + realType + " NOT NULL, "
-                    + "increment  " + realType + " NOT NULL, "
                     + "created_at TEXT NOT NULL, "
                     + "FOREIGN KEY (auction_id) REFERENCES auctions(id), "
                     + "FOREIGN KEY (bidder_id) REFERENCES users(id))");

@@ -74,7 +74,6 @@ public final class AuctionSerializer {
                 abJson.addProperty("auctionId", ab.getAuctionId());
                 abJson.addProperty("bidderId", ab.getBidderId());
                 abJson.addProperty("maxBid", ab.getMaxBid());
-                abJson.addProperty("increment", ab.getIncrement());
                 abJson.addProperty("createdAt", ab.getCreatedAt().toString());
                 autoBidsJson.add(abJson);
             }
@@ -227,9 +226,8 @@ public final class AuctionSerializer {
                     String abAuctionId = abJson.get("auctionId").getAsString();
                     String abBidderId = abJson.get("bidderId").getAsString();
                     double maxBid = abJson.get("maxBid").getAsDouble();
-                    double increment = abJson.get("increment").getAsDouble();
                     LocalDateTime ts = LocalDateTime.parse(abJson.get("createdAt").getAsString());
-                    a.injectAutoBid(new com.auction.core.model.AutoBid(abId, abAuctionId, abBidderId, maxBid, increment, ts));
+                    a.injectAutoBid(new com.auction.core.model.AutoBid(abId, abAuctionId, abBidderId, maxBid, ts));
                 }
             }
 

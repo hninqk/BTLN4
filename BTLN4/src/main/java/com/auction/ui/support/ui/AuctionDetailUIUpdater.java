@@ -48,7 +48,6 @@ public class AuctionDetailUIUpdater {
     private final VBox autoBidPopup;
     private final Button registerAutoBidButton;
     private final TextField autoMaxBidField;
-    private final TextField autoIncrementField;
     private final Label autoBidErrorLabel;
 
     public AuctionDetailUIUpdater(
@@ -73,7 +72,6 @@ public class AuctionDetailUIUpdater {
             VBox autoBidPopup,
             Button registerAutoBidButton,
             TextField autoMaxBidField,
-            TextField autoIncrementField,
             Label autoBidErrorLabel) {
         this.timeRemainingLabel = timeRemainingLabel;
         this.timeLabelPrefix = timeLabelPrefix;
@@ -96,7 +94,6 @@ public class AuctionDetailUIUpdater {
         this.autoBidPopup = autoBidPopup;
         this.registerAutoBidButton = registerAutoBidButton;
         this.autoMaxBidField = autoMaxBidField;
-        this.autoIncrementField = autoIncrementField;
         this.autoBidErrorLabel = autoBidErrorLabel;
     }
 
@@ -137,7 +134,6 @@ public class AuctionDetailUIUpdater {
         if (registerAutoBidButton != null) {
             setDisableIfChanged(registerAutoBidButton, !canAutoBid);
             setDisableIfChanged(autoMaxBidField, !canAutoBid);
-            setDisableIfChanged(autoIncrementField, !canAutoBid);
 
             if (autoBidErrorLabel != null) {
                 String abCur = autoBidErrorLabel.getText();
