@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public final class AppConfig {
 
-    private static final String RENDER_SERVER_URL = "https://btln4.onrender.com";
+    private static final String RENDER_SERVER_URL = "https://btln4-00dh.onrender.com";
     private static final Map<String, String> DOTENV = loadDotEnv();
 
     private AppConfig() {
