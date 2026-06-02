@@ -15,43 +15,6 @@ public final class AnimationUtil {
     private AnimationUtil() {}
 
     /**
-     * Creates a fluid ripple effect on a given Node (usually a Button or Pane) when clicked.
-     * The node should be inside a layout that supports clipping (or we just let the circle overlay).
-     */
-    public static void addRippleEffect(Region region) {
-        // We use mouse pressed to trigger the ripple immediately
-        region.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
-            Circle ripple = new Circle(event.getX(), event.getY(), 5, Color.rgb(255, 255, 255, 0.4));
-            
-            // To ensure the ripple stays inside the region, we could apply a clip, but a simple overlay works too.
-            if (region.getParent() instanceof javafx.scene.layout.Pane parentPane) {
-                // Adjust coordinates relative to parent
-                ripple.setCenterX(region.getLayoutX() + event.getX());
-                ripple.setCenterY(region.getLayoutY() + event.getY());
-                
-                // Add ripple to parent temporarily
-                parentPane.getChildren().add(ripple);
-
-                // Target radius based on region size
-                double maxDim = Math.max(region.getWidth(), region.getHeight());
-                double targetRadius = maxDim * 1.5;
-
-                ScaleTransition scale = new ScaleTransition(Duration.millis(400), ripple);
-                scale.setToX(targetRadius / 5);
-                scale.setToY(targetRadius / 5);
-
-                FadeTransition fade = new FadeTransition(Duration.millis(400), ripple);
-                fade.setFromValue(0.4);
-                fade.setToValue(0.0);
-
-                ParallelTransition pt = new ParallelTransition(scale, fade);
-                pt.setOnFinished(e -> parentPane.getChildren().remove(ripple));
-                pt.play();
-            }
-        });
-    }
-
-    /**
      * Injects an animated waveline background into a Pane.
      * Uses JavaFX Canvas and AnimationTimer for optical illusion effects.
      */
