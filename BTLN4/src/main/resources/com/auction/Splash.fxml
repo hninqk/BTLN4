@@ -7,7 +7,7 @@
 
 <StackPane fx:id="splashRoot"
            xmlns:fx="http://javafx.com/fxml/1"
-           fx:controller="com.auction.controller.SplashController"
+           fx:controller="com.auction.ui.controller.SplashController"
            style="-fx-background-color: #0F172A;" prefWidth="900" prefHeight="600">
     <VBox alignment="CENTER" spacing="30">
         <!-- Word animation slot – slides in/out above the logo -->

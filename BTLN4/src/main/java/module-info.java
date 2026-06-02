@@ -18,23 +18,29 @@ module com.auction {
     requires org.kordamp.ikonli.fontawesome5;
 
     // Open model to JavaFX property binding and Gson
-    opens com.auction.model to javafx.base, javafx.fxml, com.google.gson;
+    opens com.auction.core.model to javafx.base, javafx.fxml, com.google.gson;
 
     // Open all controller packages to FXML loader
     opens com.auction to javafx.fxml;
-    opens com.auction.controller to javafx.fxml;
-    opens com.auction.util to javafx.fxml, com.google.gson;
+    opens com.auction.ui.controller to javafx.fxml;
+    opens com.auction.ui.support.ui to javafx.fxml;
+    opens com.auction.ui.support.logic to javafx.fxml;
+    opens com.auction.infra.util to javafx.fxml, com.google.gson;
     opens com.auction.service to javafx.fxml;
 
     // Exports
     exports com.auction;
-    exports com.auction.controller;
-    exports com.auction.model;
+    exports com.auction.ui.controller;
+    exports com.auction.ui.support.dto;
+    exports com.auction.ui.support.realtime;
+    exports com.auction.ui.support.ui;
+    exports com.auction.ui.support.logic;
+    exports com.auction.core.model;
     exports com.auction.service;
-    exports com.auction.util;
-    exports com.auction.exception;
-    exports com.auction.repository;
-    exports com.auction.client;
-    exports com.auction.server;
-    exports com.auction.security;
+    exports com.auction.infra.util;
+    exports com.auction.core.exception;
+    exports com.auction.infra.repository;
+    exports com.auction.api.http;
+    exports com.auction.api.server;
+    exports com.auction.infra.security;
 }

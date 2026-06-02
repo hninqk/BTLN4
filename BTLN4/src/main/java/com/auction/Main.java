@@ -1,6 +1,6 @@
 package com.auction;
 
-import com.auction.util.NavigationManager;
+import com.auction.infra.util.NavigationManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
@@ -43,7 +43,7 @@ public class Main extends Application {
         createTrayIcon(stage);
 
         // Fetch server time offset asynchronously
-        new Thread(() -> com.auction.util.TimeSyncManager.syncTimeWithServer(), "TimeSync-Thread").start();
+        new Thread(() -> com.auction.infra.util.TimeSyncManager.syncTimeWithServer(), "TimeSync-Thread").start();
 
         NavigationManager nav = NavigationManager.getInstance();
         nav.setPrimaryStage(stage);

@@ -8,7 +8,7 @@
 
 <HBox xmlns:fx="http://javafx.com/fxml/1"
       xmlns="http://javafx.com/javafx/21"
-      fx:controller="com.auction.controller.DesktopHeaderController"
+      fx:controller="com.auction.ui.controller.DesktopHeaderController"
       fx:id="headerRoot"
       styleClass="desktop-header"
       alignment="CENTER_LEFT"

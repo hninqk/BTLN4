@@ -1,13 +1,13 @@
 package com.auction.service;
 
-import com.auction.exception.InvalidBidException;
-import com.auction.exception.InvalidStatusException;
-import com.auction.model.*;
-import com.auction.repository.JdbcAuctionRepository;
-import com.auction.repository.JdbcBidRepository;
-import com.auction.repository.JdbcUserRepository;
-import com.auction.repository.JdbcAutoBidRepository;
-import com.auction.util.SessionManager;
+import com.auction.core.exception.InvalidBidException;
+import com.auction.core.exception.InvalidStatusException;
+import com.auction.core.model.*;
+import com.auction.infra.repository.JdbcAuctionRepository;
+import com.auction.infra.repository.JdbcBidRepository;
+import com.auction.infra.repository.JdbcUserRepository;
+import com.auction.infra.repository.JdbcAutoBidRepository;
+import com.auction.infra.util.SessionManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -109,7 +109,7 @@ public class AuctionService {
 
     /** Legacy create path: starts immediately. */
     public Auction createAuction(Seller seller, Item item, LocalDateTime endTime) {
-        LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
+        LocalDateTime now = com.auction.infra.util.TimeSyncManager.getNow();
         if (endTime == null || !endTime.isAfter(now)) {
             throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian hiện tại.");
         }
@@ -374,7 +374,7 @@ public class AuctionService {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Thời gian bắt đầu và kết thúc là bắt buộc.");
         }
-        LocalDateTime now = com.auction.util.TimeSyncManager.getNow();
+        LocalDateTime now = com.auction.infra.util.TimeSyncManager.getNow();
         if (startTime.isBefore(now)) {
             throw new IllegalArgumentException("Thời gian bắt đầu phải lớn hơn hoặc bằng thời gian hiện tại.");
         }
@@ -408,20 +408,20 @@ public class AuctionService {
         Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
                 800_000_000, dave);
 
-        Auction a1 = createAuction(carol, laptop, com.auction.util.TimeSyncManager.getNow().plusDays(2));
-        Auction a2 = createAuction(carol, phone, com.auction.util.TimeSyncManager.getNow().plusHours(5));
-        Auction a3 = createAuction(dave, painting, com.auction.util.TimeSyncManager.getNow().plusDays(7));
-        Auction a4 = createAuction(dave, car, com.auction.util.TimeSyncManager.getNow().plusDays(1));
+        Auction a1 = createAuction(carol, laptop, com.auction.infra.util.TimeSyncManager.getNow().plusDays(2));
+        Auction a2 = createAuction(carol, phone, com.auction.infra.util.TimeSyncManager.getNow().plusHours(5));
+        Auction a3 = createAuction(dave, painting, com.auction.infra.util.TimeSyncManager.getNow().plusDays(7));
+        Auction a4 = createAuction(dave, car, com.auction.infra.util.TimeSyncManager.getNow().plusDays(1));
 
         auctionRepo.deleteById(a1.getId());
         auctionRepo.deleteById(a2.getId());
         auctionRepo.deleteById(a3.getId());
         auctionRepo.deleteById(a4.getId());
 
-        LocalDateTime end1 = com.auction.util.TimeSyncManager.getNow().plusDays(2);
-        LocalDateTime end2 = com.auction.util.TimeSyncManager.getNow().plusHours(5);
-        LocalDateTime end3 = com.auction.util.TimeSyncManager.getNow().plusDays(7);
-        LocalDateTime end4 = com.auction.util.TimeSyncManager.getNow().plusDays(1);
+        LocalDateTime end1 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(2);
+        LocalDateTime end2 = com.auction.infra.util.TimeSyncManager.getNow().plusHours(5);
+        LocalDateTime end3 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(7);
+        LocalDateTime end4 = com.auction.infra.util.TimeSyncManager.getNow().plusDays(1);
 
         Auction b1 = new Auction(did("auction-laptop"), seed, carol, laptop, AuctionStatus.PENDING,
                 laptop.getBasePrice(), null, end1);

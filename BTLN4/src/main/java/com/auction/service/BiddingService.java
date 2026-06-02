@@ -1,17 +1,17 @@
 package com.auction.service;
 
-import com.auction.exception.InvalidBidException;
-import com.auction.exception.InvalidStatusException;
-import com.auction.model.Auction;
-import com.auction.model.AutoBid;
-import com.auction.model.BidTransaction;
-import com.auction.model.Bidder;
-import com.auction.repository.JdbcAuctionRepository;
-import com.auction.repository.JdbcAutoBidRepository;
-import com.auction.repository.JdbcBidRepository;
-import com.auction.repository.JdbcUserRepository;
-import com.auction.util.AppConfig;
-import com.auction.util.TimeSyncManager;
+import com.auction.core.exception.InvalidBidException;
+import com.auction.core.exception.InvalidStatusException;
+import com.auction.core.model.Auction;
+import com.auction.core.model.AutoBid;
+import com.auction.core.model.BidTransaction;
+import com.auction.core.model.Bidder;
+import com.auction.infra.repository.JdbcAuctionRepository;
+import com.auction.infra.repository.JdbcAutoBidRepository;
+import com.auction.infra.repository.JdbcBidRepository;
+import com.auction.infra.repository.JdbcUserRepository;
+import com.auction.infra.util.AppConfig;
+import com.auction.infra.util.TimeSyncManager;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -87,7 +87,7 @@ public final class BiddingService {
                         "Bạn đang là người ra giá cao nhất, không thể đặt giá 2 lần liên tiếp cho sản phẩm này.");
             }
 
-            double step = com.auction.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
+            double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
             double minRequired = auction.getHighestBid() + step;
             if (amount < minRequired) {
                 throw new InvalidBidException(String.format("Giá đặt tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", minRequired, step));
@@ -201,7 +201,7 @@ public final class BiddingService {
                     .filter(u -> u instanceof Bidder)
                     .orElse(bidder);
 
-            double step = com.auction.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
+            double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(auction.getHighestBid());
             double minRequired = auction.getHighestBid() + step;
             if (maxBid < minRequired) {
                 throw new InvalidBidException(String.format("Giá tối đa (Max Bid) tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", minRequired, step));

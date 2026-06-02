@@ -7,7 +7,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
-            fx:controller="com.auction.controller.DashboardController"
+            fx:controller="com.auction.ui.controller.DashboardController"
             stylesheets="@styles/main.css"
             styleClass="main-container">
 

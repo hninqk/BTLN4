@@ -1,11 +1,11 @@
 package com.auction.service;
 
-import com.auction.client.ApiClient;
-import com.auction.model.Auction;
-import com.auction.model.Bidder;
-import com.auction.model.Seller;
-import com.auction.model.User;
-import com.auction.server.AuctionSerializer;
+import com.auction.api.http.ApiClient;
+import com.auction.core.model.Auction;
+import com.auction.core.model.Bidder;
+import com.auction.core.model.Seller;
+import com.auction.core.model.User;
+import com.auction.api.server.AuctionSerializer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 

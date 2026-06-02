@@ -10,7 +10,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml/1"
             xmlns="http://javafx.com/javafx/21"
-            fx:controller="com.auction.controller.AuctionDetailController"
+            fx:controller="com.auction.ui.controller.AuctionDetailController"
             stylesheets="@styles/main.css"
             styleClass="main-container">
 
@@ -117,7 +117,7 @@
                                 </HBox>
                                 <Label fx:id="currentPriceLabel" text="0 ₫" style="-fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: -theme-text;"/>
                                 <HBox alignment="CENTER" spacing="8" style="-fx-border-color: #FACC15; -fx-border-radius: 20; -fx-padding: 6 12; -fx-background-color: -theme-surface; -fx-background-radius: 20;">
-                                    <Label text="Kết thúc sau" styleClass="label-subtle" style="-fx-text-fill: -theme-text;"/>
+                                    <Label fx:id="timeLabelPrefix" text="Kết thúc sau" styleClass="label-subtle" style="-fx-text-fill: -theme-text;"/>
                                     <Label fx:id="timeRemainingLabel" text="--:--:--" style="-fx-text-fill: #FACC15; -fx-font-weight: bold; -fx-font-size: 16px;"/>
                                 </HBox>
                             </VBox>

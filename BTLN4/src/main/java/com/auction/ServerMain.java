@@ -1,12 +1,12 @@
 package com.auction;
 
-import com.auction.server.AuctionWebSocketHandler;
-import com.auction.server.RestApiHandler;
-import com.auction.server.SecurityHeaderFilter;
+import com.auction.api.server.AuctionWebSocketHandler;
+import com.auction.api.server.RestApiHandler;
+import com.auction.api.server.SecurityHeaderFilter;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
-import com.auction.util.AppConfig;
-import com.auction.util.DatabaseConnection;
+import com.auction.infra.util.AppConfig;
+import com.auction.infra.util.DatabaseConnection;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

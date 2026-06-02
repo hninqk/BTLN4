@@ -9,7 +9,7 @@
 <StackPane fx:id="rootPane"
            xmlns:fx="http://javafx.com/fxml/1"
            xmlns="http://javafx.com/javafx/21"
-           fx:controller="com.auction.controller.LoginController"
+           fx:controller="com.auction.ui.controller.LoginController"
            styleClass="auth-container"
            stylesheets="@styles/main.css"
            style="-fx-padding: 0;">

@@ -1,12 +1,12 @@
 package com.auction.service;
 
-import com.auction.exception.InvalidBidException;
-import com.auction.model.Auction;
-import com.auction.model.AutoBid;
-import com.auction.model.BidTransaction;
-import com.auction.model.Bidder;
-import com.auction.repository.JdbcAutoBidRepository;
-import com.auction.repository.JdbcUserRepository;
+import com.auction.core.exception.InvalidBidException;
+import com.auction.core.model.Auction;
+import com.auction.core.model.AutoBid;
+import com.auction.core.model.BidTransaction;
+import com.auction.core.model.Bidder;
+import com.auction.infra.repository.JdbcAutoBidRepository;
+import com.auction.infra.repository.JdbcUserRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -108,7 +108,7 @@ public class ProxyBiddingEngine {
 
             if (validBids.size() == 1) {
                 // Single proxy bidder vs a manual high bid
-                double step = com.auction.util.BidLadderUtil.getIncrementForPrice(currentHighest);
+                double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentHighest);
                 targetBid = Math.min(currentHighest + step, top1.getMaxBid());
                 logMsg = String.format("[Auto-Bid] %s tự động đặt %,.0f ₫",
                         top1Bidder.getUsername(), targetBid);
@@ -148,7 +148,7 @@ public class ProxyBiddingEngine {
                 if (Double.compare(top1.getMaxBid(), top2.getMaxBid()) == 0) {
                     targetBid = top1.getMaxBid();    // Tie: top1 wins (placed first)
                 } else {
-                    double step = com.auction.util.BidLadderUtil.getIncrementForPrice(top2.getMaxBid());
+                    double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(top2.getMaxBid());
                     targetBid = Math.min(top2.getMaxBid() + step, top1.getMaxBid());
                 }
                 logMsg = String.format("[Auto-Bid] %s vượt qua %s với giá %,.0f ₫",
