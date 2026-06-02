@@ -2,7 +2,7 @@ package com.auction.service;
 
 import com.auction.core.model.*;
 import com.auction.infra.repository.JdbcUserRepository;
-import com.auction.infra.security.PasswordHashService;
+import com.auction.service.security.PasswordHashService;
 
 import java.util.List;
 import java.util.Optional;

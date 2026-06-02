@@ -1,4 +1,4 @@
-package com.auction.infra.factory;
+package com.auction.core.factory;
 
 import com.auction.core.model.*;
 

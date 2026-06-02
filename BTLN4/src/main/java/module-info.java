@@ -48,5 +48,6 @@ module com.auction {
     exports com.auction.infra.repository;
     exports com.auction.api.http;
     exports com.auction.api.server;
-    exports com.auction.infra.security;
+    exports com.auction.core.factory;
+    exports com.auction.service.security;
 }

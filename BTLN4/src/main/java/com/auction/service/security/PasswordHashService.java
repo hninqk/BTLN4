@@ -1,4 +1,4 @@
-package com.auction.infra.security;
+package com.auction.service.security;
 
 import java.security.MessageDigest;
 import java.security.SecureRandom;
