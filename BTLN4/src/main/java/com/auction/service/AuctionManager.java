@@ -1,4 +1,4 @@
-package com.auction.infra.manager;
+package com.auction.service;
 
 import com.auction.core.model.Auction;
 

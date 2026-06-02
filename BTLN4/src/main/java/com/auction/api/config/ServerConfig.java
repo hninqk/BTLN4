@@ -1,4 +1,8 @@
-package com.auction.infra.util;
+package com.auction.api.config;
+import com.auction.ui.util.*;
+import com.auction.core.util.*;
+import com.auction.api.config.*;
+import com.auction.infra.db.*;
 
 /**
  * Compatibility wrapper for client code that still asks for the server URL.

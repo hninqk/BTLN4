@@ -10,7 +10,7 @@ import com.auction.core.model.Electronics;
 import com.auction.core.model.Item;
 import com.auction.core.model.Seller;
 import com.auction.core.model.Vehicle;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.TimeSyncManager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 

@@ -25,7 +25,10 @@ module com.auction {
     opens com.auction.ui.controller to javafx.fxml;
     opens com.auction.ui.support.ui to javafx.fxml;
     opens com.auction.ui.support.logic to javafx.fxml;
-    opens com.auction.infra.util to javafx.fxml, com.google.gson;
+    opens com.auction.ui.util to javafx.fxml, com.google.gson;
+    opens com.auction.core.util to javafx.fxml, com.google.gson;
+    opens com.auction.api.config to javafx.fxml, com.google.gson;
+    opens com.auction.infra.db to javafx.fxml, com.google.gson;
     opens com.auction.service to javafx.fxml;
 
     // Exports
@@ -37,7 +40,10 @@ module com.auction {
     exports com.auction.ui.support.logic;
     exports com.auction.core.model;
     exports com.auction.service;
-    exports com.auction.infra.util;
+    exports com.auction.ui.util;
+    exports com.auction.core.util;
+    exports com.auction.api.config;
+    exports com.auction.infra.db;
     exports com.auction.core.exception;
     exports com.auction.infra.repository;
     exports com.auction.api.http;

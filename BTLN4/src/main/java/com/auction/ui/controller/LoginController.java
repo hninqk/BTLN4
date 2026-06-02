@@ -1,8 +1,8 @@
 package com.auction.ui.controller;
 
 import com.auction.core.model.User;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.NavigationManager;
+import com.auction.core.util.SessionManager;
+import com.auction.ui.util.NavigationManager;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -48,7 +48,7 @@ public class LoginController extends BaseController {
                     javafx.util.Duration.millis(100));
             pause.setOnFinished(e -> {
                 if (rootPane != null) {
-                    com.auction.infra.util.AnimationUtil.createWaveBackground(rootPane);
+                    com.auction.ui.util.AnimationUtil.createWaveBackground(rootPane);
                 }
             });
             pause.play();

@@ -6,7 +6,10 @@ import com.auction.ui.support.dto.FeedEntry;
 import com.auction.ui.support.logic.LiveFeedEntryParser;
 import com.auction.core.model.*;
 import com.auction.service.AuctionWebSocketService;
-import com.auction.infra.util.*;
+import com.auction.ui.util.*;
+import com.auction.core.util.*;
+import com.auction.api.config.*;
+import com.auction.infra.db.*;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
@@ -80,7 +83,7 @@ public class AuctionDetailController extends BaseController
     private String auctionId;
     private Auction currentAuction;
     private ScheduledExecutorService scheduler;
-    private com.auction.infra.util.AuctionChartHelper chartHelper;
+    private com.auction.ui.util.AuctionChartHelper chartHelper;
     private volatile boolean wsConnected = false;
     private int knownBidCount = 0;
 
@@ -190,7 +193,7 @@ public class AuctionDetailController extends BaseController
                 double maxBid = json.get("maxBid").getAsDouble();
                 if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", maxBid));
                 if (autoIncrementField != null) {
-                    double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                    double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                     autoIncrementField.setText(String.format("%.0f", step));
                 }
                 if (autoBidStatusBadge != null) {
@@ -199,7 +202,7 @@ public class AuctionDetailController extends BaseController
                     if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
                 }
                 if (currentAutoBidLabel != null) {
-                    double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                    double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                     currentAutoBidLabel.setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", maxBid, step));
                     currentAutoBidLabel.setVisible(true);
                     currentAutoBidLabel.setManaged(true);
@@ -234,15 +237,15 @@ public class AuctionDetailController extends BaseController
 
     public void initialize() {
         if (bidErrorLabel != null) bidErrorLabel.setText("");
-        chartHelper = new com.auction.infra.util.AuctionChartHelper(priceChart, timeAxis);
+        chartHelper = new com.auction.ui.util.AuctionChartHelper(priceChart, timeAxis);
         applyChartWindow();
         setupLiveFeedList();
 
-        com.auction.infra.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
+        com.auction.core.util.CurrencyUtil.setupCurrencyTextField(bidAmountField);
         if (autoMaxBidField != null)
-            com.auction.infra.util.CurrencyUtil.setupCurrencyTextField(autoMaxBidField);
+            com.auction.core.util.CurrencyUtil.setupCurrencyTextField(autoMaxBidField);
         if (autoIncrementField != null) {
-            com.auction.infra.util.CurrencyUtil.setupCurrencyTextField(autoIncrementField);
+            com.auction.core.util.CurrencyUtil.setupCurrencyTextField(autoIncrementField);
             autoIncrementField.setEditable(false);
             autoIncrementField.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #6b7280;");
         }
@@ -353,7 +356,7 @@ public class AuctionDetailController extends BaseController
         String imgUrl = item.getImageUrl();
         if (imgUrl != null && !imgUrl.isEmpty()) {
             String cacheKey = (imgUrl.startsWith("data:image/") ? Integer.toHexString(imgUrl.hashCode()) : imgUrl) + "_420_250";
-            javafx.scene.image.Image cachedImg = com.auction.infra.util.CacheManager.getInstance().getImage(cacheKey);
+            javafx.scene.image.Image cachedImg = com.auction.core.util.CacheManager.getInstance().getImage(cacheKey);
             if (cachedImg != null) itemImageView.setImage(cachedImg);
             else itemImageView.setImage(ImageLoaderUtil.loadItemImage(imgUrl, 420, 250));
         }
@@ -380,7 +383,7 @@ public class AuctionDetailController extends BaseController
                 Platform.runLater(() -> {
                     if (autoMaxBidField != null) autoMaxBidField.setText(String.format("%.0f", myAutoBid.getMaxBid()));
                     if (autoIncrementField != null) {
-                        double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                        double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                         autoIncrementField.setText(String.format("%.0f", step));
                     }
                     if (autoBidStatusBadge != null) {
@@ -389,7 +392,7 @@ public class AuctionDetailController extends BaseController
                         if (registerAutoBidButton != null) registerAutoBidButton.setText("Cập nhật Auto-Bid");
                     }
                     if (currentAutoBidLabel != null) {
-                        double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+                        double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
                         currentAutoBidLabel.setText(String.format("Auto-Bid của bạn: %,.0f ₫ (Bước giá: %,.0f ₫)", myAutoBid.getMaxBid(), step));
                         currentAutoBidLabel.setVisible(true); currentAutoBidLabel.setManaged(true);
                     }
@@ -408,7 +411,7 @@ public class AuctionDetailController extends BaseController
     private void refreshBidSection() {
         if (uiUpdater != null) uiUpdater.refreshBidSection(currentAuction);
         if (currentAuction != null && autoIncrementField != null) {
-            double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+            double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
             autoIncrementField.setText(String.format("%.0f", step));
         }
         if (currentAuction != null) {
@@ -447,7 +450,7 @@ public class AuctionDetailController extends BaseController
         String input = bidAmountField.getText().trim();
         if (input.isEmpty()) { if (bidErrorLabel != null) bidErrorLabel.setText("Vui lòng nhập số tiền đặt giá."); return; }
         double amount;
-        try { amount = com.auction.infra.util.CurrencyUtil.parseCurrency(input); } catch (NumberFormatException e) { if (bidErrorLabel != null) bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
+        try { amount = com.auction.core.util.CurrencyUtil.parseCurrency(input); } catch (NumberFormatException e) { if (bidErrorLabel != null) bidErrorLabel.setText("Số tiền không hợp lệ."); return; }
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) { if (bidErrorLabel != null) bidErrorLabel.setText("Chỉ Bidder mới có thể đặt giá."); return; }
         if (isCurrentUserHighestBidder()) { if (bidErrorLabel != null) { bidErrorLabel.setText("Bạn đang là người ra giá cao nhất."); bidErrorLabel.setStyle("-fx-text-fill: #64b5f6;"); } refreshControls(); return; }
@@ -483,7 +486,7 @@ public class AuctionDetailController extends BaseController
         String maxBidInput = autoMaxBidField.getText().trim(); String incInput = autoIncrementField.getText().trim();
         if (maxBidInput.isEmpty() || incInput.isEmpty()) { autoBidErrorLabel.setText("Vui lòng nhập đầy đủ giá tối đa và bước giá."); return; }
         double maxBid, increment;
-        try { maxBid = com.auction.infra.util.CurrencyUtil.parseCurrency(maxBidInput); increment = com.auction.infra.util.CurrencyUtil.parseCurrency(incInput); } catch (NumberFormatException e) { autoBidErrorLabel.setText("Số tiền không hợp lệ."); return; }
+        try { maxBid = com.auction.core.util.CurrencyUtil.parseCurrency(maxBidInput); increment = com.auction.core.util.CurrencyUtil.parseCurrency(incInput); } catch (NumberFormatException e) { autoBidErrorLabel.setText("Số tiền không hợp lệ."); return; }
         if (increment <= 0) { autoBidErrorLabel.setText("Bước giá phải lớn hơn 0."); autoBidErrorLabel.setStyle("-fx-text-fill: red;"); return; }
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Bidder bidder)) { autoBidErrorLabel.setText("Chỉ Bidder mới có thể đăng ký Auto-Bid."); return; }
@@ -501,6 +504,6 @@ public class AuctionDetailController extends BaseController
         String title = "Phiên đấu giá kết thúc", header = "Phiên đấu giá: " + (currentAuction != null ? currentAuction.getItem().getName() : ""), content;
         if (winnerUsername != null && winnerBid > 0) content = String.format("🎉 Người chiến thắng: %s%n💰 Giá chốt: %,.0f ₫%n%nSố dư của người thắng đã được trừ tự động.", winnerUsername, winnerBid);
         else content = "Phiên đấu giá đã kết thúc.\nKhông có ai đặt giá trong phiên này.";
-        com.auction.infra.util.AlertHelper.createAlert(javafx.scene.control.Alert.AlertType.INFORMATION, title, header, content).showAndWait();
+        com.auction.ui.util.AlertHelper.createAlert(javafx.scene.control.Alert.AlertType.INFORMATION, title, header, content).showAndWait();
     }
 }

@@ -108,7 +108,7 @@ public class ProxyBiddingEngine {
 
             if (validBids.size() == 1) {
                 // Single proxy bidder vs a manual high bid
-                double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentHighest);
+                double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentHighest);
                 targetBid = Math.min(currentHighest + step, top1.getMaxBid());
                 logMsg = String.format("[Auto-Bid] %s tự động đặt %,.0f ₫",
                         top1Bidder.getUsername(), targetBid);
@@ -148,7 +148,7 @@ public class ProxyBiddingEngine {
                 if (Double.compare(top1.getMaxBid(), top2.getMaxBid()) == 0) {
                     targetBid = top1.getMaxBid();    // Tie: top1 wins (placed first)
                 } else {
-                    double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(top2.getMaxBid());
+                    double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(top2.getMaxBid());
                     targetBid = Math.min(top2.getMaxBid() + step, top1.getMaxBid());
                 }
                 logMsg = String.format("[Auto-Bid] %s vượt qua %s với giá %,.0f ₫",

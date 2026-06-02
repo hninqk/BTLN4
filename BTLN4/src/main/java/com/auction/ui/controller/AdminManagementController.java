@@ -7,8 +7,8 @@ import com.auction.ui.support.logic.AuctionSnapshotMapper;
 import com.auction.ui.support.logic.DefaultAuctionFilterService;
 import com.auction.ui.support.logic.DefaultAuctionSnapshotMapper;
 import com.auction.core.model.*;
-import com.auction.infra.util.AlertHelper;
-import com.auction.infra.util.SessionManager;
+import com.auction.ui.util.AlertHelper;
+import com.auction.core.util.SessionManager;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -175,7 +175,7 @@ public class AdminManagementController extends RealtimeController {
 
     private void logActivity(String msg) {
         if (adminActivityLogList == null) return;
-        String time = com.auction.infra.util.TimeSyncManager.getNow().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+        String time = com.auction.core.util.TimeSyncManager.getNow().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
         String entry = String.format("[%s] %s", time, msg);
         Platform.runLater(() -> {
             adminActivityLogList.getItems().add(0, entry);
@@ -268,8 +268,8 @@ public class AdminManagementController extends RealtimeController {
                 // Inject a bid entry so bid count updates
                 String bidderName = json.has("bidderUsername") ? json.get("bidderUsername").getAsString() : "?";
                 String bidderId   = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";
-                String timeStr    = json.has("time")           ? json.get("time").getAsString()           : com.auction.infra.util.TimeSyncManager.getNow().toString();
-                Bidder dummy = new Bidder(bidderId, com.auction.infra.util.TimeSyncManager.getNow(), bidderName, "", 0);
+                String timeStr    = json.has("time")           ? json.get("time").getAsString()           : com.auction.core.util.TimeSyncManager.getNow().toString();
+                Bidder dummy = new Bidder(bidderId, com.auction.core.util.TimeSyncManager.getNow(), bidderName, "", 0);
                 a.injectBid(new BidTransaction(
                         java.util.UUID.randomUUID().toString(),
                         LocalDateTime.parse(timeStr), dummy, a, amount));
@@ -504,7 +504,7 @@ public class AdminManagementController extends RealtimeController {
                 .ifPresent(a -> {
                     a.setStatus(nextStatus);
                     if (nextStatus == AuctionStatus.RUNNING && a.getStartTime() == null) {
-                        a.setStartTime(com.auction.infra.util.TimeSyncManager.getNow());
+                        a.setStartTime(com.auction.core.util.TimeSyncManager.getNow());
                     }
                     allAuctionTable.refresh();
                     updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());

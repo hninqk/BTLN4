@@ -4,7 +4,7 @@ import com.auction.ui.support.ui.BackgroundTaskRunner;
 import com.auction.ui.support.ui.FxBackgroundTaskRunner;
 import com.auction.core.model.User;
 import com.auction.service.AppFacade;
-import com.auction.infra.util.NavigationManager;
+import com.auction.ui.util.NavigationManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -47,7 +47,7 @@ public class RegisterController extends BaseController {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
             pause.setOnFinished(e -> {
                 if (rootPane != null) {
-                    com.auction.infra.util.AnimationUtil.createWaveBackground(rootPane);
+                    com.auction.ui.util.AnimationUtil.createWaveBackground(rootPane);
                 }
             });
             pause.play();

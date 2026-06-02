@@ -6,8 +6,8 @@ import com.auction.core.model.BidTransaction;
 import com.auction.core.model.Bidder;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.SessionManager;
+import com.auction.core.util.TimeSyncManager;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -195,7 +195,7 @@ public class AuctionDetailUIUpdater {
 
         setTextIfChanged(currentPriceLabel, String.format("%,.0f ₫", currentAuction.getHighestBid()));
         setTextIfChanged(bidCountLabel, currentAuction.getBidHistory().size() + " lượt đấu giá");
-        double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
+        double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(currentAuction.getHighestBid());
         setTextIfChanged(minBidHint, String.format("%,.0f ₫", currentAuction.getHighestBid() + step));
         if (stepHintLabel != null) {
             setTextIfChanged(stepHintLabel, String.format("%,.0f ₫", step));

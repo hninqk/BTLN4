@@ -8,8 +8,8 @@ import com.auction.core.model.Auction;
 import com.auction.core.model.Bidder;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.SessionManager;
+import com.auction.core.util.TimeSyncManager;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -38,8 +38,8 @@ import javafx.geometry.Pos;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Priority;
-import com.auction.infra.util.ImageLoaderUtil;
-import com.auction.infra.util.NavigationManager;
+import com.auction.ui.util.ImageLoaderUtil;
+import com.auction.ui.util.NavigationManager;
 
 /**
  * UserProfileController – displays and manages user profile data and balance.
@@ -98,7 +98,7 @@ public class UserProfileController extends BaseController {
         profileSuccessLabel.setText("");
 
         // Apply thousands-separator formatting to the deposit input field
-        com.auction.infra.util.CurrencyUtil.setupCurrencyTextField(depositField);
+        com.auction.core.util.CurrencyUtil.setupCurrencyTextField(depositField);
 
         if (currentUser != null) {
             populateProfile();
@@ -247,7 +247,7 @@ public class UserProfileController extends BaseController {
         if (input.isEmpty())
             return;
         try {
-            double amount = com.auction.infra.util.CurrencyUtil.parseCurrency(input);
+            double amount = com.auction.core.util.CurrencyUtil.parseCurrency(input);
             if (amount <= 0)
                 throw new NumberFormatException();
 

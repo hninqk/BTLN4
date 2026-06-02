@@ -1,6 +1,6 @@
 package com.auction.api.http;
 
-import com.auction.infra.util.AppConfig;
+import com.auction.api.config.AppConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;

@@ -1,7 +1,7 @@
 package com.auction.ui.controller;
 
 import com.auction.api.http.ApiClient;
-import com.auction.infra.util.NavigationManager;
+import com.auction.ui.util.NavigationManager;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -36,7 +36,7 @@ public class SplashController extends BaseController {
 
         Platform.runLater(() -> {
             if (splashRoot != null) {
-                com.auction.infra.util.AnimationUtil.createWaveBackground(splashRoot);
+                com.auction.ui.util.AnimationUtil.createWaveBackground(splashRoot);
             }
         });
 
@@ -133,7 +133,7 @@ public class SplashController extends BaseController {
                                 final int w = sz[0], h = sz[1];
                                 imgPool.submit(() -> {
                                     try {
-                                        com.auction.infra.util.ImageLoaderUtil.loadItemImageSync(url, w, h);
+                                        com.auction.ui.util.ImageLoaderUtil.loadItemImageSync(url, w, h);
                                     } catch (Exception ex) {
                                         System.err.printf("[Splash] Image preload failed (%dx%d) %s: %s%n",
                                                 w, h, url, ex.getMessage());

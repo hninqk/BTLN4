@@ -9,7 +9,7 @@ public abstract class Entity {
 
     public Entity() {
         this.id = java.util.UUID.randomUUID().toString();
-        this.createdAt = com.auction.infra.util.TimeSyncManager.getNow();
+        this.createdAt = com.auction.core.util.TimeSyncManager.getNow();
     }
 
     public Entity(String id, LocalDateTime createdAt) {

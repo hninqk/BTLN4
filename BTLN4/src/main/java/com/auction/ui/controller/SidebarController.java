@@ -2,8 +2,8 @@ package com.auction.ui.controller;
 
 import com.auction.core.model.Bidder;
 import com.auction.core.model.User;
-import com.auction.infra.util.NavigationManager;
-import com.auction.infra.util.SessionManager;
+import com.auction.ui.util.NavigationManager;
+import com.auction.core.util.SessionManager;
 
 import javafx.application.Platform;
 import javafx.event.ActionEvent;

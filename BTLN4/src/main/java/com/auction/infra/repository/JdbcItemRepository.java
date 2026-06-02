@@ -1,7 +1,7 @@
 package com.auction.infra.repository;
 
 import com.auction.core.model.*;
-import com.auction.infra.util.DatabaseConnection;
+import com.auction.infra.db.DatabaseConnection;
 
 import java.sql.*;
 import java.time.LocalDateTime;

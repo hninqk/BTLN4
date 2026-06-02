@@ -1,10 +1,10 @@
 package com.auction.ui.controller;
 
 import com.auction.service.AppFacade;
-import com.auction.infra.util.NavigationManager;
+import com.auction.ui.util.NavigationManager;
 import com.auction.ui.support.ui.BackgroundTaskRunner;
 import com.auction.ui.support.ui.FxBackgroundTaskRunner;
-import com.auction.infra.util.AlertHelper;
+import com.auction.ui.util.AlertHelper;
 import javafx.application.Platform;
 
 /**

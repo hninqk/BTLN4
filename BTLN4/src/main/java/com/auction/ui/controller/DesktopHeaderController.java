@@ -1,9 +1,9 @@
 package com.auction.ui.controller;
 
-import com.auction.infra.util.NotificationManager;
-import com.auction.infra.util.NotificationManager.AppNotification;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.NotificationManager;
+import com.auction.core.util.NotificationManager.AppNotification;
+import com.auction.core.util.SessionManager;
+import com.auction.core.util.TimeSyncManager;
 import com.auction.core.model.User;
 import com.auction.core.model.Bidder;
 import com.auction.service.AppFacade;

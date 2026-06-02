@@ -172,7 +172,7 @@ public final class AuctionSerializer {
             String endTimeStr     = json.get("endTime").getAsString();
             String createdAtStr   = json.has("auctionCreatedAt")
                     ? json.get("auctionCreatedAt").getAsString()
-                    : com.auction.infra.util.TimeSyncManager.getNow().toString();
+                    : com.auction.core.util.TimeSyncManager.getNow().toString();
 
             com.auction.core.model.AuctionStatus status = com.auction.core.model.AuctionStatus.valueOf(statusStr);
             LocalDateTime endTime   = LocalDateTime.parse(endTimeStr);

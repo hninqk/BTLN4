@@ -5,8 +5,8 @@ import com.auction.ui.support.logic.AuctionSnapshotMapper;
 import com.auction.ui.support.logic.DefaultAuctionFilterService;
 import com.auction.ui.support.logic.DefaultAuctionSnapshotMapper;
 import com.auction.core.model.*;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.SessionManager;
+import com.auction.core.util.TimeSyncManager;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -152,7 +152,7 @@ public class SellerManagementController extends RealtimeController {
             if (!isNowFocused) minuteSpinner.increment(0);
         });
 
-        com.auction.infra.util.CurrencyUtil.setupCurrencyTextField(startPriceField);
+        com.auction.core.util.CurrencyUtil.setupCurrencyTextField(startPriceField);
 
         setupRealtime();
     }
@@ -323,7 +323,7 @@ public class SellerManagementController extends RealtimeController {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null)
             return;
-        Alert confirm = com.auction.infra.util.AlertHelper.createConfirmation("Xác nhận huỷ", 
+        Alert confirm = com.auction.ui.util.AlertHelper.createConfirmation("Xác nhận huỷ", 
                 "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?", 
                 ButtonType.YES, ButtonType.NO);
         confirm.showAndWait().ifPresent(btn -> {
@@ -385,7 +385,7 @@ public class SellerManagementController extends RealtimeController {
         showFormSuccess("Đang tải ảnh lên hệ thống...");
 
         // Upload on a background thread – never block the FX thread
-        taskRunner.run("cloud-upload", () -> com.auction.infra.util.CatboxUploader.upload(selected), publicUrl -> {
+        taskRunner.run("cloud-upload", () -> com.auction.core.util.CatboxUploader.upload(selected), publicUrl -> {
             itemImageField.setText(publicUrl);
             itemImageField.setDisable(false);
             showFormSuccess("Ảnh đã được tải lên thành công!");
@@ -431,7 +431,7 @@ public class SellerManagementController extends RealtimeController {
 
         double startPrice;
         try {
-            startPrice = com.auction.infra.util.CurrencyUtil.parseCurrency(priceStr);
+            startPrice = com.auction.core.util.CurrencyUtil.parseCurrency(priceStr);
             if (startPrice <= 0)
                 throw new NumberFormatException();
         } catch (NumberFormatException e) {

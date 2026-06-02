@@ -1,7 +1,7 @@
 package com.auction.service;
 
 import com.auction.api.http.AuctionClient;
-import com.auction.infra.util.SessionManager;
+import com.auction.core.util.SessionManager;
 import com.auction.core.model.User;
 import com.auction.core.model.Bidder;
 import com.google.gson.Gson;

@@ -6,10 +6,10 @@ import com.auction.ui.support.logic.DefaultDashboardAuctionService;
 import com.auction.ui.support.ui.GuardedNodeUpdater;
 import com.auction.core.model.*;
 import com.auction.service.AppFacade;
-import com.auction.infra.util.HotItemCache;
-import com.auction.infra.util.NavigationManager;
-import com.auction.infra.util.SessionManager;
-import com.auction.infra.util.TimeSyncManager;
+import com.auction.core.util.HotItemCache;
+import com.auction.ui.util.NavigationManager;
+import com.auction.core.util.SessionManager;
+import com.auction.core.util.TimeSyncManager;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -34,7 +34,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.Cursor;
 import javafx.application.Platform;
 import javafx.util.Duration;
-import com.auction.infra.util.ImageLoaderUtil;
+import com.auction.ui.util.ImageLoaderUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -854,7 +854,7 @@ public class DashboardController extends RealtimeController {
         iv.setPreserveRatio(true);
         String imgUrl = auction.getItem() != null ? auction.getItem().getImageUrl() : null;
         if (imgUrl != null && !imgUrl.isEmpty()) {
-            javafx.scene.image.Image cached = com.auction.infra.util.CacheManager.getInstance()
+            javafx.scene.image.Image cached = com.auction.core.util.CacheManager.getInstance()
                     .getImage(imgUrl + "_200_120");
             if (cached != null) {
                 iv.setImage(cached);

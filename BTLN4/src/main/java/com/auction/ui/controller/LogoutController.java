@@ -1,7 +1,7 @@
 package com.auction.ui.controller;
 
-import com.auction.infra.util.NavigationManager;
-import com.auction.infra.util.SessionManager;
+import com.auction.ui.util.NavigationManager;
+import com.auction.core.util.SessionManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.ProgressIndicator;
@@ -26,7 +26,7 @@ public class LogoutController extends BaseController {
         // Run wave background for some visual flair during logout
         Platform.runLater(() -> {
             if (rootPane != null) {
-                com.auction.infra.util.AnimationUtil.createWaveBackground(rootPane);
+                com.auction.ui.util.AnimationUtil.createWaveBackground(rootPane);
             }
         });
 

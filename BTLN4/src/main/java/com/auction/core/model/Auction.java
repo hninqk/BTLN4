@@ -21,7 +21,7 @@ public class Auction extends Entity implements Subject {
      * Legacy constructor: create a live auction immediately.
      */
     public Auction(Seller seller, Item item, LocalDateTime endTime) {
-        this(seller, item, com.auction.infra.util.TimeSyncManager.getNow(), endTime);
+        this(seller, item, com.auction.core.util.TimeSyncManager.getNow(), endTime);
     }
 
     /**
@@ -35,7 +35,7 @@ public class Auction extends Entity implements Subject {
         this.highestBid = (item != null) ? item.getStartingPrice() : 0.0;
         this.startTime = startTime;
         this.endTime = endTime;
-        LocalDateTime now = com.auction.infra.util.TimeSyncManager.getNow();
+        LocalDateTime now = com.auction.core.util.TimeSyncManager.getNow();
         this.status = startTime != null && !startTime.isAfter(now)
                 ? AuctionStatus.RUNNING
                 : AuctionStatus.UPCOMING;
@@ -91,17 +91,17 @@ public class Auction extends Entity implements Subject {
         if (this.status != AuctionStatus.UPCOMING && this.status != AuctionStatus.OPEN)
             throw new InvalidStatusException("Chỉ có thể bắt đầu phiên sắp diễn ra. Trạng thái hiện tại: " + status);
         if (this.startTime == null)
-            this.startTime = com.auction.infra.util.TimeSyncManager.getNow();
+            this.startTime = com.auction.core.util.TimeSyncManager.getNow();
         status = AuctionStatus.RUNNING;
     }
 
     public synchronized void placeBid(BidTransaction newBid) throws InvalidBidException, InvalidStatusException {
         if (this.status != AuctionStatus.RUNNING)
             throw new InvalidStatusException("Phiên đấu giá chưa bắt đầu hoặc đã kết thúc.");
-        if (this.endTime != null && com.auction.infra.util.TimeSyncManager.getNow().isAfter(this.endTime))
+        if (this.endTime != null && com.auction.core.util.TimeSyncManager.getNow().isAfter(this.endTime))
             throw new InvalidStatusException("Phiên đấu giá đã kết thúc.");
         double newBidAmount = newBid.getAmount();
-        double step = com.auction.infra.util.BidLadderUtil.getIncrementForPrice(this.highestBid);
+        double step = com.auction.core.util.BidLadderUtil.getIncrementForPrice(this.highestBid);
         if (newBidAmount < this.highestBid + step) {
             throw new InvalidBidException(String.format("Giá đặt tối thiểu phải là %,.0f ₫ (bước giá %,.0f ₫).", this.highestBid + step, step));
         }

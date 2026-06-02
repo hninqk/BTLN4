@@ -1,4 +1,8 @@
-package com.auction.infra.util;
+package com.auction.core.util;
+import com.auction.ui.util.*;
+import com.auction.core.util.*;
+import com.auction.api.config.*;
+import com.auction.infra.db.*;
 
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;

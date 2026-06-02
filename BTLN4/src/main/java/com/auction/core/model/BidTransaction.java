@@ -14,7 +14,7 @@ public class BidTransaction extends Entity {
         this.auction = auction;
         this.amount = amount;
         // Use createdAt as the canonical timestamp so restored bids (from DB/JSON) keep their original time
-        this.timestamp = (createdAt != null) ? createdAt : com.auction.infra.util.TimeSyncManager.getNow();
+        this.timestamp = (createdAt != null) ? createdAt : com.auction.core.util.TimeSyncManager.getNow();
     }
 
     public Bidder getBidder() {

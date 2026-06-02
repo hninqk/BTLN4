@@ -1,6 +1,6 @@
 package com.auction.api.http;
 
-import com.auction.infra.util.AppConfig;
+import com.auction.api.config.AppConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
