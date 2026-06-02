@@ -1,4 +1,5 @@
 package com.auction.ui.controller;
+import com.auction.core.util.CurrencyUtil;
 
 import com.auction.ui.support.logic.DefaultProfileStatsService;
 import com.auction.ui.support.ui.GuardedNodeUpdater;

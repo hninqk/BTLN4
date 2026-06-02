@@ -1,4 +1,5 @@
 package com.auction.core.model;
+import com.auction.core.util.TimeSyncManager;
 
 import java.util.UUID;
 import java.time.LocalDateTime;

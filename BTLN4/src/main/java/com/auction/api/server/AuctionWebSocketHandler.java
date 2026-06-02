@@ -1,4 +1,5 @@
 package com.auction.api.server;
+import com.auction.core.util.TimeSyncManager;
 
 import com.auction.core.exception.InvalidBidException;
 import com.auction.core.exception.InvalidStatusException;

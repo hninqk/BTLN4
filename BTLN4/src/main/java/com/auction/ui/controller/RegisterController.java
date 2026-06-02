@@ -1,4 +1,5 @@
 package com.auction.ui.controller;
+import com.auction.ui.util.AnimationUtil;
 
 import com.auction.ui.support.ui.BackgroundTaskRunner;
 import com.auction.ui.support.ui.FxBackgroundTaskRunner;

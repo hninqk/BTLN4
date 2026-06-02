@@ -1,4 +1,13 @@
 package com.auction.ui.controller;
+import com.auction.ui.util.AlertHelper;
+import com.auction.ui.util.AuctionChartHelper;
+import com.auction.ui.util.ImageLoaderUtil;
+import com.auction.ui.util.NavigationManager;
+import com.auction.core.util.BidLadderUtil;
+import com.auction.core.util.CacheManager;
+import com.auction.core.util.CurrencyUtil;
+import com.auction.core.util.DataReceiver;
+import com.auction.core.util.SessionManager;
 
 import com.auction.ui.support.ui.AuctionDetailUIUpdater;
 import com.auction.ui.support.realtime.AuctionDetailWebSocketManager;
@@ -6,10 +15,6 @@ import com.auction.ui.support.dto.FeedEntry;
 import com.auction.ui.support.logic.LiveFeedEntryParser;
 import com.auction.core.model.*;
 import com.auction.service.AuctionWebSocketService;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;

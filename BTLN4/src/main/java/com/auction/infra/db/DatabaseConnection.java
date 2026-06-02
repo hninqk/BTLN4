@@ -1,8 +1,5 @@
 package com.auction.infra.db;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
+import com.auction.api.config.AppConfig;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

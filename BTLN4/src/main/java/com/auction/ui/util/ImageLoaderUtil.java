@@ -1,8 +1,5 @@
 package com.auction.ui.util;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
+import com.auction.core.util.CacheManager;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;

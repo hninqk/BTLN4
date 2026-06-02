@@ -1,4 +1,5 @@
 package com.auction;
+import com.auction.core.util.TimeSyncManager;
 
 import com.auction.ui.util.NavigationManager;
 import javafx.application.Application;

@@ -1,4 +1,6 @@
 package com.auction.core.model;
+import com.auction.core.util.BidLadderUtil;
+import com.auction.core.util.TimeSyncManager;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

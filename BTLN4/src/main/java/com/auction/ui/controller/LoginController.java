@@ -1,4 +1,5 @@
 package com.auction.ui.controller;
+import com.auction.ui.util.AnimationUtil;
 
 import com.auction.core.model.User;
 import com.auction.core.util.SessionManager;

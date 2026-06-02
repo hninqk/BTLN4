@@ -1,8 +1,4 @@
 package com.auction.core.util;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
 
 /**
  * Utility to calculate dynamic bid increments (bước giá) based on the current

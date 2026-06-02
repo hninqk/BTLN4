@@ -1,4 +1,6 @@
 package com.auction.ui.controller;
+import com.auction.ui.util.AnimationUtil;
+import com.auction.ui.util.ImageLoaderUtil;
 
 import com.auction.api.http.ApiClient;
 import com.auction.ui.util.NavigationManager;

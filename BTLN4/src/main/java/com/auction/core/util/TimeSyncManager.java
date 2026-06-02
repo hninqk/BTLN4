@@ -1,8 +1,4 @@
 package com.auction.core.util;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
 
 import com.auction.api.http.ApiClient;
 import com.google.gson.JsonObject;

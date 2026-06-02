@@ -1,8 +1,4 @@
 package com.auction.ui.util;
-import com.auction.ui.util.*;
-import com.auction.core.util.*;
-import com.auction.api.config.*;
-import com.auction.infra.db.*;
 
 import com.auction.core.model.BidTransaction;
 import javafx.scene.chart.LineChart;
