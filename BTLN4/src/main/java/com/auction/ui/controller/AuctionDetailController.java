@@ -111,6 +111,7 @@ public class AuctionDetailController extends BaseController
             taskRunner.run("fetch-full-auction", () -> app.findAuctionById(auctionId), fullOpt -> {
                 fullOpt.ifPresent(full -> {
                     this.currentAuction = full;
+                    initManagers();
                     populateStaticView();
                     preloadBidsIntoChartAndFeed();
 
