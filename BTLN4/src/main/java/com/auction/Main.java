@@ -49,8 +49,10 @@ public class Main extends Application {
         nav.setPrimaryStage(stage);
 
         stage.setTitle("Hệ thống Đấu giá Trực tuyến");
-        stage.setMinWidth(900);
+        stage.setMinWidth(800);
         stage.setMinHeight(600);
+        stage.setMaxWidth(Double.MAX_VALUE);
+        stage.setMaxHeight(Double.MAX_VALUE);
 
         nav.navigateTo(NavigationManager.SPLASH, "Đang tải...", null);
 

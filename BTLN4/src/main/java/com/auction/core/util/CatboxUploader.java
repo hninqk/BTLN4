@@ -108,6 +108,7 @@ public final class CatboxUploader {
                 .uri(URI.create(UPLOAD_URL))
                 .timeout(Duration.ofSeconds(TIMEOUT_SECS))
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                 .build();
 

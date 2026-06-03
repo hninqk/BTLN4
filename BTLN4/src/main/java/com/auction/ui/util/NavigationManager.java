@@ -118,6 +118,7 @@ public class NavigationManager {
     
     primaryStage.setResizable(true);
     primaryStage.show();
+    ResizeHelper.addResizeListener(primaryStage);
   }
 
   private Parent createWindowFrame(Parent content, String title) {
