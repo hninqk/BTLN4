@@ -1,6 +1,10 @@
 package com.auction.ui.support.logic;
 
 import com.auction.ui.support.dto.AuctionSnapshot;
+import com.auction.core.factory.ArtFactory;
+import com.auction.core.factory.ElectronicsFactory;
+import com.auction.core.factory.ItemFactory;
+import com.auction.core.factory.VehicleFactory;
 import com.auction.core.model.Art;
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
@@ -57,7 +61,7 @@ public final class DefaultAuctionSnapshotMapper implements AuctionSnapshotMapper
         String imageUrl = firstString(json, "itemImageUrl", "imageUrl", "");
         String category = firstString(json, "itemCategory", "category", "Điện tử");
 
-        Item item = itemFor(category, itemName, description, startPrice, seller);
+        Item item = itemFor(json, category, itemName, description, startPrice, seller);
         item.setImageUrl(imageUrl);
 
         Auction auction = new Auction(auctionId, createdAt, seller, item, status, highestBid, startTime, endTime);
@@ -65,12 +69,17 @@ public final class DefaultAuctionSnapshotMapper implements AuctionSnapshotMapper
         return auction;
     }
 
-    private Item itemFor(String category, String name, String description, double startPrice, Seller seller) {
-        return switch (category) {
-            case "Nghệ thuật" -> new Art(name, description, startPrice, seller);
-            case "Xe cộ" -> new Vehicle(name, description, startPrice, seller);
-            default -> new Electronics(name, description, startPrice, seller);
+    private Item itemFor(JsonObject json, String category, String name, String description, double startPrice, Seller seller) {
+        String artistName = firstString(json, "artistName", "artist", "Unknown");
+        int warrantyMonths = json.has("warrantyMonths") ? json.get("warrantyMonths").getAsInt() : 12;
+        String brand = firstString(json, "brand", "vehicleBrand", "Unknown Brand");
+
+        ItemFactory factory = switch (category) {
+            case "Nghệ thuật" -> new ArtFactory(artistName, 0);
+            case "Xe cộ" -> new VehicleFactory(brand);
+            default -> new ElectronicsFactory(warrantyMonths);
         };
+        return factory.createItem(name, description, startPrice, seller);
     }
 
     private void injectBidHistory(JsonObject json, Auction auction) {

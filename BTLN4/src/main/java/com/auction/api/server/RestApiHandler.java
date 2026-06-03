@@ -8,6 +8,11 @@ import com.auction.core.model.Item;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
 import com.auction.core.model.Vehicle;
+import com.auction.core.factory.ArtFactory;
+import com.auction.core.factory.ElectronicsFactory;
+import com.auction.core.factory.ItemFactory;
+import com.auction.core.factory.VehicleFactory;
+import com.auction.core.model.*;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
 import com.google.gson.Gson;
@@ -200,11 +205,17 @@ public class RestApiHandler {
                     .filter(u -> u instanceof Seller)
                     .orElseThrow(() -> new Exception("Seller not found: " + sellerId));
 
-            Item item = switch (category) {
-                case "Nghệ thuật" -> new Art(itemName, desc, startPrice, seller);
-                case "Xe cộ" -> new Vehicle(itemName, desc, startPrice, seller);
-                default -> new Electronics(itemName, desc, startPrice, seller);
+            String artistName = body.has("artistName") ? body.get("artistName").getAsString() : "Unknown";
+            int warrantyMonths = body.has("warrantyMonths") ? body.get("warrantyMonths").getAsInt() : 12;
+            String brand = body.has("brand") ? body.get("brand").getAsString() : "Unknown Brand";
+
+            ItemFactory factory = switch (category) {
+                case "Nghệ thuật" -> new ArtFactory(artistName, 0); // artFactory needs name and year
+                case "Xe cộ" -> new VehicleFactory(brand);
+                default -> new ElectronicsFactory(warrantyMonths);
             };
+            
+            Item item = factory.createItem(itemName, desc, startPrice, seller);
             item.setImageUrl(imageUrl);
 
             Auction auction = auctionService.createAuction(seller, item, startTime, endTime);

@@ -81,6 +81,10 @@ public class SellerManagementController extends RealtimeController {
     @FXML
     private TextField itemImageField;
     @FXML
+    private Label extraAttributeLabel;
+    @FXML
+    private TextField extraAttributeField;
+    @FXML
     private TextField startPriceField;
     @FXML
     private Label formErrorLabel;
@@ -268,6 +272,19 @@ public class SellerManagementController extends RealtimeController {
         statusFilter.getSelectionModel().selectFirst();
         categoryCombo.setItems(FXCollections.observableArrayList("Điện tử", "Nghệ thuật", "Xe cộ"));
         categoryCombo.getSelectionModel().selectFirst();
+        
+        categoryCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if ("Nghệ thuật".equals(newVal)) {
+                extraAttributeLabel.setText("Họa sĩ sáng tác");
+                extraAttributeField.setPromptText("VD: Van Gogh");
+            } else if ("Xe cộ".equals(newVal)) {
+                extraAttributeLabel.setText("Hãng xe");
+                extraAttributeField.setPromptText("VD: Toyota");
+            } else {
+                extraAttributeLabel.setText("Thời gian bảo hành (tháng)");
+                extraAttributeField.setPromptText("VD: 12");
+            }
+        });
     }
 
     private void setupTableColumns() {
@@ -418,6 +435,7 @@ public class SellerManagementController extends RealtimeController {
         // (local path fallback removed – every client must be able to load it)
 
         String priceStr = startPriceField.getText().trim();
+        String extraAttr = extraAttributeField.getText().trim();
         LocalDate startDate = startDatePicker.getValue();
         Integer startHour = startHourSpinner.getValue();
         Integer startMinute = startMinuteSpinner.getValue();
@@ -474,6 +492,19 @@ public class SellerManagementController extends RealtimeController {
             req.addProperty("startPrice", startPrice);
             req.addProperty("startTime", startTime.toString());
             req.addProperty("endTime", endTime.toString());
+            
+            if ("Nghệ thuật".equals(category)) {
+                req.addProperty("artistName", extraAttr.isEmpty() ? "Unknown" : extraAttr);
+            } else if ("Xe cộ".equals(category)) {
+                req.addProperty("brand", extraAttr.isEmpty() ? "Unknown Brand" : extraAttr);
+            } else {
+                try {
+                    req.addProperty("warrantyMonths", Integer.parseInt(extraAttr));
+                } catch (Exception e) {
+                    req.addProperty("warrantyMonths", 12);
+                }
+            }
+            
             realtime.send(req);
             handleClearForm(event);
             showFormSuccess("Đang gửi lên server...");
@@ -489,6 +520,7 @@ public class SellerManagementController extends RealtimeController {
         descriptionArea.clear();
         itemImageField.clear();
         startPriceField.clear();
+        extraAttributeField.clear();
         categoryCombo.getSelectionModel().selectFirst();
         LocalDateTime defaultStart = TimeSyncManager.getNow().plusMinutes(5);
         LocalDateTime defaultEnd = defaultStart.plusHours(1);

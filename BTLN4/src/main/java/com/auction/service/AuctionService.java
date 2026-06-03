@@ -3,6 +3,10 @@ import com.auction.core.util.TimeSyncManager;
 
 import com.auction.core.exception.InvalidBidException;
 import com.auction.core.exception.InvalidStatusException;
+import com.auction.core.factory.ArtFactory;
+import com.auction.core.factory.ElectronicsFactory;
+import com.auction.core.factory.ItemFactory;
+import com.auction.core.factory.VehicleFactory;
 import com.auction.core.model.*;
 import com.auction.infra.repository.JdbcAuctionRepository;
 import com.auction.infra.repository.JdbcBidRepository;
@@ -48,6 +52,9 @@ public class AuctionService {
     private final JdbcUserRepository userRepo = new JdbcUserRepository();
     private final JdbcAutoBidRepository autoBidRepo = new JdbcAutoBidRepository();
 
+    // Observer dùng chung cho mọi Auction để ghi log
+    private static final BidLoggingObserver bidLogger = new BidLoggingObserver();
+
     // In-memory cache for fast lookups
     private final Map<String, Auction> auctionCache = new ConcurrentHashMap<>();
 
@@ -76,7 +83,9 @@ public class AuctionService {
     // ── Read ──────────────────────────────────────────────────────────────────
 
     public List<Auction> getAllAuctions() {
-        return auctionRepo.findAll();
+        List<Auction> auctions = auctionRepo.findAll();
+        auctions.forEach(a -> a.addObserver(bidLogger));
+        return auctions;
     }
 
     /**
@@ -85,6 +94,7 @@ public class AuctionService {
      */
     public List<Auction> getPublicAuctions() {
         return auctionRepo.findAll().stream()
+                .peek(a -> a.addObserver(bidLogger))
                 .filter(a -> a.getStatus() == AuctionStatus.UPCOMING
                         || a.getStatus() == AuctionStatus.OPEN
                         || a.getStatus() == AuctionStatus.RUNNING
@@ -94,7 +104,9 @@ public class AuctionService {
 
     /** All auctions for a seller, including scheduled and closed auctions. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
-        return auctionRepo.findBySellerId(seller.getId());
+        List<Auction> auctions = auctionRepo.findBySellerId(seller.getId());
+        auctions.forEach(a -> a.addObserver(bidLogger));
+        return auctions;
     }
 
     public Optional<Auction> findById(String id) {
@@ -102,7 +114,10 @@ public class AuctionService {
             return Optional.of(auctionCache.get(id));
         }
         Optional<Auction> auctionOpt = auctionRepo.findById(id);
-        auctionOpt.ifPresent(a -> auctionCache.put(id, a));
+        auctionOpt.ifPresent(a -> {
+            auctionCache.put(id, a);
+            a.addObserver(bidLogger);
+        });
         return auctionOpt;
     }
 
@@ -115,6 +130,7 @@ public class AuctionService {
             throw new IllegalArgumentException("Thời gian kết thúc phải sau thời gian hiện tại.");
         }
         Auction auction = new Auction(seller, item, now, endTime);
+        auction.addObserver(bidLogger);
         if (!auctionRepo.save(auction)) {
             throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
         }
@@ -125,6 +141,11 @@ public class AuctionService {
     public Auction createAuction(Seller seller, Item item, LocalDateTime startTime, LocalDateTime endTime) {
         validateAuctionTimes(startTime, endTime);
         Auction auction = new Auction(seller, item, startTime, endTime);
+        auction.addObserver(bidLogger);
+        
+        if (startTime != null && startTime.isAfter(TimeSyncManager.getNow())) {
+            auction.setStatus(AuctionStatus.UPCOMING);
+        }
         if (!auctionRepo.save(auction)) {
             throw new IllegalStateException("Không thể lưu phiên đấu giá vào cơ sở dữ liệu.");
         }
@@ -400,13 +421,19 @@ public class AuctionService {
         LocalDateTime seed = LocalDateTime.of(2025, 1, 1, 0, 0);
 
         // Items — deterministic IDs by item name
-        Electronics laptop = new Electronics(did("item-laptop"), seed, "Laptop Dell XPS 15",
+        ItemFactory electronicsFactory = new ElectronicsFactory(24);
+        Item laptop = electronicsFactory.createItem(did("item-laptop"), seed, "Laptop Dell XPS 15",
                 "Laptop cao cấp, i9, 32GB RAM", 15_000_000, carol);
-        Electronics phone = new Electronics(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
+        
+        Item phone = electronicsFactory.createItem(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
                 28_000_000, carol);
-        Art painting = new Art(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
-                5_000_000, dave, "");
-        Vehicle car = new Vehicle(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
+        
+        ItemFactory artFactory = new ArtFactory("Van Gogh", 2020);
+        Item painting = artFactory.createItem(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
+                5_000_000, dave);
+                
+        ItemFactory vehicleFactory = new VehicleFactory("Toyota");
+        Item car = vehicleFactory.createItem(did("item-car"), seed, "Toyota Camry 2022", "Xe đẹp, ít đi, bảo hành hãng",
                 800_000_000, dave);
 
         Auction a1 = createAuction(carol, laptop, com.auction.core.util.TimeSyncManager.getNow().plusDays(2));

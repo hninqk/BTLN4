@@ -46,6 +46,8 @@ public class JdbcAuctionRepository {
                 i.image_url     AS i_image_url,
                 i.category      AS i_category,
                 i.artist_name   AS i_artist_name,
+                i.warranty_months AS i_warranty_months,
+                i.brand         AS i_brand,
                 i.created_at    AS i_created_at
 
             FROM auctions a
@@ -245,13 +247,13 @@ public class JdbcAuctionRepository {
 
         Item item = switch (category) {
             case "Điện tử", "Electronics" -> new Electronics(
-                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller, rs.getInt("i_warranty_months"));
             case "Nghệ thuật", "Art" -> new Art(
                     itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller,
                     rs.getString("i_artist_name"));
             case "Xe cộ", "Vehicle" -> new Vehicle(
-                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
-            default -> new Electronics(itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller);
+                    itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller, rs.getString("i_brand"));
+            default -> new Electronics(itemId, itemCreatedAt, itemName, itemDesc, itemPrice, seller, rs.getInt("i_warranty_months"));
         };
         item.setImageUrl(rs.getString("i_image_url"));
 

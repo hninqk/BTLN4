@@ -144,8 +144,19 @@ public class DatabaseConnection {
                     + "category        TEXT NOT NULL, "
                     + "owner_id        TEXT NOT NULL, "
                     + "artist_name     TEXT DEFAULT '', "
+                    + "warranty_months INTEGER DEFAULT 0, "
+                    + "brand           TEXT DEFAULT '', "
                     + "created_at      TEXT NOT NULL, "
                     + "FOREIGN KEY (owner_id) REFERENCES users(id))");
+
+            // Migration: thêm các thuộc tính phụ cho Items
+            try {
+                st.execute("ALTER TABLE items ADD COLUMN warranty_months INTEGER DEFAULT 0");
+                st.execute("ALTER TABLE items ADD COLUMN brand TEXT DEFAULT ''");
+                log.info("Migration applied: added warranty_months and brand to items");
+            } catch (Exception ignored) {
+                // Column already exists
+            }
 
             st.execute("CREATE TABLE IF NOT EXISTS auctions ("
                     + "id          TEXT PRIMARY KEY, "

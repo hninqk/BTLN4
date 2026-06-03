@@ -22,7 +22,7 @@ public class Art extends Item {
     }
 
     @Override
-    public String getCategoryInfo() { return "Art"; }
+    public String getCategoryInfo() { return "Họa sĩ: " + artistName; }
 
     @Override
     public String getCategory() { return "Nghệ thuật"; }

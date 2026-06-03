@@ -3,6 +3,10 @@ import com.auction.core.util.TimeSyncManager;
 
 import com.auction.core.exception.InvalidBidException;
 import com.auction.core.exception.InvalidStatusException;
+import com.auction.core.factory.ArtFactory;
+import com.auction.core.factory.ElectronicsFactory;
+import com.auction.core.factory.ItemFactory;
+import com.auction.core.factory.VehicleFactory;
 import com.auction.core.model.*;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
@@ -471,12 +475,16 @@ public class AuctionWebSocketHandler {
                     .filter(u -> u instanceof Seller)
                     .orElseThrow(() -> new Exception("Seller not found: " + sellerId));
 
-            // ── Build item ──
-            Item item = switch (category) {
-                case "Nghệ thuật" -> new Art(itemName, desc, startPrice, seller);
-                case "Xe cộ"      -> new Vehicle(itemName, desc, startPrice, seller);
-                default           -> new Electronics(itemName, desc, startPrice, seller);
+            String artistName = req.has("artistName") ? req.get("artistName").getAsString() : "Unknown";
+            int warrantyMonths = req.has("warrantyMonths") ? req.get("warrantyMonths").getAsInt() : 12;
+            String brand = req.has("brand") ? req.get("brand").getAsString() : "Unknown Brand";
+
+            ItemFactory factory = switch (category) {
+                case "Nghệ thuật" -> new ArtFactory(artistName, 0);
+                case "Xe cộ"      -> new VehicleFactory(brand);
+                default           -> new ElectronicsFactory(warrantyMonths);
             };
+            Item item = factory.createItem(itemName, desc, startPrice, seller);
             item.setImageUrl(imageUrl);
 
             // ── Create auction; seller owns start/end time ──
