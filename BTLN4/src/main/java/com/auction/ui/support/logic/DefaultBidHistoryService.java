@@ -29,7 +29,8 @@ public final class DefaultBidHistoryService implements BidHistoryService {
                     myBid = b;
                 }
             }
-            if (myBid == null) continue;
+            if (myBid == null)
+                continue;
 
             rows.add(new BidRow(full, myBid, determineResult(full, bidderId)));
         }
@@ -49,16 +50,18 @@ public final class DefaultBidHistoryService implements BidHistoryService {
     @Override
     public List<BidRow> fetchHistory(AppFacade app, Bidder bidder) {
         List<BidRow> rows = new ArrayList<>();
-        List<Auction> shallowAuctions = app.getAllAuctions();
+        List<Auction> shallowAuctions = app.getPublicAuctions();
         for (Auction shallow : shallowAuctions) {
             Auction full = app.findAuctionById(shallow.getId()).orElse(null);
-            if (full == null) continue;
+            if (full == null)
+                continue;
 
             Optional<BidTransaction> myLatest = full.getBidHistory().stream()
                     .filter(b -> b.getBidder().getId().equals(bidder.getId()))
                     .reduce((first, second) -> second);
 
-            if (myLatest.isEmpty()) continue;
+            if (myLatest.isEmpty())
+                continue;
 
             rows.add(new BidRow(full, myLatest.get(), determineResult(full, bidder.getId())));
         }

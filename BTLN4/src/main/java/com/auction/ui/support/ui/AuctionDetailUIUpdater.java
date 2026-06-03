@@ -177,6 +177,7 @@ public class AuctionDetailUIUpdater {
             }
             case CLOSED, CANCELED -> "Đã kết thúc";
             case RUNNING -> {
+                if (currentAuction.getEndTime() == null) yield "Hết giờ";
                 Duration remaining = Duration.between(TimeSyncManager.getNow(), currentAuction.getEndTime());
                 yield remaining.isNegative() ? "Hết giờ"
                         : String.format("%02d:%02d:%02d",

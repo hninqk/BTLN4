@@ -122,7 +122,7 @@ public class JdbcAuctionRepository {
             System.err.println("[AuctionRepo] findAll error: " + e.getMessage());
         }
 
-        // Note: Intentionally omitting loadBidHistoryBatch to implement lazy-loading (performance optimization).
+        loadBidHistoryBatch(list);
         return list;
     }
 
@@ -170,7 +170,7 @@ public class JdbcAuctionRepository {
         } catch (SQLException e) {
             System.err.println("[AuctionRepo] findBySellerId error: " + e.getMessage());
         }
-        // Note: Intentionally omitting loadBidHistoryBatch to implement lazy-loading (performance optimization).
+        loadBidHistoryBatch(list);
         return list;
     }
 
