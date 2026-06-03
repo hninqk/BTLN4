@@ -480,7 +480,7 @@ public class AuctionWebSocketHandler {
             String brand = req.has("brand") ? req.get("brand").getAsString() : "Unknown Brand";
 
             ItemFactory factory = switch (category) {
-                case "Nghệ thuật" -> new ArtFactory(artistName, 0);
+                case "Nghệ thuật" -> new ArtFactory(artistName);
                 case "Xe cộ"      -> new VehicleFactory(brand);
                 default           -> new ElectronicsFactory(warrantyMonths);
             };

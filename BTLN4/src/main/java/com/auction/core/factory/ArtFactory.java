@@ -6,11 +6,9 @@ import com.auction.core.model.User;
 
 public class ArtFactory extends ItemFactory {
     private String artistName;
-    private int yearCreated;
 
-    public ArtFactory(String artistName, int yearCreated) {
+    public ArtFactory(String artistName) {
         this.artistName = artistName;
-        this.yearCreated = yearCreated;
     }
 
     @Override

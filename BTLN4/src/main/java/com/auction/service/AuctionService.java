@@ -428,7 +428,7 @@ public class AuctionService {
         Item phone = electronicsFactory.createItem(did("item-phone"), seed, "iPhone 15 Pro Max", "Mới 100%, chưa kích hoạt",
                 28_000_000, carol);
         
-        ItemFactory artFactory = new ArtFactory("Van Gogh", 2020);
+        ItemFactory artFactory = new ArtFactory("Van Gogh");
         Item painting = artFactory.createItem(did("item-painting"), seed, "Tranh sơn dầu phong cảnh", "Phong cảnh Việt Nam, 80x60cm",
                 5_000_000, dave);
                 

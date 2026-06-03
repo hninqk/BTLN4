@@ -210,7 +210,7 @@ public class RestApiHandler {
             String brand = body.has("brand") ? body.get("brand").getAsString() : "Unknown Brand";
 
             ItemFactory factory = switch (category) {
-                case "Nghệ thuật" -> new ArtFactory(artistName, 0); // artFactory needs name and year
+                case "Nghệ thuật" -> new ArtFactory(artistName);
                 case "Xe cộ" -> new VehicleFactory(brand);
                 default -> new ElectronicsFactory(warrantyMonths);
             };
