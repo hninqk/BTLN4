@@ -127,7 +127,7 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 *Dự án được thực hiện bởi Nhóm 4 - Lớp UET.CS2043_14.*
 
 **Thành viên nhóm:**
-- Khổng Quang Minh
-- Nguyễn Hữu Nguyên 
-- Nguyễn Tuấn Hưng
-- Lê Anh Trí
+- Khổng Quang Minh -- MSSV: 25021871
+- Nguyễn Hữu Nguyên -- MSSV: 25021918
+- Nguyễn Tuấn Hưng -- MSSV: 25021812
+- Lê Anh Trí -- MSSV: 25022027
