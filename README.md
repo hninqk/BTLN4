@@ -44,21 +44,43 @@ BTLN4/src/main/resources/com/auction/
 └── [FXML files]    # Khai báo cấu trúc các màn hình (Login, Dashboard,...)
 ```
 ---
-## 4. Câu lệnh dòng lệnh để chạy chương trình
-Các câu lệnh sau được thực thi thông qua **Maven**, đảm bảo hoạt động tương đương trên mọi hệ điều hành (Windows, Linux, macOS).
-*Lưu ý: Bạn phải mở Terminal (hoặc Command Prompt / PowerShell) và điều hướng vào thư mục chứa file `pom.xml` (Ví dụ: `BTLN4/BTLN4/`) trước khi chạy.*
-**Câu lệnh build dự án (tùy chọn):**
+## 4. Hướng dẫn cài đặt và chạy chương trình
+
+### Yêu cầu cài đặt
+Bạn cần cài đặt các phần mềm sau trước khi chạy dự án:
+1. **Java Development Kit (JDK) 17**: [Tải JDK 17](https://adoptium.net/) (Cần set biến môi trường `JAVA_HOME`).
+2. **Apache Maven**: [Tải Maven](https://maven.apache.org/install.html) (Cần set biến môi trường `PATH` cho `mvn`).
+3. **Git**: [Tải Git](https://git-scm.com/) để clone mã nguồn.
+
+### Cách mở Terminal (Command Line)
+- **Windows**: Nhấn `Win + R`, gõ `cmd` hoặc `powershell` rồi nhấn Enter (hoặc mở Git Bash nếu đã cài Git).
+- **macOS**: Nhấn `Cmd + Space`, gõ `Terminal` rồi nhấn Enter.
+- **Linux**: Nhấn `Ctrl + Alt + T` để mở Terminal.
+
+### Các bước thực hiện
+**Bước 1: Clone mã nguồn về máy**
+Mở Terminal và chạy lệnh sau:
+```bash
+git clone https://github.com/hninqk/BTLN4.git
+cd BTLN4/BTLN4
+```
+*(Lưu ý: Đảm bảo bạn đang ở thư mục chứa file `pom.xml` trước khi chạy các lệnh Maven bên dưới).*
+
+**Bước 2: Build dự án (tùy chọn nhưng khuyến khích)**
 ```bash
 mvn clean install -Dcheckstyle.skip=true
 ```
-**Câu lệnh chạy Server (Backend):**
-*(Lưu ý: Server hiện đã được deploy lên nền tảng Render. Việc chạy Server ở local là không bắt buộc).*
-```bash
-mvn exec:java -Pserver -Dcheckstyle.skip=true
-```
-**Câu lệnh chạy Client (Giao diện người dùng):**
+
+**Bước 3: Chạy Client (Giao diện người dùng)**
+*(Ứng dụng sẽ tự động kết nối với Server đã được deploy sẵn trên Render)*
 ```bash
 mvn javafx:run -Dcheckstyle.skip=true
+```
+
+**Bước 4: Chạy Server tại Local (Không bắt buộc)**
+*(Lưu ý: Bạn chỉ cần chạy Server nếu muốn phát triển Backend. Để chạy được Server ở Local, bạn **bắt buộc** phải tạo file `.env` chứa biến `JDBC_DATABASE_URL` trỏ tới một PostgreSQL Database).*
+```bash
+mvn exec:java -Pserver -Dcheckstyle.skip=true
 ```
 ---
 ## 5. Hướng dẫn chạy Server/Client theo thứ tự cụ thể
@@ -95,7 +117,7 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 10. **Tìm kiếm & Lọc thông minh:** Công cụ tìm kiếm mạnh mẽ cho phép phân loại và tra cứu các phiên đấu giá theo từ khóa, danh mục, hoặc trạng thái (đang diễn ra, sắp tới, đã kết thúc).
 11. **Phân quyền & Kiểm duyệt:** Hệ thống được phân quyền chặt chẽ với 3 vai trò (Admin, Seller, Bidder).
 12. **Quản lý Sản phẩm Đa phương tiện:** Seller dễ dàng tạo và chỉnh sửa các phiên đấu giá, hỗ trợ tính năng upload hình ảnh trực tiếp lên hệ thống lưu trữ qua Catbox API.
-13. **Bảo mật & An toàn Dữ liệu:** Toàn bộ thông tin nhạy cảm (như mật khẩu) đều được băm thông qua thuật toán chuẩn bảo mật cao Argon2id trước khi lưu vào Database.
+13. **Bảo mật & An toàn Dữ liệu:** Mật khẩu được băm thông qua thuật toán chuẩn bảo mật cao Argon2id trước khi lưu vào Database.
 ---
 ## 7. Link báo cáo PDF và video demo
 *   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)
