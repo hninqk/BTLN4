@@ -122,7 +122,7 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 15. **Bộ nhớ đệm & Tải ảnh lười:** Tối ưu hóa việc tải ảnh sản phẩm thông qua cơ chế bất đồng bộ và lưu trữ tạm thời giúp tăng tốc độ tải dữ liệu.
 ---
 ## 7. Link báo cáo PDF và video demo
-*   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)
+*   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1JdzLkuRujNBPQRy5k9acLpz0rUigCZOs/view?usp=sharing)
 *   **Link Video Demo:** [Xem video demo tại đây](https://www.youtube.com/watch?v=GlpOLVRsXp8)
 ---
 *Dự án được thực hiện bởi Nhóm 4 - Lớp UET.CS2043_14.*
