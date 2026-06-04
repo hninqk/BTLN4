@@ -19,7 +19,7 @@ title: "\U0001F3DB️ Hệ Thống Đấu Giá Thời Gian Thực Phân Tán (BT
 *   **Ngôn ngữ:** Java 17+ (Tối ưu cho JDK 21).
 *   **Backend:** Javalin (REST API & WebSockets).
 *   **Frontend:** JavaFX (Mô hình kiến trúc MVC).
-*   **Cơ sở dữ liệu:** SQLite / PostgreSQL.
+*   **Cơ sở dữ liệu:** PostgreSQL (Lưu trữ trên Render).
 *   **Quản lý kết nối:** HikariCP Connection Pooling.
 *   **Bảo mật:** Argon2id (Hashing mật khẩu).
 *   **Quản lý dự án:** Maven.
