@@ -47,7 +47,7 @@ BTLN4/src/main/resources/com/auction/
 ## 4. Hướng dẫn cài đặt và chạy chương trình
 
 ### Yêu cầu cài đặt
-Bạn cần cài đặt các phần mềm sau trước khi chạy dự án:
+Cài đặt các phần mềm sau trước khi chạy dự án:
 1. **Java Development Kit (JDK) 17**: [Tải JDK 17](https://adoptium.net/) (Cần set biến môi trường `JAVA_HOME`).
 2. **Apache Maven**: [Tải Maven](https://maven.apache.org/install.html) (Cần set biến môi trường `PATH` cho `mvn`).
 3. **Git**: [Tải Git](https://git-scm.com/) để clone mã nguồn.
@@ -78,7 +78,7 @@ mvn javafx:run -Dcheckstyle.skip=true
 ```
 
 **Bước 4: Chạy Server tại Local (Không bắt buộc)**
-*(Lưu ý: Bạn chỉ cần chạy Server nếu muốn phát triển Backend. Để chạy được Server ở Local, bạn **bắt buộc** phải tạo file `.env` chứa biến `JDBC_DATABASE_URL` trỏ tới một PostgreSQL Database).*
+*(Lưu ý: Chạy Server ở Local nếu muốn phát triển Backend. Để chạy được Server ở Local, bạn **bắt buộc** phải tạo file `.env` chứa biến `JDBC_DATABASE_URL` trỏ tới một PostgreSQL Database).*
 ```bash
 mvn exec:java -Pserver -Dcheckstyle.skip=true
 ```
