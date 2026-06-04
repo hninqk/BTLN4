@@ -5,8 +5,6 @@ import com.auction.ui.support.logic.DefaultAuctionFilterService;
 import com.auction.core.model.Auction;
 import com.auction.core.model.Item;
 import com.auction.core.model.User;
-import com.auction.service.AppFacade;
-import com.auction.ui.util.ImageLoaderUtil;
 import com.auction.ui.util.NavigationManager;
 import com.auction.core.util.SessionManager;
 import javafx.application.Platform;
@@ -20,7 +18,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
@@ -30,21 +27,12 @@ import javafx.scene.layout.HBox;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
 import com.google.gson.JsonObject;
-
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-/**
- * AuctionListController – browse auctions (role-filtered).
- *
- * Data is fetched from the server via REST (AppFacade → ApiClient).
- * The initial load and every refresh run on a background thread so the
- * FX thread is never blocked.
- */
 public class AuctionListController extends RealtimeController {
 
     public AuctionListController() {
@@ -52,38 +40,56 @@ public class AuctionListController extends RealtimeController {
     }
 
     @FXML private TextField           searchField;
+
     @FXML private ComboBox<String>    statusFilter;
+
     @FXML private ComboBox<String>    categoryFilter;
+
     @FXML private Label               statusLabel;
+
     @FXML private HBox                paginationBox;
+
     @FXML private Button              searchButton;
+
     @FXML private Button              resetButton;
 
     @FXML private TableView<Auction>             auctionTable;
+
     @FXML private TableColumn<Auction, String> colTitle;
+
     @FXML private TableColumn<Auction, String> colCategory;
+
     @FXML private TableColumn<Auction, String> colStatus;
+
     @FXML private TableColumn<Auction, String> colPrice;
+
     @FXML private TableColumn<Auction, String> colEndTime;
 
     private static final int PAGE_SIZE = 10;
+
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     private final AuctionFilterService filterService = new DefaultAuctionFilterService();
+
     private List<Auction> allAuctions = Collections.emptyList();
+
     private List<Auction> filteredAuctions = Collections.emptyList();
+
     private int currentPageIndex;
 
     @FXML
+
     public void initialize() {
         DesktopHeaderController.setTitleAndSubtitle("Danh sách đấu giá", null);
         setupFilters();
         setupActionIcons();
         setupTableColumns();
-        loadAuctions();   // async – does not block FX thread
+        loadAuctions();
         setupRealtime();
     }
 
     @Override
+
     protected void handleWsMessage(JsonObject json) {
         String type = json.has("type") ? json.get("type").getAsString() : "";
         if ("AUCTION_STATUS_CHANGED".equals(type) || "AUCTION_CREATED".equals(type)) {
@@ -142,7 +148,6 @@ public class AuctionListController extends RealtimeController {
         colEndTime.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getEndTime().format(FMT)));
 
-        // ── Badge cell factory: Status ────────────────────────────────────────
         colStatus.setCellFactory(col -> new TableCell<>() {
             private final Label badge = new Label();
             {
@@ -163,7 +168,6 @@ public class AuctionListController extends RealtimeController {
             }
         });
 
-        // ── Badge cell factory: Category ──────────────────────────────────────
         colCategory.setCellFactory(col -> new TableCell<>() {
             private final Label badge = new Label();
             {
@@ -185,7 +189,6 @@ public class AuctionListController extends RealtimeController {
         });
     }
 
-    /** Maps a Vietnamese status display string to a CSS style class. */
     private static String statusBadgeClass(String status) {
         return switch (status) {
             case "Đang diễn ra" -> "badge-status-running";
@@ -197,7 +200,6 @@ public class AuctionListController extends RealtimeController {
         };
     }
 
-    /** Maps a Vietnamese category string to a CSS style class. */
     private static String categoryBadgeClass(String category) {
         return switch (category) {
             case "Nghệ thuật" -> "badge-cat-art";
@@ -206,7 +208,6 @@ public class AuctionListController extends RealtimeController {
             default            -> "badge-cat-other";
         };
     }
-
 
     private void loadAuctions() {
         statusLabel.setText("Đang tải dữ liệu từ server...");
@@ -227,6 +228,7 @@ public class AuctionListController extends RealtimeController {
     }
 
     @FXML
+
     private void handleSearch(ActionEvent event) {
         applyFilters(true);
     }
@@ -247,6 +249,7 @@ public class AuctionListController extends RealtimeController {
     }
 
     @FXML
+
     private void handleReset(ActionEvent event) {
         searchField.clear();
         statusFilter.getSelectionModel().selectFirst();
@@ -364,6 +367,7 @@ public class AuctionListController extends RealtimeController {
     }
 
     @FXML
+
     private void handleRowClick(MouseEvent event) {
         if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
             Auction selected = auctionTable.getSelectionModel().getSelectedItem();

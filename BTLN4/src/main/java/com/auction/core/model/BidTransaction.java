@@ -1,12 +1,15 @@
 package com.auction.core.model;
-import com.auction.core.util.TimeSyncManager;
 
+import com.auction.core.util.TimeSyncManager;
 import java.time.LocalDateTime;
 
 public class BidTransaction extends Entity {
     private Bidder bidder;
+
     private Auction auction;
+
     private double amount;
+
     private LocalDateTime timestamp;
 
     public BidTransaction(String id, LocalDateTime createdAt, Bidder bidder, Auction auction, double amount) {
@@ -14,7 +17,7 @@ public class BidTransaction extends Entity {
         this.bidder = bidder;
         this.auction = auction;
         this.amount = amount;
-        // Use createdAt as the canonical timestamp so restored bids (from DB/JSON) keep their original time
+
         this.timestamp = (createdAt != null) ? createdAt : com.auction.core.util.TimeSyncManager.getNow();
     }
 

@@ -11,14 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Production-only runtime configuration.
- * The Java client always targets the Render web service. The server always
- * requires a Render PostgreSQL JDBC URL from environment variables.
- */
 public final class AppConfig {
 
     private static final String RENDER_SERVER_URL = "https://btln4-00dh.onrender.com";
+
     private static final Map<String, String> DOTENV = loadDotEnv();
 
     private AppConfig() {
@@ -166,7 +162,6 @@ public final class AppConfig {
             query = appendQuery(query, "password", password);
         }
 
-        // Render PostgreSQL often requires SSL
         if (query == null || !query.contains("ssl=")) {
             query = appendQuery(query, "ssl", "true");
         }

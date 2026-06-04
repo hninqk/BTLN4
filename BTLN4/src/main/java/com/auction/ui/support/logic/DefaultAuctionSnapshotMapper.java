@@ -5,24 +5,21 @@ import com.auction.core.factory.ArtFactory;
 import com.auction.core.factory.ElectronicsFactory;
 import com.auction.core.factory.ItemFactory;
 import com.auction.core.factory.VehicleFactory;
-import com.auction.core.model.Art;
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.BidTransaction;
 import com.auction.core.model.Bidder;
-import com.auction.core.model.Electronics;
 import com.auction.core.model.Item;
 import com.auction.core.model.Seller;
-import com.auction.core.model.Vehicle;
 import com.auction.core.util.TimeSyncManager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 public final class DefaultAuctionSnapshotMapper implements AuctionSnapshotMapper {
     @Override
+
     public Optional<AuctionSnapshot> fromServerSnapshot(JsonObject json) {
         try {
             String sellerUsername = json.get("sellerUsername").getAsString();
@@ -39,6 +36,7 @@ public final class DefaultAuctionSnapshotMapper implements AuctionSnapshotMapper
     }
 
     @Override
+
     public Optional<Auction> fromSellerSnapshot(JsonObject json, Seller seller) {
         try {
             LocalDateTime createdAt = parseDateTime(json, "auctionCreatedAt", TimeSyncManager.getNow());

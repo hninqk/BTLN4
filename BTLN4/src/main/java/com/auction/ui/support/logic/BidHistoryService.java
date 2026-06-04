@@ -5,7 +5,6 @@ import com.auction.ui.support.dto.BidRow;
 import com.auction.core.model.Auction;
 import com.auction.core.model.Bidder;
 import com.auction.service.AppFacade;
-
 import java.util.List;
 
 public interface BidHistoryService {

@@ -1,29 +1,15 @@
 package com.auction.infra.repository;
 
 import com.auction.core.model.*;
-import com.auction.infra.db.DatabaseConnection;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * JdbcAuctionRepository – CRUD cho bảng auctions.
- *
- * Tối ưu hiệu năng:
- * - Dùng SQL JOIN để lấy Auction + Seller + Item trong 1 query duy nhất
- *   (thay vì gọi userRepo.findById + itemRepo.findById = N+1 queries).
- * - Bid history được load trong 1 query riêng với JOIN users.
- * - Kết hợp với HikariCP pool → mỗi query chỉ tốn vài ms.
- */
+import com.auction.infra.db.DatabaseConnection;
+import java.time.LocalDateTime;
+
 public class JdbcAuctionRepository {
 
-    // ─────────────────────────── SQL cơ bản ───────────────────────────
-
-    /**
-     * Query JOIN lấy auction + seller + item trong 1 lần.
-     * Tránh gọi userRepo.findById() và itemRepo.findById() riêng lẻ.
-     */
     private static final String SELECT_FULL = """
             SELECT
                 a.id            AS a_id,
@@ -55,17 +41,10 @@ public class JdbcAuctionRepository {
             JOIN items i  ON a.item_id   = i.id
             """;
 
-    // ─────────────────────────── CREATE ───────────────────────────
-
-    /**
-     * Lưu Auction (và Item của nó) vào DB.
-     * Seller phải đã tồn tại trong bảng users.
-     */
     public boolean save(Auction auction) {
-        // 1. Lưu item trước
+
         new JdbcItemRepository().save(auction.getItem(), auction.getSeller());
 
-        // 2. Lưu auction
         String sql;
         if (DatabaseConnection.isPostgres()) {
             sql = """
@@ -104,13 +83,6 @@ public class JdbcAuctionRepository {
         }
     }
 
-    // ─────────────────────────── READ ───────────────────────────
-
-    /**
-     * Lấy tất cả auctions — chỉ 2 queries:
-     * 1. JOIN query cho auctions + sellers + items
-     * 2. Batch load toàn bộ bid history
-     */
     public List<Auction> findAll() {
         List<Auction> list = new ArrayList<>();
         String sql = SELECT_FULL + " ORDER BY a.created_at DESC";
@@ -128,9 +100,6 @@ public class JdbcAuctionRepository {
         return list;
     }
 
-    /**
-     * Lấy 1 auction theo ID — 2 queries (JOIN + bid history).
-     */
     public Optional<Auction> findById(String id) {
         String sql = SELECT_FULL + " WHERE a.id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -155,9 +124,6 @@ public class JdbcAuctionRepository {
         return Optional.empty();
     }
 
-    /**
-     * Lấy auctions theo seller — 2 queries.
-     */
     public List<Auction> findBySellerId(String sellerId) {
         List<Auction> list = new ArrayList<>();
         String sql = SELECT_FULL + " WHERE a.seller_id = ? ORDER BY a.created_at DESC";
@@ -175,8 +141,6 @@ public class JdbcAuctionRepository {
         loadBidHistoryBatch(list);
         return list;
     }
-
-    // ─────────────────────────── UPDATE ───────────────────────────
 
     public void updateStatus(String auctionId, AuctionStatus newStatus, double highestBid,
                               LocalDateTime startTime) {
@@ -205,8 +169,6 @@ public class JdbcAuctionRepository {
         }
     }
 
-    // ─────────────────────────── DELETE ───────────────────────────
-
     public boolean deleteById(String id) {
         String sql = "DELETE FROM auctions WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -219,16 +181,9 @@ public class JdbcAuctionRepository {
         return false;
     }
 
-    // ─────────────────────────── MAPPING ───────────────────────────
-
-    /**
-     * Xây dựng Auction từ ResultSet của JOIN query (không gọi thêm query nào).
-     * Bid history CHƯA được load ở đây — caller phải gọi loadBidHistory/loadBidHistoryBatch.
-     */
     private Optional<Auction> buildAuction(ResultSet rs) throws SQLException {
         String id = rs.getString("a_id");
 
-        // ── Seller (từ JOIN, không cần query riêng) ──
         Seller seller = new Seller(
                 rs.getString("s_id"),
                 LocalDateTime.parse(rs.getString("s_created_at")),
@@ -237,7 +192,6 @@ public class JdbcAuctionRepository {
                 rs.getString("s_shop_name")
         );
 
-        // ── Item (từ JOIN, không cần query riêng) ──
         String category = rs.getString("i_category");
         LocalDateTime itemCreatedAt = LocalDateTime.parse(rs.getString("i_created_at"));
         String itemId = rs.getString("i_id");
@@ -257,7 +211,6 @@ public class JdbcAuctionRepository {
         };
         item.setImageUrl(rs.getString("i_image_url"));
 
-        // ── Auction status ──
         String statusStr = rs.getString("a_status");
         AuctionStatus status;
         try {
@@ -279,11 +232,6 @@ public class JdbcAuctionRepository {
         return Optional.of(new Auction(id, createdAt, seller, item, status, highestBid, startTime, endTime));
     }
 
-    // ─────────────────────────── Bid History ───────────────────────────
-
-    /**
-     * Load bid history cho 1 auction (2 queries total khi gọi findById).
-     */
     private void loadBidHistory(Auction auction, String auctionId) {
         String sql = """
             SELECT bt.id, bt.bidder_id, bt.amount, bt.created_at,
@@ -306,23 +254,16 @@ public class JdbcAuctionRepository {
         }
     }
 
-    /**
-     * Batch load bid history cho nhiều auctions trong 1 query duy nhất.
-     * Thay vì N queries (1 cho mỗi auction), chỉ cần 1 query với IN clause.
-     * Đây là giải pháp chính cho vấn đề N+1 khi gọi findAll().
-     */
     private void loadBidHistoryBatch(List<Auction> auctions) {
         if (auctions.isEmpty()) return;
 
-        // Tạo map để lookup auction nhanh
         Map<String, Auction> auctionMap = new HashMap<>();
         for (Auction a : auctions) {
             auctionMap.put(a.getId(), a);
         }
 
-        // Tạo IN clause: (?, ?, ?, ...)
         String placeholders = "?,".repeat(auctions.size());
-        placeholders = placeholders.substring(0, placeholders.length() - 1); // bỏ dấu , cuối
+        placeholders = placeholders.substring(0, placeholders.length() - 1);
 
         String sql = """
             SELECT bt.id, bt.bidder_id, bt.auction_id, bt.amount, bt.created_at,
@@ -337,7 +278,6 @@ public class JdbcAuctionRepository {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            // Bind tất cả auction ID
             for (int i = 0; i < auctions.size(); i++) {
                 ps.setString(i + 1, auctions.get(i).getId());
             }
@@ -356,16 +296,13 @@ public class JdbcAuctionRepository {
         }
     }
 
-    /**
-     * Map 1 row từ bid_transactions JOIN users thành BidTransaction.
-     */
     private BidTransaction mapBid(ResultSet rs, Auction auction) throws SQLException {
         double balance = rs.getDouble("balance");
         double frozen;
         try {
             frozen = rs.getDouble("frozen_balance");
         } catch (SQLException e) {
-            frozen = 0.0; // backward compat nếu cột chưa tồn tại
+            frozen = 0.0;
         }
         Bidder bidder = new Bidder(
                 rs.getString("bidder_id"),

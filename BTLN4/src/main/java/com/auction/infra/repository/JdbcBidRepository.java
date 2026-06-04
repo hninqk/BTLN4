@@ -1,25 +1,21 @@
 package com.auction.infra.repository;
 
 import com.auction.core.model.*;
-import com.auction.infra.db.DatabaseConnection;
 
 import java.sql.*;
+
+import com.auction.infra.db.DatabaseConnection;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * JdbcBidRepository – CRUD for bid_transactions table.
- */
-public class JdbcBidRepository implements BidRepository {
+public class JdbcBidRepository {
 
     private final JdbcUserRepository userRepo = new JdbcUserRepository();
+
     private final JdbcAuctionRepository auctionRepo = new JdbcAuctionRepository();
 
-    // ─────────────────────────── CREATE ───────────────────────────
-
-    @Override
     public void save(BidTransaction tx) {
         String sql;
         if (DatabaseConnection.isPostgres()) {
@@ -48,8 +44,6 @@ public class JdbcBidRepository implements BidRepository {
             System.err.println("[BidRepo] save error: " + e.getMessage());
         }
     }
-
-    // ─────────────────────────── READ ───────────────────────────
 
     public List<BidTransaction> findAll() {
         List<BidTransaction> list = new ArrayList<>();
@@ -110,8 +104,6 @@ public class JdbcBidRepository implements BidRepository {
         return Optional.empty();
     }
 
-    // ─────────────────────────── DELETE ───────────────────────────
-
     public boolean deleteById(String id) {
         String sql = "DELETE FROM bid_transactions WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -123,8 +115,6 @@ public class JdbcBidRepository implements BidRepository {
         }
         return false;
     }
-
-    // ─────────────────────────── MAPPING ───────────────────────────
 
     private Optional<BidTransaction> buildBid(ResultSet rs) throws SQLException {
         String id        = rs.getString("id");

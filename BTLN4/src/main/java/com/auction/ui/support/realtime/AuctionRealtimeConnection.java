@@ -1,7 +1,6 @@
 package com.auction.ui.support.realtime;
 
 import com.google.gson.JsonObject;
-
 import java.util.function.Consumer;
 
 public interface AuctionRealtimeConnection {

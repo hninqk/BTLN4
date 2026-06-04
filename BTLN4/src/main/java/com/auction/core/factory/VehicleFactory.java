@@ -12,11 +12,13 @@ public class VehicleFactory extends ItemFactory {
     }
 
     @Override
+
     public Item createItem(String name, String description, double price, User owner) {
         return new Vehicle(name, description, price, owner, brand);
     }
 
     @Override
+
     public Item createItem(String id, java.time.LocalDateTime createdAt, String name, String description, double price, User owner) {
         return new Vehicle(id, createdAt, name, description, price, owner, brand);
     }

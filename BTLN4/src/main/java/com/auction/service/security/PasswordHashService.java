@@ -7,19 +7,22 @@ import java.util.Base64;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 
-/**
- * Centralized password hashing and verification.
- * Stores hashes in PHC format: $argon2id$v=19$m=65536,t=3,p=4$salt$hash.
- */
 public final class PasswordHashService {
 
     private static final int MEMORY_KIB = 4_096;
+
     private static final int ITERATIONS = 1;
+
     private static final int PARALLELISM = 1;
+
     private static final int SALT_BYTES = 16;
+
     private static final int HASH_BYTES = 32;
+
     private static final SecureRandom RANDOM = new SecureRandom();
+
     private static final Base64.Encoder B64_ENCODER = Base64.getEncoder().withoutPadding();
+
     private static final Base64.Decoder B64_DECODER = Base64.getDecoder();
 
     private PasswordHashService() {
@@ -71,20 +74,6 @@ public final class PasswordHashService {
 
     public static boolean isArgon2idHash(String value) {
         return value != null && value.startsWith("$argon2id$");
-    }
-
-    public static boolean needsRehash(String storedHash) {
-        if (!isArgon2idHash(storedHash)) {
-            return true;
-        }
-        try {
-            ParsedHash parsed = ParsedHash.parse(storedHash);
-            return parsed.memoryKiB() != MEMORY_KIB
-                    || parsed.iterations() != ITERATIONS
-                    || parsed.parallelism() != PARALLELISM;
-        } catch (IllegalArgumentException e) {
-            return true;
-        }
     }
 
     private static byte[] hash(

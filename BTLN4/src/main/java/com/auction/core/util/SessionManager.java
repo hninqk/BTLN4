@@ -4,25 +4,22 @@ import com.auction.core.model.User;
 import com.auction.service.AuctionWebSocketService;
 import com.auction.service.AuctionWebSocketService.AuctionWebSocketListener;
 import com.google.gson.JsonObject;
-
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-/**
- * Singleton session manager – holds the currently logged-in user.
- * Supports session-change listeners so UI components (e.g. sidebar balance
- * pill) can refresh automatically whenever the user object is updated.
- */
 public class SessionManager {
 
     private static SessionManager instance;
+
     private User currentUser;
+
     private AuctionWebSocketService globalWs;
+
     private final List<AuctionWebSocketListener> wsListeners = new CopyOnWriteArrayList<>();
 
-    /** Listeners notified on every setCurrentUser() call (on the calling thread). */    private final Set<Runnable> changeListeners = new CopyOnWriteArraySet<>();
+                                                                                         private final Set<Runnable> changeListeners = new CopyOnWriteArraySet<>();
 
     private SessionManager() {}
 
@@ -38,7 +35,7 @@ public class SessionManager {
     public void setCurrentUser(User user) {
         this.currentUser = user;
         changeListeners.forEach(Runnable::run);
-        
+
         if (user != null) {
             startGlobalWs();
         } else {
@@ -48,7 +45,7 @@ public class SessionManager {
 
     private void startGlobalWs() {
         if (globalWs != null && globalWs.isConnected()) return;
-        
+
         globalWs = new AuctionWebSocketService(null, new AuctionWebSocketListener() {
             @Override public void onWsConnected() { wsListeners.forEach(l -> l.onWsConnected()); }
             @Override public void onWsDisconnected(String err) { wsListeners.forEach(l -> l.onWsDisconnected(err)); }
@@ -75,23 +72,21 @@ public class SessionManager {
     }
 
     public void addWsListener(AuctionWebSocketListener l) { wsListeners.add(l); }
+
     public void removeWsListener(AuctionWebSocketListener l) { wsListeners.remove(l); }
+
     public AuctionWebSocketService getGlobalWs() { return globalWs; }
 
-    /** Register a callback that fires whenever the current user object changes. */
     public void addChangeListener(Runnable listener) { changeListeners.add(listener); }
 
-    /** Remove a previously registered callback. */
     public void removeChangeListener(Runnable listener) { changeListeners.remove(listener); }
 
     public boolean isLoggedIn() { return currentUser != null; }
 
-    /** Clears the current session. */
     public void logout() {
         this.currentUser = null;
         NotificationManager.getInstance().clear();
     }
 
-    /** Alias kept for source compatibility with older call sites. */
     public void logoutUser() { logout(); }
 }

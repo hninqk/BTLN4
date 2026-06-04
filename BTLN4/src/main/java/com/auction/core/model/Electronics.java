@@ -24,8 +24,10 @@ public class Electronics extends Item {
     public int getWarrantyMonths() { return warrantyMonths; }
 
     @Override
+
     public String getCategoryInfo() { return "Bảo hành: " + warrantyMonths + " tháng"; }
 
     @Override
+
     public String getCategory() { return "Điện tử"; }
 }

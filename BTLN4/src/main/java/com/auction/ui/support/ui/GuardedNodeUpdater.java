@@ -2,7 +2,6 @@ package com.auction.ui.support.ui;
 
 import javafx.scene.Node;
 import javafx.scene.control.Labeled;
-
 import java.util.Objects;
 
 public interface GuardedNodeUpdater {

@@ -9,18 +9,10 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.time.Duration;
 
-/**
- * ImgurUploader (Now utilizing Catbox.moe for reliable, free image hosting).
- *
- * Imgur's anonymous API often blocks datacenter IPs and throws 403 Forbidden. 
- * Catbox.moe is a reliable alternative that allows free anonymous uploads 
- * without API keys and returns a permanent public URL.
- *
- * Thread-safety: all methods are stateless — safe to call from any thread.
- */
 public final class CatboxUploader {
 
     private static final String UPLOAD_URL = "https://catbox.moe/user/api.php";
+
     private static final int    TIMEOUT_SECS = 30;
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
@@ -29,16 +21,6 @@ public final class CatboxUploader {
 
     private CatboxUploader() {}
 
-    /**
-     * Uploads a file and returns its direct image URL.
-     *
-     * Blocks the calling thread – always invoke from a background Task,
-     * never from the JavaFX Application Thread.
-     *
-     * @param file local image file (JPEG / PNG / GIF / WEBP)
-     * @return public HTTPS URL string
-     * @throws IOException if upload fails
-     */
     public static String upload(File file) throws IOException {
         if (file == null || !file.exists()) {
             throw new IOException("File not found: " + file);
@@ -52,7 +34,7 @@ public final class CatboxUploader {
             if (original != null) {
                 int targetWidth = original.getWidth();
                 int targetHeight = original.getHeight();
-                int maxDim = 800; // Increased to 800px for better quality
+                int maxDim = 800;
 
                 if (targetWidth > maxDim || targetHeight > maxDim) {
                     if (targetWidth > targetHeight) {
@@ -64,10 +46,9 @@ public final class CatboxUploader {
                     }
                 }
 
-                // Use ARGB to preserve transparency and prevent "caro" checkerboard artifacts
                 java.awt.image.BufferedImage resized = new java.awt.image.BufferedImage(targetWidth, targetHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
                 java.awt.Graphics2D g2d = resized.createGraphics();
-                g2d.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC); // BICUBIC for best quality
+                g2d.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
                 g2d.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
                 g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
                 g2d.drawImage(original, 0, 0, targetWidth, targetHeight, null);
@@ -76,7 +57,7 @@ public final class CatboxUploader {
                 java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
                 javax.imageio.ImageIO.write(resized, "png", baos);
                 fileBytes = baos.toByteArray();
-                uploadFileName = "image.png"; // Force .png extension
+                uploadFileName = "image.png";
             } else {
                 fileBytes = Files.readAllBytes(file.toPath());
             }
@@ -84,13 +65,13 @@ public final class CatboxUploader {
             System.err.println("[CatboxUploader] Image processing failed, falling back to raw file: " + e.getMessage());
             fileBytes = Files.readAllBytes(file.toPath());
         }
-        
+
         StringBuilder sb = new StringBuilder();
-        
+
         sb.append("--").append(boundary).append("\r\n");
         sb.append("Content-Disposition: form-data; name=\"reqtype\"\r\n\r\n");
         sb.append("fileupload\r\n");
-        
+
         sb.append("--").append(boundary).append("\r\n");
         sb.append("Content-Disposition: form-data; name=\"fileToUpload\"; filename=\"").append(uploadFileName).append("\"\r\n");
         sb.append("Content-Type: application/octet-stream\r\n\r\n");
@@ -98,7 +79,6 @@ public final class CatboxUploader {
         byte[] headerBytes = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] footerBytes = ("\r\n--" + boundary + "--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        // Combine into a single byte array for the request body
         byte[] body = new byte[headerBytes.length + fileBytes.length + footerBytes.length];
         System.arraycopy(headerBytes, 0, body, 0, headerBytes.length);
         System.arraycopy(fileBytes, 0, body, headerBytes.length, fileBytes.length);
@@ -128,14 +108,10 @@ public final class CatboxUploader {
         if (!link.startsWith("http")) {
              throw new IOException("Upload failed, invalid response: " + link);
         }
-        
+
         return link;
     }
 
-    /**
-     * Convenience wrapper: returns an empty string (instead of throwing) on
-     * failure, writing the error to stderr. Useful for non-critical image paths.
-     */
     public static String uploadSilent(File file) {
         try {
             return upload(file);

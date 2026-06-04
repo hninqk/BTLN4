@@ -1,23 +1,20 @@
 package com.auction.ui.controller;
-import com.auction.core.util.CacheManager;
 
-import com.auction.ui.support.ui.BackgroundTaskRunner;
+import com.auction.core.model.*;
+import javafx.scene.control.*;
+
+import com.auction.core.util.CacheManager;
 import com.auction.ui.support.logic.DashboardAuctionService;
 import com.auction.ui.support.logic.DefaultDashboardAuctionService;
 import com.auction.ui.support.ui.GuardedNodeUpdater;
-import com.auction.core.model.*;
-import com.auction.service.AppFacade;
 import com.auction.core.util.HotItemCache;
 import com.auction.ui.util.NavigationManager;
 import com.auction.core.util.SessionManager;
 import com.auction.core.util.TimeSyncManager;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.chart.PieChart;
-
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,14 +35,9 @@ import javafx.util.Duration;
 import com.auction.ui.util.ImageLoaderUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.effect.DropShadow;
-import javafx.scene.paint.Color;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import com.google.gson.JsonObject;
 
 public class DashboardController extends RealtimeController {
@@ -55,80 +47,125 @@ public class DashboardController extends RealtimeController {
     }
 
     @FXML
+
     private Button exploreButton;
 
-    // Bidder View Elements
     @FXML
+
     private VBox bidderView;
+
     @FXML
+
     private Label newsLabel;
+
     @FXML
+
     private VBox hotItemsBox;
-    // Bidder stat cards
+
     @FXML
+
     private VBox cardRunning;
+
     @FXML
+
     private VBox cardOpen;
+
     @FXML
+
     private VBox cardPending;
+
     @FXML
+
     private VBox cardTotalAuctions;
+
     @FXML
+
     private VBox cardTotalUsers;
 
-    // Bidder stat value labels
     @FXML private Label dashStatRunning;
+
     @FXML private Label dashStatOpen;
+
     @FXML private Label dashStatPending;
+
     @FXML private Label dashStatTotalAuctions;
+
     @FXML private Label dashStatTotalUsers;
 
-    // Seller View Elements
     @FXML
+
     private VBox sellerView;
+
     @FXML
+
     private Label sellerNewsLabel;
+
     @FXML
+
     private VBox sellerHotItemsBox;
+
     @FXML
+
     private Label sellerEarningLabel;
+
     @FXML
+
     private Label sellerRevenueLabel;
+
     @FXML
+
     private Label sellerClosedLabel;
+
     @FXML
+
     private GridPane sellerRevenueHeatmap;
+
     @FXML
+
     private PieChart sellerCategoryPieChart;
+
     @FXML
+
     private StackPane sellerPieContainer;
-    // Seller stat cards
+
     @FXML
+
     private VBox sellerCardRunning;
+
     @FXML
+
     private VBox sellerCardOpen;
+
     @FXML
+
     private VBox sellerCardPending;
+
     @FXML
+
     private VBox sellerCardTotalAuctions;
+
     @FXML
+
     private VBox sellerCardTotalUsers;
-    // Seller stat value labels
+
     @FXML private Label sellerDashStatRunning;
+
     @FXML private Label sellerDashStatOpen;
 
     @FXML
+
     private FlowPane sellerPieLegend;
 
     private final DashboardAuctionService dashboardAuctionService = new DefaultDashboardAuctionService();
+
     private static final GuardedNodeUpdater NODE_UPDATER = new GuardedNodeUpdater.Default();
+
     private Tooltip activeHeatmapTooltip;
 
-    // Pie chart color palette — 3 distinct categorical colors
     private final String[] pieColors = new String[] {
-            "#3B82F6", // Blue
-            "#22C55E", // Green
-            "#F97316"  // Orange
+            "#3B82F6",
+            "#22C55E",
+            "#F97316"
     };
 
     private final String[] newsHeadlines = {
@@ -138,31 +175,51 @@ public class DashboardController extends RealtimeController {
             "Phiên đấu giá tác phẩm điêu khắc cổ điển vừa thiết lập kỷ lục giá trị mới!",
             "Hãy liên hệ bộ phận hỗ trợ trực tuyến nếu bạn gặp bất kỳ sự cố giao dịch nào."
     };
+
     private int currentNewsIndex = 0;
+
     private javafx.animation.Timeline newsTimeline;
+
     private javafx.animation.Timeline sellerNewsTimeline;
 
     private static final int DASHBOARD_PAGE_SIZE = 5;
 
     private final HotItemCache hotCache = HotItemCache.getInstance();
+
     private Timeline hotRefreshTimeline;
+
     private Timeline hotCountdownTimeline;
+
     private Timeline sellerHotRefreshTimeline;
+
     private Timeline sellerHotCountdownTimeline;
+
     private final Map<String, Auction> visibleHotAuctions = new HashMap<>();
+
     private final Map<String, Auction> visibleSellerHotAuctions = new HashMap<>();
+
     private List<Auction> runningDashboardAuctions = List.of();
+
     private List<Auction> upcomingDashboardAuctions = List.of();
+
     private List<Auction> sellerRunningDashboardAuctions = List.of();
+
     private List<Auction> sellerUpcomingDashboardAuctions = List.of();
+
     private int runningPageIndex = 0;
+
     private int upcomingPageIndex = 0;
+
     private int sellerRunningPageIndex = 0;
+
     private int sellerUpcomingPageIndex = 0;
+
     private volatile boolean isRefreshing = false;
+
     private volatile boolean isSellerRefreshing = false;
 
     @FXML
+
     public void initialize() {
         Platform.runLater(() -> {
             if (sellerRevenueHeatmap != null && sellerRevenueHeatmap.getScene() != null) {
@@ -180,6 +237,7 @@ public class DashboardController extends RealtimeController {
     }
 
     @Override
+
     protected void handleWsMessage(JsonObject json) {
         String type = json.has("type") ? json.get("type").getAsString() : "";
         if ("AUCTION_STATUS_CHANGED".equals(type) || "AUCTION_CREATED".equals(type)) {
@@ -246,7 +304,7 @@ public class DashboardController extends RealtimeController {
             }
 
             if (user instanceof Seller seller) {
-                // Setup Seller View
+
                 if (bidderView != null) {
                     bidderView.setVisible(false);
                     bidderView.setManaged(false);
@@ -255,12 +313,11 @@ public class DashboardController extends RealtimeController {
                     sellerView.setVisible(true);
                     sellerView.setManaged(true);
                 }
-                setupStatCardsByRole(user.getRole(), false); // Seller: only RUNNING + UPCOMING
+                setupStatCardsByRole(user.getRole(), false);
                 startSellerNewsTicker();
                 startSellerHotCountdownRefresh();
                 loadSellerStats((Seller) user);
 
-                // Load hot items for seller view
                 taskRunner.run("dashboard-seller-load", () -> {
                     List<Auction> all = app.getAuctionsBySeller(seller);
                     hotCache.seedFromList(all);
@@ -275,7 +332,7 @@ public class DashboardController extends RealtimeController {
                     startSellerHotItemRefresh();
                 }, error -> System.err.println("[Dashboard] loadData failed: " + error.getMessage()));
             } else {
-                // Setup Bidder/Admin View
+
                 if (bidderView != null) {
                     bidderView.setVisible(true);
                     bidderView.setManaged(true);
@@ -284,7 +341,7 @@ public class DashboardController extends RealtimeController {
                     sellerView.setVisible(false);
                     sellerView.setManaged(false);
                 }
-                setupStatCardsByRole(user.getRole(), true); // Admin: all 5 cards; Bidder: only 2
+                setupStatCardsByRole(user.getRole(), true);
                 startNewsTicker();
                 startHotCountdownRefresh();
 
@@ -317,40 +374,27 @@ public class DashboardController extends RealtimeController {
         }
     }
 
-    /**
-     * Shows or hides the stat cards based on user role.
-     * ADMIN → all 5 cards visible.
-     * SELLER / BIDDER → only card 1 (RUNNING) and card 2 (UPCOMING) visible;
-     * cards 3-5 are hidden AND unmanaged to free layout space.
-     *
-     * @param role         the role string of the current user (e.g. "Admin",
-     *                     "Seller", "Bidder")
-     * @param isBidderView true when acting on the bidderView cards, false for
-     *                     sellerView cards
-     */
     private void setupStatCardsByRole(String role, boolean isBidderView) {
         boolean isAdmin = role != null && role.equalsIgnoreCase("Admin");
 
         if (isBidderView) {
-            // Bidder view cards
+
             setCardVisibility(cardPending, isAdmin);
             setCardVisibility(cardTotalAuctions, isAdmin);
             setCardVisibility(cardTotalUsers, isAdmin);
         } else {
-            // Seller view cards
+
             setCardVisibility(sellerCardPending, isAdmin);
             setCardVisibility(sellerCardTotalAuctions, isAdmin);
             setCardVisibility(sellerCardTotalUsers, isAdmin);
         }
     }
 
-    /** Helper: hide a VBox card visually while keeping its layout space. */
     private void setCardVisibility(VBox card, boolean visible) {
         if (card == null)
             return;
         card.setVisible(visible);
-        // setManaged(true) intentionally NOT called — card keeps its size when hidden,
-        // leaving a blank placeholder so Card 1 & 2 do NOT stretch to fill the gap.
+
     }
 
     private void loadSellerStats(Seller seller) {
@@ -373,7 +417,6 @@ public class DashboardController extends RealtimeController {
                 if (a.getStatus() != AuctionStatus.CLOSED)
                     continue;
 
-                // Count category for closed items only (sold items)
                 if (a.getItem() != null && a.getItem().getCategory() != null) {
                     String catName = a.getItem().getCategory();
                     categoryCount.merge(catName, 1, Integer::sum);
@@ -398,27 +441,25 @@ public class DashboardController extends RealtimeController {
             sellerEarningLabel.setText(String.format("%,.0f ₫", total));
             sellerRevenueLabel.setText(String.format("%,.0f ₫", month));
 
-            // Populate PieChart and apply theme-aware colors
             if (sellerCategoryPieChart != null) {
                 ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
                 for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
-                    // Use raw category name as PieChart.Data name; the legend will append the count
+
                     pieChartData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
                 }
                 sellerCategoryPieChart.setData(pieChartData);
-                // hide built-in legend — we use a custom color legend below
+
                 sellerCategoryPieChart.setLegendVisible(false);
-                // ensure chart is visible and sized (fix for cases where chart didn't render)
+
                 sellerCategoryPieChart.setVisible(true);
                 sellerCategoryPieChart.setOpacity(1.0);
                 sellerCategoryPieChart.setPrefSize(240, 240);
                 sellerCategoryPieChart.setMinSize(160, 160);
-                // Tidy up appearance: hide slice labels, make donut-style start angle
+
                 sellerCategoryPieChart.setLabelsVisible(false);
                 sellerCategoryPieChart.setStartAngle(90);
                 sellerCategoryPieChart.setClockwise(true);
 
-                // Ensure colors are applied after nodes are created
                 Platform.runLater(() -> applyPieColors());
             }
 
@@ -481,7 +522,6 @@ public class DashboardController extends RealtimeController {
         return "heatmap-level-4";
     }
 
-    // Apply colors to pie chart slices
     private void applyPieColors() {
         if (sellerCategoryPieChart == null)
             return;
@@ -501,12 +541,10 @@ public class DashboardController extends RealtimeController {
                 if (node != null) {
                     node.setStyle("-fx-pie-color: " + color + ";");
 
-                    // Simple Tooltip
                     String perc = total > 0 ? String.format("%.1f%%", d.getPieValue() * 100.0 / total) : "0%";
                     Tooltip t = new Tooltip(d.getName() + "\nSố lượng: " + (int) d.getPieValue() + "\nTỷ lệ: " + perc);
                     Tooltip.install(node, t);
 
-                    // Hover effect: slight pop-out
                     node.addEventHandler(MouseEvent.MOUSE_ENTERED, ev -> {
                         node.setScaleX(1.06);
                         node.setScaleY(1.06);
@@ -516,7 +554,7 @@ public class DashboardController extends RealtimeController {
                         node.setScaleY(1.0);
                     });
                 } else {
-                    // If node not yet created, attach listener to set style and tooltip later
+
                     d.nodeProperty().addListener((obs, oldNode, newNode) -> {
                         if (newNode != null) {
                             newNode.setStyle("-fx-pie-color: " + color + ";");
@@ -536,7 +574,6 @@ public class DashboardController extends RealtimeController {
                     });
                 }
 
-                // Add legend item (color swatch + label) with proper text color
                 if (sellerPieLegend != null) {
                     HBox legendItem = new HBox(8);
                     legendItem.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -810,7 +847,6 @@ public class DashboardController extends RealtimeController {
                     Label countdown = (Label) card.getChildren().get(4);
                     countdown.setText(formatCountdown(auction));
 
-                    // Local check to transition UPCOMING -> RUNNING visually
                     if (auction.getStatus() == AuctionStatus.UPCOMING && auction.getStartTime() != null
                             && !now.isBefore(auction.getStartTime())) {
                         try {
@@ -920,6 +956,7 @@ public class DashboardController extends RealtimeController {
     }
 
     @Override
+
     public void cleanup() {
         super.cleanup();
         if (newsTimeline != null)

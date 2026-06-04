@@ -1,20 +1,19 @@
 package com.auction.ui.controller;
 
-import com.auction.ui.util.AlertHelper;
+import com.auction.core.model.*;
+import javafx.scene.control.*;
+
 import com.auction.ui.util.AuctionChartHelper;
 import com.auction.ui.util.ImageLoaderUtil;
 import com.auction.ui.util.NavigationManager;
-import com.auction.core.util.BidLadderUtil;
 import com.auction.core.util.CacheManager;
 import com.auction.core.util.CurrencyUtil;
 import com.auction.core.util.DataReceiver;
 import com.auction.core.util.SessionManager;
-
 import com.auction.ui.support.ui.AuctionDetailUIUpdater;
 import com.auction.ui.support.realtime.AuctionDetailWebSocketManager;
 import com.auction.ui.support.dto.FeedEntry;
 import com.auction.ui.support.logic.LiveFeedEntryParser;
-import com.auction.core.model.*;
 import com.auction.service.AuctionWebSocketService;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
@@ -24,7 +23,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
-import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -32,10 +30,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
-
 import java.io.IOException;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -46,95 +42,169 @@ public class AuctionDetailController extends BaseController
         implements DataReceiver, com.auction.service.AuctionWebSocketService.AuctionWebSocketListener {
 
     @FXML
+
     private Label statusBadge;
+
     @FXML
+
     private Label nameLabel;
+
     @FXML
+
     private Label categoryLabel;
+
     @FXML
+
     private Label sellerLabel;
+
     @FXML
+
     private Label startPriceLabel;
+
     @FXML
+
     private Label startTimeLabel;
+
     @FXML
+
     private Label endTimeLabel;
+
     @FXML
+
     private Label descriptionLabel;
+
     @FXML
+
     private ImageView itemImageView;
 
     @FXML
+
     private Label currentPriceLabel;
+
     @FXML
+
     private Label bidCountLabel;
+
     @FXML
+
     private Label timeRemainingLabel;
+
     @FXML
+
     private Label timeLabelPrefix;
+
     @FXML
+
     private Label minBidHint;
+
     @FXML
+
     private Label stepHintLabel;
+
     @FXML
+
     private Label sellerWarningLabel;
+
     @FXML
+
     private Label balanceLabel;
+
     @FXML
+
     private Label frozenLabel;
+
     @FXML
+
     private TextField bidAmountField;
+
     @FXML
+
     private Label bidErrorLabel;
+
     @FXML
+
     private Button placeBidButton;
+
     @FXML
+
     private Button autoBidToggleButton;
 
     @FXML
+
     private VBox autoBidPopup;
+
     @FXML
+
     private Label autoBidStatusBadge;
+
     @FXML
+
     private Label currentAutoBidLabel;
+
     @FXML
+
     private TextField autoMaxBidField;
+
     @FXML
+
     private Label autoBidErrorLabel;
+
     @FXML
+
     private Button registerAutoBidButton;
 
     @FXML
+
     private StackPane rootStackPane;
+
     @FXML
+
     private ListView<String> liveFeedList;
+
     @FXML
+
     private LineChart<Number, Number> priceChart;
+
     @FXML
+
     private NumberAxis timeAxis;
 
     @FXML
+
     private VBox winnerBox;
+
     @FXML
+
     private Label winnerLabel;
+
     @FXML
+
     private Label winnerPriceLabel;
 
     private String auctionId;
+
     private Auction currentAuction;
+
     private ScheduledExecutorService scheduler;
+
     private com.auction.ui.util.AuctionChartHelper chartHelper;
+
     private volatile boolean wsConnected = false;
+
     private int knownBidCount = 0;
 
     private AuctionDetailUIUpdater uiUpdater;
+
     private AuctionDetailWebSocketManager wsManager;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+
     private final LiveFeedEntryParser liveFeedParser = new LiveFeedEntryParser.Default();
 
     @Override
+
     public void receiveData(Object data) {
         if (data instanceof Auction a) {
             this.auctionId = a.getId();
@@ -150,7 +220,7 @@ public class AuctionDetailController extends BaseController
                     this.currentAuction = full;
                     initManagers();
                     populateStaticView();
-                    // Clear chart/feed before re-populating to avoid duplicates
+
                     if (chartHelper != null)
                         chartHelper.clear();
                     if (liveFeedList != null)
@@ -364,12 +434,14 @@ public class AuctionDetailController extends BaseController
     }
 
     @Override
+
     public void cleanup() {
         super.cleanup();
         shutdown();
     }
 
     @Override
+
     public void onWsConnected() {
         wsConnected = true;
         wsManager.onWsConnected();
@@ -379,62 +451,74 @@ public class AuctionDetailController extends BaseController
     }
 
     @Override
+
     public void onWsDisconnected(String error) {
         wsConnected = false;
         wsManager.onWsDisconnected(error);
     }
 
     @Override
+
     public void onWsError(String errorMsg) {
         wsManager.onWsError(errorMsg);
     }
 
     @Override
+
     public void onBidUpdate(JsonObject json) {
         wsManager.onBidUpdate(json);
     }
 
     @Override
+
     public void onAutoBidLog(JsonObject json) {
         wsManager.onAutoBidLog(json);
     }
 
     @Override
+
     public void onAutoBidAck(JsonObject json) {
         wsManager.onAutoBidAck(json);
     }
 
     @Override
+
     public void onAutoBidStatus(JsonObject json) {
         wsManager.onAutoBidStatus(json);
     }
 
     @Override
+
     public void onAutoBidDeactivated(JsonObject json) {
         wsManager.onAutoBidDeactivated(json);
     }
 
     @Override
+
     public void onStatusChanged(JsonObject json) {
         wsManager.onStatusChanged(json);
     }
 
     @Override
+
     public void onBalanceUpdate(JsonObject json) {
         wsManager.onBalanceUpdate(json);
     }
 
     @Override
+
     public void onFullSync(JsonObject json) {
         wsManager.onFullSync(json);
     }
 
     @Override
+
     public void onOutbid(JsonObject json) {
         wsManager.onOutbid(json);
     }
 
     @Override
+
     public void onLegacyBidUpdate(JsonObject json) {
         wsManager.onLegacyBidUpdate(json);
     }
@@ -593,6 +677,7 @@ public class AuctionDetailController extends BaseController
     }
 
     @FXML
+
     private void handlePlaceBid(ActionEvent event) {
         if (bidErrorLabel != null)
             bidErrorLabel.setText("");
@@ -648,6 +733,7 @@ public class AuctionDetailController extends BaseController
     }
 
     @FXML
+
     private void handleToggleAutoBid(ActionEvent event) {
         if (autoBidPopup == null)
             return;
@@ -671,6 +757,7 @@ public class AuctionDetailController extends BaseController
     }
 
     @FXML
+
     private void handleCloseAutoBidPopup(ActionEvent event) {
         if (autoBidPopup != null) {
             autoBidPopup.setVisible(false);
@@ -679,6 +766,7 @@ public class AuctionDetailController extends BaseController
     }
 
     @FXML
+
     private void handleRegisterAutoBid(ActionEvent event) {
         if (autoBidErrorLabel == null)
             return;
@@ -728,6 +816,7 @@ public class AuctionDetailController extends BaseController
     }
 
     @FXML
+
     private void handleBack(ActionEvent event) {
         shutdown();
         try {

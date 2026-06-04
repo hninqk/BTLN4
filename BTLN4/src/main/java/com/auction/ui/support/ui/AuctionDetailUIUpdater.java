@@ -1,6 +1,6 @@
 package com.auction.ui.support.ui;
-import com.auction.core.util.BidLadderUtil;
 
+import com.auction.core.util.BidLadderUtil;
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.BidTransaction;
@@ -15,39 +15,59 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class AuctionDetailUIUpdater {
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
     private static final GuardedNodeUpdater NODE_UPDATER = new GuardedNodeUpdater.Default();
 
     private final Label timeRemainingLabel;
+
     private final Label timeLabelPrefix;
+
     private final Label currentPriceLabel;
+
     private final Label bidCountLabel;
+
     private final Label minBidHint;
+
     private final Label stepHintLabel;
+
     private final Label balanceLabel;
+
     private final Label frozenLabel;
+
     private final Label statusBadge;
+
     private final Label startTimeLabel;
+
     private final VBox winnerBox;
+
     private final Label winnerLabel;
+
     private final Label winnerPriceLabel;
 
     private String currentStatusBadgeClass = "";
 
     private final Label bidErrorLabel;
+
     private final Button placeBidButton;
+
     private final TextField bidAmountField;
+
     private final Label sellerWarningLabel;
+
     private final Button autoBidToggleButton;
+
     private final VBox autoBidPopup;
+
     private final Button registerAutoBidButton;
+
     private final TextField autoMaxBidField;
+
     private final Label autoBidErrorLabel;
 
     public AuctionDetailUIUpdater(

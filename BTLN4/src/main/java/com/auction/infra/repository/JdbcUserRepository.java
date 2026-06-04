@@ -1,21 +1,16 @@
 package com.auction.infra.repository;
 
 import com.auction.core.model.*;
-import com.auction.infra.db.DatabaseConnection;
 
 import java.sql.*;
+
+import com.auction.infra.db.DatabaseConnection;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * JdbcUserRepository – CRUD for users table.
- * Handles Admin, Seller, Bidder polymorphism via the 'role' column.
- */
 public class JdbcUserRepository {
-
-    // ─────────────────────────── CREATE ───────────────────────────
 
     public void save(User user) {
         String sql;
@@ -67,8 +62,6 @@ public class JdbcUserRepository {
         }
     }
 
-    // ─────────────────────────── READ ───────────────────────────
-
     public List<User> findAll() {
         List<User> users = new ArrayList<>();
         String sql = "SELECT * FROM users";
@@ -112,8 +105,6 @@ public class JdbcUserRepository {
         return Optional.empty();
     }
 
-    // ─────────────────────────── UPDATE ───────────────────────────
-
     public void update(User user) {
         String sql = """
             UPDATE users SET
@@ -152,13 +143,6 @@ public class JdbcUserRepository {
         }
     }
 
-    /**
-     * Atomic update chỉ frozen_balance – dùng trong placeBid() để không
-     * ghi đè các field khác trong lúc transaction đang xử lý.
-     *
-     * @param userId       ID của bidder
-     * @param frozenBalance giá trị frozenBalance mới
-     */
     public void updateFrozenBalance(String userId, double frozenBalance) {
         String sql = "UPDATE users SET frozen_balance = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -170,8 +154,6 @@ public class JdbcUserRepository {
             System.err.println("[UserRepo] updateFrozenBalance error: " + e.getMessage());
         }
     }
-
-    // ─────────────────────────── DELETE ───────────────────────────
 
     public boolean deleteById(String id) {
         String sql = "DELETE FROM users WHERE id = ?";
@@ -199,8 +181,6 @@ public class JdbcUserRepository {
         return false;
     }
 
-    // ─────────────────────────── MAPPING ───────────────────────────
-
     private User mapRow(ResultSet rs) throws SQLException {
         String id        = rs.getString("id");
         String username  = rs.getString("username");
@@ -227,10 +207,6 @@ public class JdbcUserRepository {
         };
     }
 
-    /**
-     * Đọc giá trị double từ ResultSet, trả về defaultValue nếu cột chưa tồn tại
-     * (backward compatibility khi DB cũ chưa có cột frozen_balance).
-     */
     private double safeGetDouble(ResultSet rs, String column, double defaultValue) {
         try {
             return rs.getDouble(column);

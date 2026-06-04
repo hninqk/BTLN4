@@ -6,7 +6,6 @@ import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.Bidder;
 import com.auction.core.model.Seller;
 import com.auction.service.AppFacade;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +14,7 @@ public final class DefaultProfileStatsService implements ProfileStatsService {
     private static final Map<String, Long> BID_COUNT_CACHE = new ConcurrentHashMap<>();
 
     @Override
+
     public void preloadBidCount(List<Auction> auctions, String bidderId) {
         long count = 0;
         for (Auction full : auctions) {
@@ -28,16 +28,19 @@ public final class DefaultProfileStatsService implements ProfileStatsService {
     }
 
     @Override
+
     public void clearBidCountCache() {
         BID_COUNT_CACHE.clear();
     }
 
     @Override
+
     public Long cachedBidCount(String bidderId) {
         return BID_COUNT_CACHE.get(bidderId);
     }
 
     @Override
+
     public long countBids(AppFacade app, Bidder bidder) {
         long count = 0;
         for (Auction shallow : app.getAllAuctions()) {
@@ -53,11 +56,13 @@ public final class DefaultProfileStatsService implements ProfileStatsService {
     }
 
     @Override
+
     public int countSellerAuctions(AppFacade app, Seller seller) {
         return app.getAuctionsBySeller(seller).size();
     }
 
     @Override
+
     public ProfileStats calculateSellerStats(AppFacade app, Seller seller) {
         List<Auction> auctions = app.getAuctionsBySeller(seller);
         long closed = auctions.stream()

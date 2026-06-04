@@ -3,7 +3,6 @@ package com.auction.ui.support.logic;
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.User;
-
 import java.util.List;
 
 public interface AuctionFilterService {

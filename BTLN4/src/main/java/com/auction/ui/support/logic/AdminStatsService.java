@@ -6,7 +6,6 @@ import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.Bidder;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
-
 import java.util.List;
 
 public interface AdminStatsService {

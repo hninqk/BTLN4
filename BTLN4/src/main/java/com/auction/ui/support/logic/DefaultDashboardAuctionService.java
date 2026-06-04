@@ -2,7 +2,6 @@ package com.auction.ui.support.logic;
 
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -11,6 +10,7 @@ import java.util.List;
 
 public final class DefaultDashboardAuctionService implements DashboardAuctionService {
     @Override
+
     public List<Auction> runningAuctions(List<Auction> auctions, LocalDateTime now) {
         return auctions.stream()
                 .filter(a -> isRunningByTime(a, now))
@@ -21,6 +21,7 @@ public final class DefaultDashboardAuctionService implements DashboardAuctionSer
     }
 
     @Override
+
     public List<Auction> upcomingAuctions(List<Auction> auctions, LocalDateTime now) {
         return auctions.stream()
                 .filter(a -> isUpcomingByTimeOrStatus(a, now))
@@ -31,18 +32,20 @@ public final class DefaultDashboardAuctionService implements DashboardAuctionSer
     }
 
     @Override
+
     public boolean isRunningByTime(Auction auction, LocalDateTime now) {
         LocalDateTime start = auction.getStartTime();
         LocalDateTime end = auction.getEndTime();
         if (start == null || end == null || !now.isBefore(end)) {
             return false;
         }
-        // Auction is running if status is RUNNING, OR if it's still marked as UPCOMING/OPEN but the startTime has arrived.
+
         return auction.getStatus() == AuctionStatus.RUNNING
                 || (auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN) && !now.isBefore(start);
     }
 
     @Override
+
     public boolean isUpcomingByTimeOrStatus(Auction auction, LocalDateTime now) {
         LocalDateTime end = auction.getEndTime();
         if (end != null && !now.isBefore(end)) {
@@ -52,12 +55,13 @@ public final class DefaultDashboardAuctionService implements DashboardAuctionSer
         if (start == null) {
             return auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN;
         }
-        // Auction is upcoming only if it's still in UPCOMING/OPEN status AND the startTime is still in the future.
+
         return (auction.getStatus() == AuctionStatus.UPCOMING || auction.getStatus() == AuctionStatus.OPEN)
                 && start.isAfter(now);
     }
 
     @Override
+
     public List<Auction> merge(List<Auction> first, List<Auction> second) {
         ArrayList<Auction> merged = new ArrayList<>(first.size() + second.size());
         merged.addAll(first);
@@ -66,12 +70,14 @@ public final class DefaultDashboardAuctionService implements DashboardAuctionSer
     }
 
     @Override
+
     public int clampPage(int pageIndex, int itemCount, int pageSize) {
         int maxPage = Math.max(0, (int) Math.ceil(itemCount / (double) pageSize) - 1);
         return Math.max(0, Math.min(pageIndex, maxPage));
     }
 
     @Override
+
     public String formatCountdown(Auction auction, LocalDateTime now) {
         if (auction.getStartTime() != null && auction.getStartTime().isAfter(now)) {
             return formatDuration("Còn", Duration.between(now, auction.getStartTime()));

@@ -1,28 +1,22 @@
 package com.auction.ui.controller;
-import com.auction.core.util.CurrencyUtil;
 
+import com.auction.core.util.CurrencyUtil;
 import com.auction.ui.support.logic.DefaultProfileStatsService;
 import com.auction.ui.support.ui.GuardedNodeUpdater;
-import com.auction.ui.support.dto.ProfileStats;
 import com.auction.ui.support.logic.ProfileStatsService;
 import com.auction.core.model.Auction;
 import com.auction.core.model.Bidder;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
 import com.auction.core.util.SessionManager;
-import com.auction.core.util.TimeSyncManager;
-import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.TextField;
-import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Modality;
@@ -40,70 +34,100 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Priority;
 import com.auction.ui.util.ImageLoaderUtil;
-import com.auction.ui.util.NavigationManager;
 
-/**
- * UserProfileController – displays and manages user profile data and balance.
- */
 public class UserProfileController extends BaseController {
 
     @FXML
+
     private Label avatarLabel;
+
     @FXML
+
     private Label displayNameLabel;
+
     @FXML
+
     private Label roleLabel;
+
     @FXML
+
     private Label memberSinceLabel;
 
     @FXML
+
     private VBox bidderStatsBox;
+
     @FXML
+
     private Label balanceLabel;
+
     @FXML
+
     private Label totalBidsLabel;
 
     @FXML
+
     private VBox sellerStatsBox;
+
     @FXML
+
     private Label shopNameLabel;
+
     @FXML
+
     private Label auctionCountLabel;
+
     @FXML
+
     private Label closedAuctionCountLabel;
+
     @FXML
+
     private Label totalRevenueLabel;
 
     @FXML
+
     private VBox shopNameBox;
+
     @FXML
+
     private TextField shopNameField;
+
     @FXML
+
     private VBox balanceBox;
+
     @FXML
+
     private TextField depositField;
+
     @FXML
+
     private Label profileErrorLabel;
+
     @FXML
+
     private Label profileSuccessLabel;
 
     private User currentUser;
+
     private final ProfileStatsService statsService = new DefaultProfileStatsService();
+
     private static final GuardedNodeUpdater NODE_UPDATER = new GuardedNodeUpdater.Default();
 
     @FXML
+
     public void initialize() {
         currentUser = SessionManager.getInstance().getCurrentUser();
         DesktopHeaderController.setTitleAndSubtitle("Hồ sơ cá nhân", null);
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
 
-        // Apply thousands-separator formatting to the deposit input field
         com.auction.core.util.CurrencyUtil.setupCurrencyTextField(depositField);
 
         if (currentUser != null) {
             populateProfile();
-            // Fetch fresh data from server to ensure balance is up-to-date
+
             taskRunner.run("profile-refresh", () -> app.findUserById(currentUser.getId()), uOpt -> {
                 uOpt.ifPresent(u -> {
                     SessionManager.getInstance().setCurrentUser(u);
@@ -161,16 +185,10 @@ public class UserProfileController extends BaseController {
         NODE_UPDATER.setManagedIfChanged(node, managed);
     }
 
-    /**
-     * Warm the bid-count cache for a single bidder only.
-     * Called by LoginController after the user authenticates — avoids building
-     * a cache for every user in the system on a single-machine deployment.
-     */
     public static void preloadCacheForUser(java.util.List<Auction> fullAuctions, String bidderId) {
         new DefaultProfileStatsService().preloadBidCount(fullAuctions, bidderId);
     }
 
-    /** Clear all cached bid counts — call on logout so the next user gets fresh data. */
     public static void clearCache() {
         new DefaultProfileStatsService().clearBidCountCache();
     }
@@ -217,6 +235,7 @@ public class UserProfileController extends BaseController {
     }
 
     @FXML
+
     private void handleSaveProfile(ActionEvent event) {
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("Đang lưu...");
@@ -239,6 +258,7 @@ public class UserProfileController extends BaseController {
     }
 
     @FXML
+
     private void handleDeposit(ActionEvent event) {
         profileErrorLabel.setText("");
         profileSuccessLabel.setText("");
@@ -267,14 +287,12 @@ public class UserProfileController extends BaseController {
         qrStage.setMinWidth(460);
         qrStage.setMinHeight(600);
 
-        // ── Root layout ──────────────────────────────────────────────────────────
         VBox dialogRoot = new VBox(16);
         dialogRoot.setPadding(new Insets(28, 28, 24, 28));
         dialogRoot.setAlignment(Pos.TOP_CENTER);
         dialogRoot.setFillWidth(true);
         dialogRoot.getStyleClass().add("main-container");
 
-        // ── Header ───────────────────────────────────────────────────────────────
         Label titleLabel = new Label("🏦  QUÉT MÃ ĐỂ NẠP TIỀN");
         titleLabel.setMaxWidth(Double.MAX_VALUE);
         titleLabel.setAlignment(Pos.CENTER);
@@ -286,7 +304,6 @@ public class UserProfileController extends BaseController {
         subtitleLabel.setAlignment(Pos.CENTER);
         subtitleLabel.getStyleClass().add("label-subtle");
 
-        // ── QR Frame ─────────────────────────────────────────────────────────────
         VBox qrFrame = new VBox();
         qrFrame.setAlignment(Pos.CENTER);
         qrFrame.setStyle("-fx-background-color: white; -fx-padding: 12;"
@@ -300,7 +317,6 @@ public class UserProfileController extends BaseController {
         loadingIndicator.setMaxSize(40, 40);
         qrFrame.getChildren().add(loadingIndicator);
 
-        // ── Build VietQR URL ─────────────────────────────────────────────────────
         String rawInfo = "BTLN4 NAPTIEN " + bidder.getUsername();
         String encodedInfo;
         String encodedName;
@@ -333,8 +349,6 @@ public class UserProfileController extends BaseController {
             qrFrame.getChildren().add(errLabel);
         });
 
-        // ── Details grid ─────────────────────────────────────────────────────────
-        // Col 0 (label): fixed ~130px | Col 1 (value): grows to fill remaining
         GridPane detailsGrid = new GridPane();
         detailsGrid.setHgap(12);
         detailsGrid.setVgap(10);
@@ -352,7 +366,7 @@ public class UserProfileController extends BaseController {
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setMinWidth(0);
         col1.setPrefWidth(200);
-        col1.setHgrow(Priority.ALWAYS); // value column stretches to fill
+        col1.setHgrow(Priority.ALWAYS);
         col1.setFillWidth(true);
 
         detailsGrid.getColumnConstraints().addAll(col0, col1);
@@ -363,7 +377,6 @@ public class UserProfileController extends BaseController {
         addDetailRow(detailsGrid, 3, "Số tiền:", String.format("%,.0f ₫", amount));
         addDetailRow(detailsGrid, 4, "Nội dung:", "BTLN4 NAPTIEN " + bidder.getUsername());
 
-        // ── Status + Buttons ─────────────────────────────────────────────────────
         VBox statusBox = new VBox(10);
         statusBox.setAlignment(Pos.CENTER);
         statusBox.setMaxWidth(Double.MAX_VALUE);
@@ -436,11 +449,10 @@ public class UserProfileController extends BaseController {
             timeline.play();
         });
 
-        // ── Assemble & wrap in ScrollPane ────────────────────────────────────────
         dialogRoot.getChildren().addAll(titleLabel, subtitleLabel, qrFrame, detailsGrid, statusBox);
 
         ScrollPane scrollPane = new ScrollPane(dialogRoot);
-        scrollPane.setFitToWidth(true); // dialogRoot stretches to scroll width
+        scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(false);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -454,10 +466,6 @@ public class UserProfileController extends BaseController {
         qrStage.show();
     }
 
-    /**
-     * Adds a single key-value row to the details GridPane.
-     * The value label has word-wrap enabled and fills the available column width.
-     */
     private void addDetailRow(GridPane grid, int row, String labelText, String valueText) {
         Label lbl = new Label(labelText);
         lbl.getStyleClass().add("label-subtle");
@@ -467,8 +475,8 @@ public class UserProfileController extends BaseController {
 
         Label val = new Label(valueText);
         val.getStyleClass().add("label");
-        val.setWrapText(true); // long values wrap instead of being clipped
-        val.setMaxWidth(Double.MAX_VALUE); // stretch to fill column 1
+        val.setWrapText(true);
+        val.setMaxWidth(Double.MAX_VALUE);
         GridPane.setHgrow(val, Priority.ALWAYS);
         GridPane.setFillWidth(val, true);
 

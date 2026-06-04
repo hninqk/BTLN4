@@ -23,8 +23,10 @@ public class Vehicle extends Item {
     public String getBrand() { return brand; }
 
     @Override
+
     public String getCategoryInfo() { return "Hãng: " + brand; }
 
     @Override
+
     public String getCategory() { return "Xe cộ"; }
 }
