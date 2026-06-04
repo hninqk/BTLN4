@@ -97,7 +97,7 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 8.  **Bảo mật cao cấp:** Toàn bộ mật khẩu của hệ thống được mã hóa (hashing) thông qua thuật toán Argon2 trước khi lưu vào cơ sở dữ liệu.
 ---
 ## 7. Link báo cáo PDF và video demo
-*   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1cgBs1NdG2ShYLYLS92_fFLzm284L76cL/view?usp=sharing)
+*   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)
 *   **Link Video Demo:** [Xem video demo tại đây](https://www.youtube.com/watch?v=GlpOLVRsXp8)
 ---
 *Dự án được thực hiện bởi Nhóm BTLN4 - Lớp Lập trình nâng cao.*
