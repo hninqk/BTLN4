@@ -96,9 +96,8 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
     Nếu hệ thống yêu cầu kết nối tới PostgreSQL, bạn cần set biến `DATABASE_URL` trong Terminal.
     *   **Linux/macOS:** `export DATABASE_URL=postgresql://...`
     *   **Windows (PowerShell):** `$env:DATABASE_URL="postgresql://..."`
-    *(Ghi chú: Nếu hệ thống đang cấu hình dùng file SQLite cục bộ thì có thể bỏ qua bước này).*
 2.  **Bước 2: Khởi động Server**
-    Mở một cửa sổ Terminal, chạy câu lệnh chạy Server (ở mục 4). Chờ đến khi dòng log báo hiệu Server đã khởi động thành công (Mặc định thường chạy ở cổng 7000). 
+    Mở một cửa sổ Terminal, chạy câu lệnh chạy Server (ở mục 4). Chờ đến khi dòng log báo hiệu Server đã khởi động thành công (Mặc định thường chạy ở cổng 10000). 
     *Lưu ý: Không được đóng cửa sổ Terminal này trong suốt quá trình chạy ứng dụng.*
 3.  **Bước 3: Khởi động Client**
         Mở một cửa sổ Terminal **mới**, chạy câu lệnh chạy Client (ở mục 4).
