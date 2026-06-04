@@ -25,10 +25,9 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Build client JAR (skip Checkstyle + Tests)
+      - name: Build client JAR (run Tests, skip Checkstyle)
         run: |
           mvn -B package \
-            -DskipTests \
             -Dcheckstyle.skip=true
 
       # Upload the fat JAR so friends can download it from the Actions tab
