@@ -1,18 +1,14 @@
----
-title: "\U0001F3DB️ Hệ Thống Đấu Giá Thời Gian Thực Phân Tán (BTLN4)"
-
----
-
-# 🏛️ Hệ Thống Đấu Giá Thời Gian Thực Phân Tán (BTLN4)
-### *Dự án Bài tập lớn môn Lập trình nâng cao (LTNC)*
+# 🏛️ Hệ Thống Đấu Giá Thời Gian Thực Theo Kiến Trúc Client - Server
+### *Dự án Bài tập lớn môn Lập trình nâng cao*
 ---
 ## 1. Mô tả ngắn gọn bài toán và phạm vi hệ thống
 **Bài toán:** Xây dựng một nền tảng quản lý đấu giá trực tuyến theo thời gian thực, hiệu năng cao. Hệ thống cho phép người dùng tham gia các phiên đấu giá với trải nghiệm mượt mà, đồng thời đảm bảo tính toán tài chính chính xác và có độ bảo mật cao.
+
 **Phạm vi hệ thống:**
 *   **Người bán (Seller):** Đăng tải sản phẩm, quản lý phiên đấu giá, theo dõi doanh thu của mình.
-*   **Người mua (Bidder):** Tìm kiếm sản phẩm, đặt giá trực tiếp, sử dụng công cụ tự động đặt giá (Auto-bid), quản lý ví tiền.
+*   **Người mua (Bidder):** Tìm kiếm sản phẩm, đặt giá trực tiếp, thiết lập cấu hình đấu giá tự động, quản lý ví tiền.
 *   **Quản trị viên (Admin):** Duyệt các phiên đấu giá chờ, quản lý toàn bộ người dùng và hệ thống.
-*   **Hệ thống chung:** Xử lý tranh chấp đặt giá (Auto-Bidding), tự động gia hạn thời gian (Anti-sniping), đồng bộ dữ liệu theo thời gian thực qua WebSockets.
+*   **Hệ thống chung:** Vận hành bộ máy đấu giá tự động, tự động gia hạn thời gian (Anti-sniping), đồng bộ dữ liệu theo thời gian thực qua WebSockets.
 ---
 ## 2. Công nghệ sử dụng, môi trường chạy và yêu cầu cài đặt
 **Công nghệ sử dụng:**
@@ -86,21 +82,26 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
         Mở một cửa sổ Terminal **mới**, chạy câu lệnh chạy Client (ở mục 4).
     *(Mẹo: Bạn có thể mở thêm nhiều cửa sổ Terminal mới và chạy nhiều Client cùng lúc để đăng nhập nhiều tài khoản test tính năng realtime).*
 ---
-## 6. Danh sách chức năng đã hoàn thành
-1.  **Hệ thống Real-time:** Cập nhật giá thầu, trạng thái phiên đấu giá và biểu đồ dữ liệu lập tức trên tất cả Client mà không cần làm mới giao diện.
-2.  **Quản lý ví & Đóng băng quỹ (Fund Freezing):** Tự động đóng băng khoản tiền của Bidder khi đặt giá, và hoàn trả lại số tiền đóng băng ngay khi có người khác trả giá cao hơn (Outbid).
-3.  **Proxy Bidding (Auto-bid):** Tự động đặt giá thay người dùng theo giới hạn tối đa và bước giá quy định.
-4.  **Anti-Snipe:** Tự động gia hạn thêm thời gian của phiên đấu giá nếu có hành vi đặt thầu ở những phút chót.
-5.  **Role-based Access:** Phân quyền truy cập và điều hướng giao diện hoàn chỉnh giữa 3 role: Admin, Seller và Bidder.
-6.  **Quản lý sản phẩm:** Seller có khả năng tạo phiên đấu giá mới với hình ảnh trực quan tải lên hệ thống qua Catbox API.
-7.  **Lịch sử đấu giá chi tiết:** Ghi nhận lại và minh họa toàn bộ các lượt thầu của những người dùng tham gia phiên đấu giá.
-8.  **Bảo mật cao cấp:** Toàn bộ mật khẩu của hệ thống được mã hóa (hashing) thông qua thuật toán Argon2 trước khi lưu vào cơ sở dữ liệu.
+## 6. Danh sách chức năng nổi bật
+1.  **Hệ thống Đồng bộ Real-time:** Cập nhật liên tục giá thầu, trạng thái đấu giá ngay lập tức trên tất cả các Client thông qua WebSockets mà không cần tải lại giao diện.
+2.  **Quản lý Ví điện tử:** Tích hợp ví tiền nội bộ cho mỗi tài khoản, hỗ trợ nạp tiền, kiểm tra số dư và theo dõi chi tiết lịch sử giao dịch trực quan.
+3.  **Đóng băng quỹ thông minh:** Tự động tạm giữ khoản tiền tương ứng của người mua khi đặt lệnh, và hoàn trả lập tức khi có người khác trả giá cao hơn, đảm bảo an toàn thanh toán cho hệ thống.
+4.  **Đấu giá ủy quyền:** Hỗ trợ đấu giá rảnh tay bằng cách cho phép thiết lập mức giá tối đa; hệ thống sẽ tự động tính toán và đặt thầu từng bước cạnh tranh thay mặt người dùng.
+5.  **Anti-Sniping:** Cơ chế tự động gia hạn thêm thời gian của phiên đấu giá nếu phát hiện có người dùng cố tình đặt thầu ở những giây cuối cùng.
+6.  **Hệ thống Thông báo:** Gửi các thông báo real-time tới người dùng cho các sự kiện quan trọng như: bị vượt giá thầu, kết thúc phiên đấu giá, kết quả nạp tiền, v.v.
+7.  **Biểu đồ Biến động giá:** Cung cấp biểu đồ đường tự động cập nhật theo thời gian thực để hiển thị trực quan diễn biến cạnh tranh và xu hướng giá của từng sản phẩm.
+8.  **Thống kê Dashboard:** Cung cấp giao diện phân tích dữ liệu chuyên sâu cho Admin và Seller, sử dụng Heatmap để theo dõi mức độ tương tác theo khung giờ và Pie chart để phân bổ tỷ trọng doanh thu, phân loại trạng thái sản phẩm.
+9.  **Lưu trữ & Tối ưu Cơ sở dữ liệu:** Toàn bộ dữ liệu được quản lý tập trung trên Cloud PostgreSQL kết hợp với cơ chế HikariCP Connection Pooling, mang lại khả năng truy xuất nhanh, chịu tải tốt và đảm bảo tính nhất quán (ACID).
+10. **Tìm kiếm & Lọc thông minh:** Công cụ tìm kiếm mạnh mẽ cho phép phân loại và tra cứu các phiên đấu giá theo từ khóa, danh mục, hoặc trạng thái (đang diễn ra, sắp tới, đã kết thúc).
+11. **Phân quyền & Kiểm duyệt:** Hệ thống được phân quyền chặt chẽ với 3 vai trò (Admin, Seller, Bidder).
+12. **Quản lý Sản phẩm Đa phương tiện:** Seller dễ dàng tạo và chỉnh sửa các phiên đấu giá, hỗ trợ tính năng upload hình ảnh trực tiếp lên hệ thống lưu trữ qua Catbox API.
+13. **Bảo mật & An toàn Dữ liệu:** Toàn bộ thông tin nhạy cảm (như mật khẩu) đều được băm thông qua thuật toán chuẩn bảo mật cao Argon2id trước khi lưu vào Database.
 ---
 ## 7. Link báo cáo PDF và video demo
 *   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)
 *   **Link Video Demo:** [Xem video demo tại đây](https://www.youtube.com/watch?v=GlpOLVRsXp8)
 ---
-*Dự án được thực hiện bởi Nhóm BTLN4 - Lớp Lập trình nâng cao.*
+*Dự án được thực hiện bởi Nhóm 4 - Lớp 2526II_UET.CS2043_14.*
 
 **Thành viên nhóm:**
 - Khổng Quang Minh
