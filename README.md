@@ -118,6 +118,8 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 11. **Phân quyền & Kiểm duyệt:** Hệ thống được phân quyền chặt chẽ với 3 vai trò (Admin, Seller, Bidder).
 12. **Quản lý Sản phẩm Đa phương tiện:** Seller dễ dàng tạo và chỉnh sửa các phiên đấu giá, hỗ trợ tính năng upload hình ảnh trực tiếp lên hệ thống lưu trữ qua Catbox API.
 13. **Bảo mật & An toàn Dữ liệu:** Mật khẩu được băm thông qua thuật toán chuẩn bảo mật cao Argon2id trước khi lưu vào Database.
+14. **Tải dữ liệu bất đồng bộ:** Toàn bộ dữ liệu lớn (danh sách phiên đấu giá, lịch sử giá, hình ảnh sản phẩm) được tải bất đồng bộ qua luồng nền bằng `BackgroundTaskRunner` giúp giao diện UI JavaFX luôn phản hồi mượt mà, không bị hiện tượng đơ/đóng băng ứng dụng.
+15. **Bộ nhớ đệm & Tải ảnh lười:** Tối ưu hóa việc tải ảnh sản phẩm thông qua cơ chế bất đồng bộ và lưu trữ tạm thời giúp tăng tốc độ tải dữ liệu.
 ---
 ## 7. Link báo cáo PDF và video demo
 *   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)

@@ -26,6 +26,13 @@ public final class AuctionSerializer {
         o.addProperty("itemCategory",     a.getItem().getCategory());
         o.addProperty("itemImageUrl",     a.getItem().getImageUrl());
         o.addProperty("startPrice",       a.getItem().getStartingPrice());
+        if (a.getItem() instanceof com.auction.core.model.Art art) {
+            o.addProperty("artistName", art.getArtistName());
+        } else if (a.getItem() instanceof com.auction.core.model.Vehicle vehicle) {
+            o.addProperty("brand", vehicle.getBrand());
+        } else if (a.getItem() instanceof com.auction.core.model.Electronics electronics) {
+            o.addProperty("warrantyMonths", electronics.getWarrantyMonths());
+        }
         o.addProperty("sellerId",         a.getSeller().getId());
         o.addProperty("sellerUsername",   a.getSeller().getUsername());
         o.addProperty("status",           a.getStatus().name());
@@ -153,13 +160,18 @@ public final class AuctionSerializer {
             Seller seller = new Seller(sellerId, createdAt, sellerUsername, "",
                     sellerUsername + "_Shop");
 
+            String artistName = json.has("artistName") ? json.get("artistName").getAsString() : "Unknown";
+            String brand      = json.has("brand") ? json.get("brand").getAsString() : "Unknown Brand";
+            int warrantyMonths = json.has("warrantyMonths") ? json.get("warrantyMonths").getAsInt() : 12;
+            String itemId     = json.has("itemId") ? json.get("itemId").getAsString() : java.util.UUID.randomUUID().toString();
+
             com.auction.core.model.Item item = switch (category) {
                 case "Nghệ thuật" -> new com.auction.core.model.Art(
-                        itemName, desc, startPrice, seller);
+                        itemId, createdAt, itemName, desc, startPrice, seller, artistName);
                 case "Xe cộ"      -> new com.auction.core.model.Vehicle(
-                        itemName, desc, startPrice, seller);
+                        itemId, createdAt, itemName, desc, startPrice, seller, brand);
                 default           -> new com.auction.core.model.Electronics(
-                        itemName, desc, startPrice, seller);
+                        itemId, createdAt, itemName, desc, startPrice, seller, warrantyMonths);
             };
             item.setImageUrl(imageUrl);
 
