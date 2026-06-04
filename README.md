@@ -123,7 +123,7 @@ Nếu bạn muốn chạy hoàn toàn trên máy tính cá nhân, bạn **bắt 
 *   **Link Báo cáo PDF:** [Xem PDF tại đây](https://drive.google.com/file/d/1bXqnF1x5wxit4_d2BMeziASmufik9veq/view?usp=sharing)
 *   **Link Video Demo:** [Xem video demo tại đây](https://www.youtube.com/watch?v=GlpOLVRsXp8)
 ---
-*Dự án được thực hiện bởi Nhóm 4 - Lớp 2526II_UET.CS2043_14.*
+*Dự án được thực hiện bởi Nhóm 4 - Lớp UET.CS2043_14.*
 
 **Thành viên nhóm:**
 - Khổng Quang Minh
