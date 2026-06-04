@@ -1,7 +1,7 @@
 package com.auction.ui.controller;
-
 import com.auction.ui.util.AnimationUtil;
 import com.auction.ui.util.ImageLoaderUtil;
+
 import com.auction.api.http.ApiClient;
 import com.auction.ui.util.NavigationManager;
 import javafx.animation.FadeTransition;
@@ -21,23 +21,18 @@ public class SplashController extends BaseController {
     @FXML private StackPane splashRoot;
 
     @FXML private Label lblStatus;
-
     @FXML private Label animatedWordLabel;
-
     @FXML private Label logStreamLabel;
-
     @FXML private javafx.scene.image.ImageView logoImageView;
 
+    /** Full auction list cached during boot — reused by LoginController to warm per-user caches. */
     public static volatile java.util.List<com.auction.core.model.Auction> cachedFullAuctions;
 
     private static final String[] WORDS = {"Đấu giá", "Chiến thắng", "Giao thương"};
-
     private int wordIndex = 0;
-
     private Timeline wordCycler;
 
     @FXML
-
     public void initialize() {
         startWordCycle();
 
@@ -64,7 +59,7 @@ public class SplashController extends BaseController {
             }
 
         taskRunner.run("splash-boot", () -> {
-
+            // Step 1: Connecting
             Platform.runLater(() -> {
                 lblStatus.setText("Đang tải dữ liệu...");
                 logStreamLabel.setText("[THÔNG BÁO] Đang kết nối API...");
@@ -85,10 +80,13 @@ public class SplashController extends BaseController {
                 }
             }
 
+            // Step 2: Confirm remote API is reachable; clients never open DB connections.
             Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đã kết nối máy chủ..."));
 
+            // Step 3: Fetch Configs
             Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải cấu hình Auto-Bid..."));
 
+            // Step 4: Cache Assets
             Platform.runLater(() -> logStreamLabel.setText("[THÔNG BÁO] Đang tải chi tiết đấu giá để lưu Cache..."));
 
             try {
@@ -112,6 +110,7 @@ public class SplashController extends BaseController {
 
                     cachedFullAuctions = fullAuctions;
 
+                    // ── Parallel image preload (3 threads, 3 sizes each) ────────────
                     java.util.List<com.auction.core.model.Auction> toPreload = new java.util.ArrayList<>();
                     for (com.auction.core.model.Auction a : fullAuctions) {
                         String imgUrl = a.getItem() != null ? a.getItem().getImageUrl() : null;
@@ -122,7 +121,7 @@ public class SplashController extends BaseController {
                         }
                     }
 
-                    int taskCount = toPreload.size() * 3;
+                    int taskCount = toPreload.size() * 3; // 3 sizes per auction
                     java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(taskCount);
                     java.util.concurrent.atomic.AtomicInteger preloadedImages = new java.util.concurrent.atomic.AtomicInteger(
                             0);
@@ -147,7 +146,7 @@ public class SplashController extends BaseController {
                             }
                             preloadedImages.incrementAndGet();
                         }
-                        latch.await();
+                        latch.await(); // block until all 3×N tasks complete
                     } finally {
                         imgPool.shutdown();
                     }
@@ -161,6 +160,7 @@ public class SplashController extends BaseController {
                 System.err.println("Cache preload error: " + e.getMessage());
             }
 
+            // Step 5: Done
             Platform.runLater(() -> {
                 lblStatus.setText("Sẵn sàng.");
                 logStreamLabel.setText("[THÔNG BÁO] Quá trình khởi động hoàn tất.");

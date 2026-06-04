@@ -1,14 +1,13 @@
 package com.auction.api.server;
-
-import com.auction.core.model.*;
-
 import com.auction.core.util.TimeSyncManager;
+
 import com.auction.core.exception.InvalidBidException;
 import com.auction.core.exception.InvalidStatusException;
 import com.auction.core.factory.ArtFactory;
 import com.auction.core.factory.ElectronicsFactory;
 import com.auction.core.factory.ItemFactory;
 import com.auction.core.factory.VehicleFactory;
+import com.auction.core.model.*;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
 import com.google.gson.Gson;
@@ -17,6 +16,7 @@ import com.google.gson.JsonObject;
 import io.javalin.websocket.WsConfig;
 import io.javalin.websocket.WsContext;
 import io.javalin.websocket.WsMessageContext;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -26,18 +26,37 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * AuctionWebSocketHandler – full message-based protocol.
+ *
+ * CLIENT → SERVER messages (type field):
+ *   PLACE_BID       – bidder places a bid on a running auction
+ *   CREATE_AUCTION  – seller creates a new auction
+ *   ADMIN_ACTION    – admin performs approve/start/finish/cancel
+ *   REQUEST_SYNC    – client requests full state snapshot on connect
+ *
+ * SERVER → CLIENT broadcasts:
+ *   BID_UPDATE            – new bid placed (full bidder info)
+ *   AUCTION_CREATED       – new auction submitted by seller
+ *   AUCTION_STATUS_CHANGED– auction status changed by admin
+ *   BALANCE_UPDATE        – winner balance deducted (targeted to winner session)
+ *   FULL_SYNC             – snapshot of all auctions sent on REQUEST_SYNC
+ *   error                 – error for the requesting client only
+ */
 public class AuctionWebSocketHandler {
 
     private final AuctionService auctionService;
-
     private final UserService userService;
-
     private final Gson gson = new Gson();
 
+    // All currently connected clients
     private final Set<WsContext> sessions = ConcurrentHashMap.newKeySet();
 
+    // Cache to store the latest outbid notification per bidder (RAM only)
+    // Map<bidderId, latestOutbidItemName>
     private final Map<String, String> outbidCache = new ConcurrentHashMap<>();
 
+    // Scheduler for auto-starting scheduled auctions and auto-finishing expired auctions
     private final ScheduledExecutorService autoFinishScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "AutoFinish-Scheduler");
         t.setDaemon(true);
@@ -50,6 +69,10 @@ public class AuctionWebSocketHandler {
         startAutoFinishScheduler();
     }
 
+    /**
+     * Chạy định kỳ: tự động đóng phiên đã hết giờ trước, sau đó đưa phiên
+     * UPCOMING/OPEN vào RUNNING khi đến giờ bắt đầu.
+     */
     private void startAutoFinishScheduler() {
         autoFinishScheduler.scheduleAtFixedRate(() -> {
             try {
@@ -81,8 +104,12 @@ public class AuctionWebSocketHandler {
         System.out.println("[Server] Auto lifecycle scheduler started (every 5s).");
     }
 
+    /**
+     * Phát sóng kết quả khi 1 auction kết thúc (cả auto-finish và admin-finish).
+     * Gửi: BALANCE_UPDATE tới winner + AUCTION_STATUS_CHANGED kèm thông tin winner.
+     */
     private void broadcastFinishResult(Auction auction, BidTransaction preWinner) {
-
+        // 1. Gửi BALANCE_UPDATE nếu có winner
         if (preWinner != null) {
             String winnerId = preWinner.getBidder().getId();
             userService.findById(winnerId)
@@ -105,6 +132,7 @@ public class AuctionWebSocketHandler {
                     });
         }
 
+        // 2. Gửi AUCTION_STATUS_CHANGED kèm thông tin winner
         Auction fresh = auctionService.findById(auction.getId()).orElse(auction);
         JsonObject broadcast = new JsonObject();
         broadcast.addProperty("type",       "AUCTION_STATUS_CHANGED");
@@ -116,7 +144,7 @@ public class AuctionWebSocketHandler {
         broadcast.addProperty("highestBidderUsername", winner != null ? winner.getBidder().getUsername() : "");
         broadcast.addProperty("startTime",  fresh.getStartTime() != null
                 ? fresh.getStartTime().toString() : "");
-
+        // Thêm thông tin người thắng cuộc
         if (preWinner != null) {
             broadcast.addProperty("winnerUsername", preWinner.getBidder().getUsername());
             broadcast.addProperty("winnerBid",      preWinner.getAmount());
@@ -140,6 +168,10 @@ public class AuctionWebSocketHandler {
         broadcastAll(broadcast.toString());
     }
 
+    // =========================================================================
+    // REGISTER
+    // =========================================================================
+
     public void register(WsConfig ws) {
         ws.onConnect(this::onConnect);
         ws.onClose(this::onClose);
@@ -147,6 +179,10 @@ public class AuctionWebSocketHandler {
         ws.onError(ctx -> System.err.println(
                 "[Server] WS Error: " + (ctx.error() != null ? ctx.error().getMessage() : "unknown")));
     }
+
+    // =========================================================================
+    // CONNECT / CLOSE
+    // =========================================================================
 
     private void onConnect(WsContext ctx) {
         sessions.add(ctx);
@@ -159,6 +195,10 @@ public class AuctionWebSocketHandler {
         System.out.println("[Server] Client disconnected: " + ctx.sessionId()
                 + "  (total=" + sessions.size() + ")");
     }
+
+    // =========================================================================
+    // MESSAGE DISPATCH
+    // =========================================================================
 
     private void onMessage(WsMessageContext ctx) {
         try {
@@ -189,6 +229,10 @@ public class AuctionWebSocketHandler {
         }
     }
 
+    // =========================================================================
+    // PLACE_BID
+    // =========================================================================
+
     private void handlePlaceBid(WsMessageContext ctx, JsonObject req) {
         try {
             String auctionId      = req.get("auctionId").getAsString();
@@ -197,9 +241,11 @@ public class AuctionWebSocketHandler {
             double bidderBalance  = req.has("bidderBalance")  ? req.get("bidderBalance").getAsDouble()  : 0.0;
             double amount         = req.get("amount").getAsDouble();
 
+            // ── Load auction từ server DB ──
             Auction auction = auctionService.findById(auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
 
+            // ── Load hoặc tự động đăng ký bidder trên server DB ──
             Bidder bidder = (Bidder) userService.findById(bidderId)
                     .filter(u -> u instanceof Bidder)
                     .orElseGet(() -> {
@@ -207,16 +253,22 @@ public class AuctionWebSocketHandler {
                                 ? bidderUsername
                                 : "Guest_" + bidderId.substring(0, Math.min(6, bidderId.length()));
                         System.out.println("[Server] Auto-registering remote bidder: " + uname);
-
+                        // Dùng balance client-reported chỉ khi đăng ký lần đầu
                         Bidder nb = new Bidder(bidderId, com.auction.core.util.TimeSyncManager.getNow(), uname, "remote_pass", bidderBalance);
                         userService.saveUser(nb);
                         return nb;
                     });
+            // Server balance là authoritative — không ghi đè bằng giá trị từ client
 
+            // ── Xử lý bid (validate, freeze, save, cập nhật highest_bid) ──
             BidTransaction createdBid = auctionService.placeBid(auction, bidder, amount);
 
+            // ── Unfreeze old highest bidder (đồng bộ, ngay sau placeBid) ──
+            // processOutbidUnfreeze() lấy thông tin old bidder đã được lưu trong placeBid()
+            // và thực hiện unfreeze + ghi DB với ReentrantLock của old bidder.
             Bidder unfrozenOldBidder = auctionService.processOutbidUnfreeze();
 
+            // ── Broadcast BID_UPDATE tới TẤT CẢ client ──
             JsonObject bidUpdate = new JsonObject();
             bidUpdate.addProperty("type",           "BID_UPDATE");
             bidUpdate.addProperty("auctionId",      auction.getId());
@@ -233,6 +285,7 @@ public class AuctionWebSocketHandler {
             }
             broadcastAll(bidUpdate.toString());
 
+            // ── Broadcast BALANCE_UPDATE cho bidder vừa đặt giá (frozen tăng → available giảm) ──
             userService.findById(bidderId)
                     .filter(u -> u instanceof Bidder)
                     .map(u -> (Bidder) u)
@@ -251,6 +304,7 @@ public class AuctionWebSocketHandler {
                                 freshBidder.getFrozenBalance());
                     });
 
+            // ── Broadcast BALANCE_UPDATE cho old highest bidder (frozen giảm → available tăng) ──
             if (unfrozenOldBidder != null) {
                 JsonObject oldBalUpdate = new JsonObject();
                 oldBalUpdate.addProperty("type",             "BALANCE_UPDATE");
@@ -265,15 +319,18 @@ public class AuctionWebSocketHandler {
                         unfrozenOldBidder.getAvailableBalance(),
                         unfrozenOldBidder.getFrozenBalance());
 
+                // ── Broadcast OUTBID notification specifically for the outbid user ──
                 JsonObject outbidNotif = new JsonObject();
                 outbidNotif.addProperty("type",      "OUTBID");
                 outbidNotif.addProperty("bidderId",  unfrozenOldBidder.getId());
                 outbidNotif.addProperty("itemName",  auction.getItem().getName());
                 broadcastAll(outbidNotif.toString());
 
+                // Update server-side RAM cache for this user
                 outbidCache.put(unfrozenOldBidder.getId(), auction.getItem().getName());
             }
-
+            
+            // ── Cập nhật Auto-Bidding sau manual bid ──
             AuctionService.AutoBidResult abResult = auctionService.resolveBiddingWar(auction);
             broadcastAutoBidResult(abResult, auction.getId());
 
@@ -288,26 +345,30 @@ public class AuctionWebSocketHandler {
         }
     }
 
+    // =========================================================================
+    // REGISTER_AUTO_BID
+    // =========================================================================
+
     private void handleRegisterAutoBid(WsMessageContext ctx, JsonObject req) {
         try {
             String auctionId = req.get("auctionId").getAsString();
             String bidderId  = req.get("bidderId").getAsString();
             double maxBid    = req.get("maxBid").getAsDouble();
-
+            
             Auction auction = auctionService.findById(auctionId)
                     .orElseThrow(() -> new Exception("Auction not found: " + auctionId));
-
+                    
             Bidder bidder = (Bidder) userService.findById(bidderId)
                     .filter(u -> u instanceof Bidder)
                     .orElseThrow(() -> new Exception("Bidder not found: " + bidderId));
-
+                    
             AuctionService.AutoBidResult result = auctionService.registerAutoBid(auction, bidder, maxBid);
-
+            
             JsonObject ack = new JsonObject();
             ack.addProperty("type", "AUTO_BID_ACK");
             ack.addProperty("auctionId", auctionId);
             ctx.send(ack.toString());
-
+            
             Bidder freshBidder = (Bidder) userService.findById(bidderId).orElse(bidder);
             JsonObject balUpdate = new JsonObject();
             balUpdate.addProperty("type", "BALANCE_UPDATE");
@@ -316,9 +377,9 @@ public class AuctionWebSocketHandler {
             balUpdate.addProperty("frozenBalance", freshBidder.getFrozenBalance());
             balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
             broadcastAll(balUpdate.toString());
-
+            
             broadcastAutoBidResult(result, auction.getId());
-
+            
         } catch (InvalidBidException | InvalidStatusException e) {
             sendError(ctx, e.getMessage());
         } catch (Exception e) {
@@ -335,7 +396,7 @@ public class AuctionWebSocketHandler {
             logObj.addProperty("message", log);
             broadcastAll(logObj.toString());
         }
-
+        
         String endTimeStr = null;
         java.util.Optional<Auction> auctionOpt = auctionService.findById(auctionId);
         if (auctionOpt.isPresent() && auctionOpt.get().getEndTime() != null) {
@@ -359,7 +420,7 @@ public class AuctionWebSocketHandler {
             }
             broadcastAll(bidUpdate.toString());
         }
-
+        
         for (Bidder freshBidder : abResult.unfrozenBidders) {
             JsonObject balUpdate = new JsonObject();
             balUpdate.addProperty("type", "BALANCE_UPDATE");
@@ -369,18 +430,20 @@ public class AuctionWebSocketHandler {
             balUpdate.addProperty("availableBalance", freshBidder.getAvailableBalance());
             broadcastAll(balUpdate.toString());
 
+            // ── Broadcast OUTBID notification for auto-bid victims ──
             String itemName = auctionService.findById(auctionId)
                     .map(a -> a.getItem().getName()).orElse("sản phẩm");
-
+            
             JsonObject outbidNotif = new JsonObject();
             outbidNotif.addProperty("type", "OUTBID");
             outbidNotif.addProperty("bidderId", freshBidder.getId());
             outbidNotif.addProperty("itemName", itemName);
             broadcastAll(outbidNotif.toString());
 
+            // Update server-side RAM cache
             outbidCache.put(freshBidder.getId(), itemName);
         }
-
+        
         for (String bidderId : abResult.deactivatedBidderIds) {
             JsonObject deactivated = new JsonObject();
             deactivated.addProperty("type", "AUTO_BID_DEACTIVATED");
@@ -389,6 +452,10 @@ public class AuctionWebSocketHandler {
             broadcastAll(deactivated.toString());
         }
     }
+
+    // =========================================================================
+    // CREATE_AUCTION
+    // =========================================================================
 
     private void handleCreateAuction(WsMessageContext ctx, JsonObject req) {
         try {
@@ -403,6 +470,7 @@ public class AuctionWebSocketHandler {
             LocalDateTime startTime = LocalDateTime.parse(startTimeStr);
             LocalDateTime endTime = LocalDateTime.parse(endTimeStr);
 
+            // ── Load seller from server DB ──
             Seller seller = (Seller) userService.findById(sellerId)
                     .filter(u -> u instanceof Seller)
                     .orElseThrow(() -> new Exception("Seller not found: " + sellerId));
@@ -419,8 +487,10 @@ public class AuctionWebSocketHandler {
             Item item = factory.createItem(itemName, desc, startPrice, seller);
             item.setImageUrl(imageUrl);
 
+            // ── Create auction; seller owns start/end time ──
             Auction auction = auctionService.createAuction(seller, item, startTime, endTime);
 
+            // ── Broadcast AUCTION_CREATED to ALL clients ──
             JsonObject broadcast = AuctionSerializer.auctionToJson("AUCTION_CREATED", auction, false);
             broadcastAll(broadcast.toString());
 
@@ -433,9 +503,13 @@ public class AuctionWebSocketHandler {
         }
     }
 
+    // =========================================================================
+    // ADMIN_ACTION
+    // =========================================================================
+
     private void handleAdminAction(WsMessageContext ctx, JsonObject req) {
         try {
-            String action    = req.get("action").getAsString();
+            String action    = req.get("action").getAsString();    // finish|cancel (start is scheduler-owned)
             String auctionId = req.get("auctionId").getAsString();
 
             Auction auction = auctionService.findById(auctionId)
@@ -448,7 +522,8 @@ public class AuctionWebSocketHandler {
                     BidTransaction preWinner = auction.getWinner();
                     auctionService.finishAuction(auction);
                     broadcastFinishResult(auction, preWinner);
-
+                    // broadcastFinishResult đã gửi BALANCE_UPDATE + AUCTION_STATUS_CHANGED
+                    // → return sớm để tránh broadcast trùng bên dưới
                     System.out.printf("[Server] AUCTION_STATUS_CHANGED id=%s action=finish status=CLOSED%n",
                             auctionId);
                     return;
@@ -457,8 +532,10 @@ public class AuctionWebSocketHandler {
                 default        -> throw new Exception("Unknown admin action: " + action);
             }
 
+            // Reload fresh auction state from DB after the operation
             Auction fresh = auctionService.findById(auctionId).orElse(auction);
 
+            // ── Broadcast AUCTION_STATUS_CHANGED to ALL (cancel) ──
             broadcastStatusChanged(fresh);
 
             System.out.printf("[Server] AUCTION_STATUS_CHANGED  id=%s  action=%s  status=%s%n",
@@ -471,6 +548,10 @@ public class AuctionWebSocketHandler {
             e.printStackTrace();
         }
     }
+
+    // =========================================================================
+    // REQUEST_SYNC
+    // =========================================================================
 
     private void handleRequestSync(WsMessageContext ctx) {
         try {
@@ -489,6 +570,7 @@ public class AuctionWebSocketHandler {
             System.out.println("[Server] FULL_SYNC sent to " + ctx.sessionId()
                     + "  (" + all.size() + " auctions)");
 
+            // Replay cached outbid notification if exists for this user
             if (bidderId != null && outbidCache.containsKey(bidderId)) {
                 String itemName = outbidCache.get(bidderId);
                 JsonObject outbidNotif = new JsonObject();
@@ -497,7 +579,8 @@ public class AuctionWebSocketHandler {
                 outbidNotif.addProperty("itemName", itemName);
                 ctx.send(outbidNotif.toString());
                 System.out.println("[Server] Replaying cached OUTBID for user " + bidderId);
-
+                
+                // Consumed: clear it from cache so it doesn't replay on next sync
                 outbidCache.remove(bidderId);
             }
         } catch (Exception e) {
@@ -527,6 +610,10 @@ public class AuctionWebSocketHandler {
             e.printStackTrace();
         }
     }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
 
     private void broadcastAll(String msg) {
         for (WsContext s : sessions) {

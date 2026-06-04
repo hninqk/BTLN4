@@ -1,6 +1,6 @@
 package com.auction.ui.util;
-
 import com.auction.core.util.DataReceiver;
+
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -10,6 +10,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
@@ -20,14 +21,19 @@ import javafx.stage.WindowEvent;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import org.kordamp.ikonli.javafx.FontIcon;
+
 import java.io.IOException;
 
+/**
+ * Centralized navigation manager.
+ * All screen transitions go through this class.
+ */
 public class NavigationManager {
 
   private static NavigationManager instance;
   private Stage primaryStage;
-  private Object currentController;
-  private String currentScreen = DASHBOARD;
+  private Object currentController; // tracks the active controller for cleanup
+  private String currentScreen = DASHBOARD; // tracks the active screen name
   private double dragOffsetX;
   private double dragOffsetY;
   private double normalX;
@@ -58,18 +64,27 @@ public class NavigationManager {
     return currentScreen;
   }
 
+  /**
+     * Navigate to the given FXML screen (without passing data).
+     * 
+     * @param fxmlName file name without extension, e.g. "Dashboard"
+     */
   public void navigateTo(String fxmlName) throws IOException {
     navigateTo(fxmlName, null, null);
   }
 
+  /**
+     * Navigate and pass an optional data object to the next controller.
+     * Calls cleanup() on the previous controller (if it supports it) before switching.
+     */
   public void navigateTo(String fxmlName, String title, Object data) throws IOException {
-
+    // Cleanup the current controller before switching screens
     if (currentController != null) {
       try {
-
+        // Reflectively call cleanup() if the controller has it
         currentController.getClass().getMethod("cleanup").invoke(currentController);
       } catch (NoSuchMethodException ignored) {
-
+        // Controller doesn't have cleanup() — that's fine
       } catch (Exception e) {
         System.err.println("[NavigationManager] cleanup() error: " + e.getMessage());
       }
@@ -80,6 +95,7 @@ public class NavigationManager {
     Parent root = loader.load();
     currentController = loader.getController();
 
+    // If the controller supports data injection, pass it
     if (data != null && currentController instanceof DataReceiver) {
       ((DataReceiver) currentController).receiveData(data);
     }
@@ -99,7 +115,7 @@ public class NavigationManager {
     if (title != null) {
       primaryStage.setTitle("Hệ thống Đấu giá - " + title);
     }
-
+    
     primaryStage.setResizable(true);
     primaryStage.show();
     ResizeHelper.addResizeListener(primaryStage);
@@ -117,7 +133,7 @@ public class NavigationManager {
     Button minimizeButton = createWindowButton("fas-minus", "Thu nhỏ");
     minimizeButton.setOnAction(e -> primaryStage.setIconified(true));
 
-    Button maximizeButton = createWindowButton(customMaximized.get() ? "fas-window-restore" : "fas-window-maximize",
+    Button maximizeButton = createWindowButton(customMaximized.get() ? "fas-window-restore" : "fas-window-maximize", 
         customMaximized.get() ? "Khôi phục" : "Phóng to");
     maximizeButton.setOnAction(e -> {
       if (customMaximized.get()) {
@@ -140,7 +156,7 @@ public class NavigationManager {
         customMaximized.set(true);
       }
     });
-
+    
     customMaximized.addListener((obs, oldVal, newVal) -> {
       FontIcon icon = new FontIcon(newVal ? "fas-window-restore" : "fas-window-maximize");
       icon.setIconSize(12);
@@ -171,18 +187,21 @@ public class NavigationManager {
     StackPane frame = new StackPane();
     frame.getStyleClass().add("window-frame");
 
+    // Align titleBar to top
     titleBar.setMaxHeight(38);
     titleBar.setPrefHeight(38);
     titleBar.setMinHeight(38);
     StackPane.setAlignment(titleBar, Pos.TOP_CENTER);
 
+    // Set margin on content region so it does not overlap with the title bar
     if (content instanceof Region region) {
       region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
       StackPane.setMargin(region, new Insets(38, 0, 0, 0));
     }
 
+    // Add content first, then titleBar on top
     frame.getChildren().addAll(content, titleBar);
-    titleBar.toFront();
+    titleBar.toFront(); // Force title bar to the front of Z-ordering
 
     return frame;
   }
@@ -198,11 +217,15 @@ public class NavigationManager {
     return button;
   }
 
+  /**
+     * Create an FXMLLoader for the given screen name.
+     */
   public FXMLLoader createLoader(String fxmlName) {
     return new FXMLLoader(
         getClass().getResource("/com/auction/" + fxmlName + ".fxml"));
   }
 
+  // Screen name constants
   public static final String SPLASH = "Splash";
   public static final String LOGIN = "Login";
   public static final String REGISTER = "Register";

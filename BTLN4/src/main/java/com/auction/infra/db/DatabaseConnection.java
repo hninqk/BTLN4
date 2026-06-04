@@ -1,8 +1,9 @@
 package com.auction.infra.db;
-
 import com.auction.api.config.AppConfig;
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -10,17 +11,25 @@ import java.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * DatabaseConnection – cung cấp Connection qua HikariCP Connection Pool.
+ *
+ * Lý do dùng Pool:
+ * - Mở một kết nối TCP (đặc biệt tới PostgreSQL từ xa) tốn 0.5-1 giây.
+ * - HikariCP giữ sẵn các kết nối đã mở, mỗi getConnection() chỉ mất vài micro-giây.
+ * - Pool size mặc định 10 (cấu hình trong buildConfig).
+ */
 public class DatabaseConnection {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseConnection.class);
-
     private static final HikariDataSource POOL;
-
     private static volatile boolean tablesCreated = false;
 
     static {
         POOL = buildPool();
     }
+
+    // ─────────────────────────── Cấu hình Pool ───────────────────────────
 
     private static HikariDataSource buildPool() {
         try {
@@ -45,15 +54,22 @@ public class DatabaseConnection {
         return new HikariDataSource(config);
     }
 
+    // ─────────────────────────── Public API ───────────────────────────
+
     public static boolean isPostgres() {
         return true;
     }
 
     private DatabaseConnection() {}
 
+    /**
+     * Lấy Connection từ pool (cực nhanh – không mở kết nối mới).
+     * Caller phải đóng Connection trong try-with-resources để trả về pool.
+     */
     public static Connection getConnection() throws SQLException {
         Connection connection = POOL.getConnection();
 
+        // Tạo bảng chỉ một lần khi lần đầu lấy connection
         if (!tablesCreated) {
             synchronized (DatabaseConnection.class) {
                 if (!tablesCreated) {
@@ -82,7 +98,7 @@ public class DatabaseConnection {
                 log.info("Migration applied: dropped outdated auctions status constraint {}", constraintName);
             }
         } catch (Exception ignored) {
-
+            // Existing deployments without a status CHECK need no migration.
         }
     }
 
@@ -94,6 +110,8 @@ public class DatabaseConnection {
             throw new IllegalStateException("Failed to initialize database", e);
         }
     }
+
+    // ─────────────────────────── Schema ───────────────────────────
 
     private static void createTables(Connection conn) throws SQLException {
         try (Statement st = conn.createStatement()) {
@@ -109,11 +127,12 @@ public class DatabaseConnection {
                     + "shop_name      TEXT, "
                     + "created_at     TEXT NOT NULL)");
 
+            // Migration: thêm cột frozen_balance nếu DB cũ chưa có
             try {
                 st.execute("ALTER TABLE users ADD COLUMN frozen_balance " + realType + " DEFAULT 0.0");
                 log.info("Migration applied: added frozen_balance column to users");
             } catch (Exception ignored) {
-
+                // Column already exists.
             }
 
             st.execute("CREATE TABLE IF NOT EXISTS items ("
@@ -130,12 +149,13 @@ public class DatabaseConnection {
                     + "created_at      TEXT NOT NULL, "
                     + "FOREIGN KEY (owner_id) REFERENCES users(id))");
 
+            // Migration: thêm các thuộc tính phụ cho Items
             try {
                 st.execute("ALTER TABLE items ADD COLUMN warranty_months INTEGER DEFAULT 0");
                 st.execute("ALTER TABLE items ADD COLUMN brand TEXT DEFAULT ''");
                 log.info("Migration applied: added warranty_months and brand to items");
             } catch (Exception ignored) {
-
+                // Column already exists
             }
 
             st.execute("CREATE TABLE IF NOT EXISTS auctions ("
@@ -170,6 +190,7 @@ public class DatabaseConnection {
                     + "FOREIGN KEY (auction_id) REFERENCES auctions(id), "
                     + "FOREIGN KEY (bidder_id) REFERENCES users(id))");
 
+            // Index để tăng tốc độ query phổ biến
             st.execute("CREATE INDEX IF NOT EXISTS idx_auctions_seller ON auctions(seller_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_bids_auction ON bid_transactions(auction_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_items_owner ON items(owner_id)");

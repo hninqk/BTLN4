@@ -8,10 +8,27 @@ import com.auction.core.model.User;
 import com.auction.api.server.AuctionSerializer;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * AppFacade – the single entry-point all Controllers use.
+ *
+ * Architecture (NEW – 3-Tier):
+ *   Controllers → AppFacade → ApiClient (HTTP) → Render Javalin Server → Render PostgreSQL
+ *
+ * Key rules enforced here:
+ *   • Controllers MUST NOT import ApiClient, AuctionService, UserService, or
+ *     any repository class directly.
+ *   • All methods in this class are BLOCKING – they perform HTTP calls and
+ *     must be called from a background thread (javafx.concurrent.Task or
+ *     CompletableFuture).  Platform.runLater() must be used to push results
+ *     back to the FX thread.
+ *   • The Render server is the ONLY entity that ever touches PostgreSQL.
+ *     No database driver is needed in the Client runtime.
+ */
 public final class AppFacade {
 
     private static AppFacade instance;
@@ -27,6 +44,14 @@ public final class AppFacade {
         return instance;
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Auth
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Authenticate a user against the server.
+     * Returns an empty Optional on wrong credentials or network error.
+     */
     public Optional<User> login(String username, String password) {
         try {
             JsonObject body = new JsonObject();
@@ -52,6 +77,10 @@ public final class AppFacade {
         }
     }
 
+    /**
+     * Register a new user on the server.
+     * Returns the created User, or empty on conflict / network error.
+     */
     public Optional<User> register(String username, String password, String role) {
         try {
             JsonObject body = new JsonObject();
@@ -78,6 +107,10 @@ public final class AppFacade {
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Users
+    // ──────────────────────────────────────────────────────────────────────────
+
     public List<User> getAllUsers() {
         try {
             String   raw  = api.getSync("/api/users");
@@ -95,7 +128,7 @@ public final class AppFacade {
     }
 
     public Optional<User> findUserByUsername(String username) {
-
+        // The server doesn't expose a /by-username endpoint; search from the list
         return getAllUsers().stream()
                 .filter(u -> u.getUsername().equals(username))
                 .findFirst();
@@ -124,6 +157,9 @@ public final class AppFacade {
         }
     }
 
+    /**
+     * Persist profile changes (password, shopName) back to the server.
+     */
     public void saveUser(User user) {
         try {
             JsonObject body = new JsonObject();
@@ -139,6 +175,11 @@ public final class AppFacade {
         }
     }
 
+    /**
+     * Top-up a bidder's balance on the server.
+     * Returns the refreshed Bidder object (with updated balance) or the
+     * original if the call fails.
+     */
     public Bidder topupBalance(Bidder bidder, double amount) {
         try {
             JsonObject body = new JsonObject();
@@ -153,17 +194,24 @@ public final class AppFacade {
         } catch (Exception e) {
             System.err.println("[AppFacade] topupBalance failed: " + e.getMessage());
         }
-        return bidder;
+        return bidder; // fallback: return unchanged bidder
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Auctions — read
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** All auctions (Admin view). */
     public List<Auction> getAllAuctions() {
         return fetchAuctions("/api/auctions");
     }
 
+    /** UPCOMING + RUNNING + CLOSED — what bidders see. */
     public List<Auction> getPublicAuctions() {
         return fetchAuctions("/api/auctions?filter=public");
     }
 
+    /** All auctions for a specific seller. */
     public List<Auction> getAuctionsBySeller(Seller seller) {
         return fetchAuctions("/api/users/" + seller.getId() + "/auctions");
     }
@@ -180,6 +228,11 @@ public final class AppFacade {
         }
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // Auctions — write
+    // (Note: live bidding still goes through WebSocket, not REST)
+    // ──────────────────────────────────────────────────────────────────────────
+
     public boolean removeAuction(String auctionId) {
         try {
             String raw = api.deleteSync("/api/auctions/" + auctionId);
@@ -190,6 +243,10 @@ public final class AppFacade {
             return false;
         }
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Internal helpers
+    // ──────────────────────────────────────────────────────────────────────────
 
     private List<Auction> fetchAuctions(String path) {
         try {

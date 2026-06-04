@@ -14,6 +14,7 @@ public class Art extends Item {
         this(name, description, startingPrice, owner, "Unknown");
     }
 
+    /** DB reconstruction constructor */
     public Art(String id, LocalDateTime createdAt, String name, String description,
                double startingPrice, User owner, String artistName) {
         super(id, createdAt, name, description, startingPrice, owner);
@@ -21,11 +22,9 @@ public class Art extends Item {
     }
 
     @Override
-
     public String getCategoryInfo() { return "Họa sĩ: " + artistName; }
 
     @Override
-
     public String getCategory() { return "Nghệ thuật"; }
 
     public String getArtistName() { return artistName; }

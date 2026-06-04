@@ -1,9 +1,9 @@
 package com.auction.infra.repository;
 
-import java.sql.*;
-
 import com.auction.core.model.AutoBid;
 import com.auction.infra.db.DatabaseConnection;
+
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;

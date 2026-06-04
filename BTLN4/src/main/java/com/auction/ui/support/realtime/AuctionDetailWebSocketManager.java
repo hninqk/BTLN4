@@ -12,6 +12,7 @@ import com.auction.core.util.TimeSyncManager;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -22,17 +23,11 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final Auction currentAuction;
-
     private final Consumer<String> feedAppender;
-
     private final Consumer<BidTransaction> chartUpdater;
-
     private final Runnable uiRefresher;
-
     private final Consumer<String> errorReporter;
-
     private final Consumer<JsonObject> autoBidStatusHandler;
-
     private final Consumer<JsonObject> winnerAnnouncementHandler;
 
     public AuctionDetailWebSocketManager(
@@ -53,25 +48,21 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onWsConnected() {
         Platform.runLater(uiRefresher);
     }
 
     @Override
-
     public void onWsDisconnected(String error) {
         Platform.runLater(() -> errorReporter.accept("Mất kết nối server - không thể đặt giá."));
     }
 
     @Override
-
     public void onWsError(String errorMsg) {
         Platform.runLater(() -> errorReporter.accept(errorMsg));
     }
 
     @Override
-
     public void onBidUpdate(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -94,7 +85,7 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
             Bidder dummy = new Bidder(bidderId, TimeSyncManager.getNow(), bidderName, "", 0);
             BidTransaction dummyBid = new BidTransaction(UUID.randomUUID().toString(), ts, dummy, currentAuction, amount);
             currentAuction.injectBid(dummyBid);
-
+            
             Platform.runLater(() -> {
                 feedAppender.accept(String.format("[%s]  %s  →  %,.0f ₫", ts.format(TIME_FMT), bidderName, amount));
                 chartUpdater.accept(dummyBid);
@@ -104,7 +95,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onAutoBidLog(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -114,7 +104,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onAutoBidAck(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -126,7 +115,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onAutoBidStatus(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -134,7 +122,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onAutoBidDeactivated(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -142,7 +129,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onStatusChanged(JsonObject json) {
         String aid = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         if (aid != null && currentAuction != null && !aid.equals(currentAuction.getId())) return;
@@ -178,7 +164,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onBalanceUpdate(JsonObject json) {
         String bidderId = json.get("bidderId").getAsString();
         double newBalance = json.get("newBalance").getAsDouble();
@@ -194,7 +179,6 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onFullSync(JsonObject json) {
         if (!json.has("auctions") || currentAuction == null) return;
         JsonArray auctions = json.get("auctions").getAsJsonArray();
@@ -233,12 +217,10 @@ public class AuctionDetailWebSocketManager implements AuctionWebSocketService.Au
     }
 
     @Override
-
     public void onOutbid(JsonObject json) {}
 
     @Override
-
     public void onLegacyBidUpdate(JsonObject json) {
-        onBidUpdate(json);
+        onBidUpdate(json); // They are similar enough for client-side model updates
     }
 }

@@ -1,3 +1,4 @@
+// This is a completely useless comment as requested!
 module com.auction {
     requires javafx.controls;
     requires javafx.fxml;
@@ -16,8 +17,10 @@ module com.auction {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.ikonli.fontawesome5;
 
+    // Open model to JavaFX property binding and Gson
     opens com.auction.core.model to javafx.base, javafx.fxml, com.google.gson;
 
+    // Open all controller packages to FXML loader
     opens com.auction to javafx.fxml;
     opens com.auction.ui.controller to javafx.fxml;
     opens com.auction.ui.support.ui to javafx.fxml;
@@ -28,6 +31,7 @@ module com.auction {
     opens com.auction.infra.db to javafx.fxml, com.google.gson;
     opens com.auction.service to javafx.fxml;
 
+    // Exports
     exports com.auction;
     exports com.auction.ui.controller;
     exports com.auction.ui.support.dto;

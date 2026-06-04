@@ -1,10 +1,10 @@
 package com.auction.core.model;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class BidderTest {
 
@@ -16,7 +16,6 @@ public class BidderTest {
     }
 
     @Test
-
     @DisplayName("Thêm số dư hợp lệ: Số dư tăng lên")
     void testAddBalanceValid() {
         bidder.AddBalance(500.0);
@@ -24,7 +23,6 @@ public class BidderTest {
     }
 
     @Test
-
     @DisplayName("Thêm số dư không hợp lệ (số âm): Số dư không đổi")
     void testAddBalanceInvalid() {
         bidder.AddBalance(-200.0);
@@ -32,7 +30,6 @@ public class BidderTest {
     }
 
     @Test
-
     @DisplayName("Trừ số dư hợp lệ: Số dư giảm xuống và trả về true")
     void testDeductBalanceValid() {
         boolean result = bidder.deductBalance(300.0);
@@ -41,7 +38,6 @@ public class BidderTest {
     }
 
     @Test
-
     @DisplayName("Trừ số dư không hợp lệ (lớn hơn số dư hiện có): Số dư không đổi và trả về false")
     void testDeductBalanceInsufficient() {
         boolean result = bidder.deductBalance(1500.0);
@@ -50,7 +46,6 @@ public class BidderTest {
     }
 
     @Test
-
     @DisplayName("Trừ số dư không hợp lệ (số âm): Số dư không đổi và trả về false")
     void testDeductBalanceNegative() {
         boolean result = bidder.deductBalance(-100.0);

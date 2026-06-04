@@ -1,9 +1,14 @@
 package com.auction.ui.controller;
-
 import com.auction.ui.util.AnimationUtil;
+
+import com.auction.ui.support.ui.BackgroundTaskRunner;
+import com.auction.ui.support.ui.FxBackgroundTaskRunner;
+import com.auction.core.model.User;
+import com.auction.service.AppFacade;
 import com.auction.ui.util.NavigationManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -12,34 +17,33 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.StackPane;
-import java.io.IOException;
 
+import java.io.IOException;
+import java.util.Optional;
+
+/**
+ * RegisterController – handles new user registration via REST API.
+ *
+ * The register call runs on a background thread (Task) to keep the UI responsive.
+ */
 public class RegisterController extends BaseController {
 
     @FXML private TextField     usernameField;
-
     @FXML private PasswordField passwordField;
-
     @FXML private PasswordField confirmPasswordField;
-
     @FXML private ComboBox<String> roleCombo;
-
     @FXML private Label         errorLabel;
-
     @FXML private Label         successLabel;
-
     @FXML private Button        registerButton;
-
     @FXML private StackPane     rootPane;
 
     @FXML
-
     public void initialize() {
         roleCombo.setItems(FXCollections.observableArrayList("Bidder", "Seller"));
         roleCombo.getSelectionModel().selectFirst();
         errorLabel.setText("");
         successLabel.setText("");
-
+        
         Platform.runLater(() -> {
             javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
             pause.setOnFinished(e -> {
@@ -52,7 +56,6 @@ public class RegisterController extends BaseController {
     }
 
     @FXML
-
     private void handleRegister(ActionEvent event) {
         errorLabel.setText("");
         successLabel.setText("");
@@ -62,6 +65,7 @@ public class RegisterController extends BaseController {
         String confirm  = confirmPasswordField.getText();
         String role     = roleCombo.getValue();
 
+        // Client-side validation (no server round-trip needed for these)
         if (username.isEmpty() || password.isEmpty()) {
             errorLabel.setText("Vui lòng điền đầy đủ thông tin bắt buộc (*).");
             return;
@@ -99,7 +103,6 @@ public class RegisterController extends BaseController {
     }
 
     @FXML
-
     private void handleGoToLogin(ActionEvent event) {
         try {
             nav.navigateTo(NavigationManager.LOGIN, "Đăng nhập", null);

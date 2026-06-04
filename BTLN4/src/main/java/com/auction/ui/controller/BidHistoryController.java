@@ -1,14 +1,10 @@
 package com.auction.ui.controller;
 
-import com.auction.core.model.*;
-import javafx.scene.control.*;
-
-import java.util.*;
-
 import com.auction.ui.support.logic.BidHistoryService;
 import com.auction.ui.support.dto.BidHistoryStats;
 import com.auction.ui.support.dto.BidRow;
 import com.auction.ui.support.logic.DefaultBidHistoryService;
+import com.auction.core.model.*;
 import com.auction.ui.util.NavigationManager;
 import com.auction.core.util.SessionManager;
 import com.google.gson.JsonObject;
@@ -17,123 +13,93 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.*;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import org.kordamp.ikonli.fontawesome5.FontAwesomeSolid;
 import org.kordamp.ikonli.javafx.FontIcon;
+
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 
+/**
+ * BidHistoryController – Bidder's bid history.
+ * Uses AppFacade — no direct service/repository access.
+ */
 public class BidHistoryController extends RealtimeController {
 
     @FXML
-
     private Label totalBidsLabel;
-
     @FXML
-
     private Label wonAuctionsLabel;
-
     @FXML
-
     private Label activeParticipationsLabel;
-
     @FXML
-
     private Label totalSpentLabel;
-
     @FXML
-
     private Label currentBalanceLabel;
 
     @FXML
-
     private TextField searchField;
-
     @FXML
-
     private ComboBox<String> resultFilter;
-
     @FXML
-
     private Label statusLabel;
-
     @FXML
-
     private Button viewDetailButton;
-
     @FXML
-
     private HBox paginationBox;
-
     @FXML
-
     private Button searchButton;
-
     @FXML
-
     private Button resetButton;
 
     @FXML
-
     private TableView<BidRow> historyTable;
-
     @FXML
-
     private TableColumn<BidRow, String> colItem;
-
     @FXML
-
     private TableColumn<BidRow, String> colSeller;
-
     @FXML
-
     private TableColumn<BidRow, String> colMyBid;
-
     @FXML
-
     private TableColumn<BidRow, String> colFinalBid;
-
     @FXML
-
     private TableColumn<BidRow, String> colResult;
-
     @FXML
-
     private TableColumn<BidRow, String> colStatus;
-
     @FXML
-
     private TableColumn<BidRow, String> colBidTime;
 
     private static final int PAGE_SIZE = 10;
-
     private List<BidRow> allRows = Collections.emptyList();
-
     private List<BidRow> filteredRows = Collections.emptyList();
-
     private int currentPageIndex;
-
     private final BidHistoryService historyService = new DefaultBidHistoryService();
-
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     public BidHistoryController() {
         super("BidHistory-WS", "[BidHistory]");
     }
 
+    /**
+     * Warm the history cache for a single bidder only.
+     * Called by LoginController after the user authenticates — avoids building
+     * a cache for every user in the system on a single-machine deployment.
+     */
     public static void preloadCacheForUser(java.util.List<Auction> fullAuctions, String bidderId) {
         new DefaultBidHistoryService().preload(fullAuctions, bidderId);
     }
 
+    /** Clear all cached history — call on logout so the next user gets fresh data. */
     public static void clearCache() {
         new DefaultBidHistoryService().clearCache();
     }
 
     @FXML
-
     public void initialize() {
         DesktopHeaderController.setTitleAndSubtitle("Lịch sử đấu giá", null);
         resultFilter.setItems(FXCollections.observableArrayList("Tất cả", "Thắng", "Thua", "Đang tham gia"));
@@ -173,6 +139,7 @@ public class BidHistoryController extends RealtimeController {
         colStatus.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().auction().getStatusDisplay()));
         colBidTime.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().myBid().getTimestamp().format(FMT)));
 
+        // ── Badge cell factory: Kết quả ──────────────────────────────────────
         colResult.setCellFactory(col -> new TableCell<>() {
             private final Label badge = new Label();
             {
@@ -191,6 +158,7 @@ public class BidHistoryController extends RealtimeController {
             }
         });
 
+        // ── Badge cell factory: Trạng thái ───────────────────────────────────
         colStatus.setCellFactory(col -> new TableCell<>() {
             private final Label badge = new Label();
             {
@@ -210,6 +178,7 @@ public class BidHistoryController extends RealtimeController {
         });
     }
 
+    /** Maps result text to a CSS class. */
     private static String resultBadgeClass(String result) {
         if (result.contains("Thắng"))       return "badge-result-won";
         if (result.equals("Thua"))          return "badge-result-lost";
@@ -217,6 +186,7 @@ public class BidHistoryController extends RealtimeController {
         return "badge-status-other";
     }
 
+    /** Maps Vietnamese status display text to a CSS class (shared with AuctionList). */
     private static String statusBadgeClass(String status) {
         return switch (status) {
             case "Đang diễn ra" -> "badge-status-running";
@@ -227,6 +197,7 @@ public class BidHistoryController extends RealtimeController {
             default              -> "badge-status-other";
         };
     }
+
 
     private void loadHistory() {
         User user = SessionManager.getInstance().getCurrentUser();
@@ -266,7 +237,6 @@ public class BidHistoryController extends RealtimeController {
     }
 
     @FXML
-
     private void handleSearch(ActionEvent event) {
         applyFilters(true);
     }
@@ -286,7 +256,6 @@ public class BidHistoryController extends RealtimeController {
     }
 
     @FXML
-
     private void handleReset(ActionEvent event) {
         searchField.clear();
         resultFilter.getSelectionModel().selectFirst();
@@ -404,7 +373,6 @@ public class BidHistoryController extends RealtimeController {
     }
 
     @FXML
-
     private void handleRowClick(MouseEvent event) {
         BidRow selected = historyTable.getSelectionModel().getSelectedItem();
         viewDetailButton.setVisible(selected != null);
@@ -414,7 +382,6 @@ public class BidHistoryController extends RealtimeController {
     }
 
     @FXML
-
     private void handleViewDetail(ActionEvent event) {
         BidRow selected = historyTable.getSelectionModel().getSelectedItem();
         if (selected != null)
@@ -430,15 +397,16 @@ public class BidHistoryController extends RealtimeController {
         }
     }
 
-    @Override
+    // ── WebSocket Live Updates ────────────────────────────────────────────────
 
+    @Override
     protected void handleWsMessage(JsonObject json) {
         if (!json.has("type"))
             return;
 
         String type = json.get("type").getAsString();
         if (type.equals("BID_UPDATE") || type.equals("AUCTION_STATUS_CHANGED") || type.equals("FULL_SYNC")) {
-            Platform.runLater(this::loadHistory);
+            Platform.runLater(this::loadHistory); // Reload from server
         } else if (type.equals("BALANCE_UPDATE")) {
             String bidderId = json.get("bidderId").getAsString();
             double newBalance = json.get("newBalance").getAsDouble();

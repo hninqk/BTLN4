@@ -9,6 +9,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
 
+/**
+ * Service to manage the WebSocket connection for the live auction.
+ * Abstracts connection lifecycle, raw JSON parsing, and routing.
+ */
 public class AuctionWebSocketService {
 
     public interface AuctionWebSocketListener {
@@ -28,11 +32,8 @@ public class AuctionWebSocketService {
     }
 
     private AuctionClient wsClient;
-
     private final Gson gson = new Gson();
-
     private final AuctionWebSocketListener listener;
-
     private final String currentAuctionId;
 
     public AuctionWebSocketService(String auctionId, AuctionWebSocketListener listener) {
@@ -46,7 +47,7 @@ public class AuctionWebSocketService {
             wsClient.connect(
                     msg -> Platform.runLater(() -> handleWsMessage(msg)),
                     err -> Platform.runLater(() -> listener.onWsDisconnected(err)),
-
+                    // onOpen
                     () -> Platform.runLater(() -> {
                         listener.onWsConnected();
                         sendRequestSync();
@@ -65,7 +66,7 @@ public class AuctionWebSocketService {
 
     public void sendRequestSync() {
         if (wsClient == null || !wsClient.isConnected()) return;
-
+        
         User user = SessionManager.getInstance().getCurrentUser();
         JsonObject req = new JsonObject();
         req.addProperty("type", "REQUEST_SYNC");
@@ -116,7 +117,7 @@ public class AuctionWebSocketService {
                 case "AUTO_BID_STATUS"        -> listener.onAutoBidStatus(json);
                 case "AUTO_BID_DEACTIVATED"   -> listener.onAutoBidDeactivated(json);
                 case "OUTBID"                 -> listener.onOutbid(json);
-
+                // Legacy: bare bid response without "type" field
                 default -> {
                     if (json.has("amount") && json.has("bidder")) {
                         listener.onLegacyBidUpdate(json);

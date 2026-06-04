@@ -7,7 +7,9 @@ import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.BidTransaction;
 import com.auction.core.model.Bidder;
 import com.auction.service.AppFacade;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +20,6 @@ public final class DefaultBidHistoryService implements BidHistoryService {
     private static final Map<String, BidHistoryStats> CACHE = new ConcurrentHashMap<>();
 
     @Override
-
     public void preload(List<Auction> auctions, String bidderId) {
         List<BidRow> rows = new ArrayList<>();
         for (Auction full : auctions) {
@@ -37,19 +38,16 @@ public final class DefaultBidHistoryService implements BidHistoryService {
     }
 
     @Override
-
     public void clearCache() {
         CACHE.clear();
     }
 
     @Override
-
     public BidHistoryStats getCachedStats(String bidderId) {
         return CACHE.get(bidderId);
     }
 
     @Override
-
     public List<BidRow> fetchHistory(AppFacade app, Bidder bidder) {
         List<BidRow> rows = new ArrayList<>();
         List<Auction> shallowAuctions = app.getPublicAuctions();
@@ -71,7 +69,6 @@ public final class DefaultBidHistoryService implements BidHistoryService {
     }
 
     @Override
-
     public BidHistoryStats calculateStats(List<BidRow> rows) {
         long won = 0, active = 0;
         double totalSpent = 0;
@@ -92,7 +89,6 @@ public final class DefaultBidHistoryService implements BidHistoryService {
     }
 
     @Override
-
     public List<BidRow> filter(List<BidRow> rows, String keyword, String resultFilter) {
         String kw = (keyword == null) ? "" : keyword.trim().toLowerCase();
         return rows.stream()

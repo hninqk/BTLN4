@@ -3,11 +3,11 @@ package com.auction.ui.support.logic;
 import com.auction.core.model.Auction;
 import com.auction.core.model.AuctionStatus;
 import com.auction.core.model.User;
+
 import java.util.List;
 
 public final class DefaultAuctionFilterService implements AuctionFilterService {
     @Override
-
     public List<User> filterUsers(List<User> users, String keyword, String role) {
         String normalizedKeyword = normalize(keyword);
         return users.stream()
@@ -21,7 +21,6 @@ public final class DefaultAuctionFilterService implements AuctionFilterService {
     }
 
     @Override
-
     public List<Auction> filterAuctions(List<Auction> auctions, String keyword, String status, String category) {
         String normalizedKeyword = normalize(keyword);
         return auctions.stream()
@@ -40,7 +39,6 @@ public final class DefaultAuctionFilterService implements AuctionFilterService {
     }
 
     @Override
-
     public boolean isValidForAdminAction(AuctionStatus status, String action) {
         return switch (action) {
             case "start" -> false;
@@ -51,7 +49,6 @@ public final class DefaultAuctionFilterService implements AuctionFilterService {
     }
 
     @Override
-
     public AuctionStatus statusAfterAdminAction(String action) {
         return switch (action) {
             case "finish" -> AuctionStatus.CLOSED;

@@ -1,6 +1,6 @@
 package com.auction.api.server;
-
 import com.auction.core.util.TimeSyncManager;
+
 import com.auction.core.model.Admin;
 import com.auction.core.model.Auction;
 import com.auction.core.model.Bidder;
@@ -9,12 +9,28 @@ import com.auction.core.model.Seller;
 import com.auction.core.model.User;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+
 import java.time.LocalDateTime;
 
+/**
+ * AuctionSerializer – shared JSON serialization helpers.
+ *
+ * Used by both AuctionWebSocketHandler (WS broadcasts) and
+ * RestApiHandler (HTTP responses) to produce identical JSON shapes,
+ * so the client only needs one deserialization path regardless of
+ * whether data arrives over REST or WebSocket.
+ */
 public final class AuctionSerializer {
 
     private AuctionSerializer() { }
 
+    // ── Auction → JsonObject ──────────────────────────────────────────────────
+
+    /**
+     * Converts an Auction to a JsonObject suitable for API responses and WS
+     * broadcasts. The optional {@code type} field is included when non-empty
+     * (e.g. "AUCTION_CREATED"), omitted for pure REST responses.
+     */
     public static JsonObject auctionToJson(String type, Auction a, boolean includeBids) {
         JsonObject o = new JsonObject();
         if (type != null && !type.isEmpty()) o.addProperty("type", type);
@@ -66,19 +82,28 @@ public final class AuctionSerializer {
         return o;
     }
 
+    /** Convenience overload with no type field (for REST responses). */
     public static JsonObject auctionToJson(Auction a, boolean includeBids) {
         return auctionToJson(null, a, includeBids);
     }
 
+    /** Legacy overload: includes bids by default. */
     public static JsonObject auctionToJson(Auction a) {
         return auctionToJson(null, a, true);
     }
 
+    // ── User → JsonObject ─────────────────────────────────────────────────────
+
+    /**
+     * Converts a User (any subtype) to a JsonObject for REST responses.
+     * The "role" field is the discriminator the client uses to reconstruct
+     * the correct subtype (Bidder / Seller / Admin).
+     */
     public static JsonObject userToJson(User user) {
         JsonObject o = new JsonObject();
         o.addProperty("id",        user.getId());
         o.addProperty("username",  user.getUsername());
-        o.addProperty("role",      user.getRole());
+        o.addProperty("role",      user.getRole());        // "Bidder" | "Seller" | "Admin"
         o.addProperty("createdAt", user.getCreatedAt().toString());
 
         if (user instanceof Bidder bidder) {
@@ -94,6 +119,14 @@ public final class AuctionSerializer {
         return o;
     }
 
+    // ── Client-side deserialization helpers ───────────────────────────────────
+    // These are used by ApiClient / AppFacade on the CLIENT side.
+    // Placed here so they can be shared if the project later splits into modules.
+
+    /**
+     * Reconstruct a User subtype from JSON returned by the login / users APIs.
+     * Returns null if the JSON is malformed.
+     */
     public static User userFromJson(JsonObject o) {
         try {
             String id        = o.get("id").getAsString();
@@ -124,6 +157,10 @@ public final class AuctionSerializer {
         }
     }
 
+    /**
+     * Reconstruct an Auction from a JSON snapshot (same shape as auctionToJson).
+     * Used by ApiClient / AppFacade after fetching from REST endpoints.
+     */
     public static Auction auctionFromJson(JsonObject json) {
         try {
             String auctionId      = json.get("auctionId").getAsString();
@@ -166,6 +203,7 @@ public final class AuctionSerializer {
             Auction a = new Auction(auctionId, createdAt, seller, item,
                     status, highestBid, startTime, endTime);
 
+            // Inject bid history if present
             if (json.has("bidHistory")) {
                 JsonArray bids = json.get("bidHistory").getAsJsonArray();
                 for (int i = 0; i < bids.size(); i++) {

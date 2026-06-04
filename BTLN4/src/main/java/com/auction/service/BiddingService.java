@@ -1,6 +1,6 @@
 package com.auction.service;
-
 import com.auction.core.util.BidLadderUtil;
+
 import com.auction.core.exception.InvalidBidException;
 import com.auction.core.exception.InvalidStatusException;
 import com.auction.core.model.Auction;
@@ -15,6 +15,7 @@ import com.auction.api.config.AppConfig;
 import com.auction.core.util.TimeSyncManager;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,36 +25,31 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Owns the complete bidding workflow:
+ * validation, fund freezing, bid creation, anti-sniping, persistence, and
+ * outbid unfreeze state.
+ */
 public final class BiddingService {
 
     private static final Logger log = LoggerFactory.getLogger(BiddingService.class);
 
     private final JdbcAuctionRepository auctionRepo;
-
     private final JdbcBidRepository bidRepo;
-
     private final JdbcUserRepository userRepo;
-
     private final JdbcAutoBidRepository autoBidRepo;
-
     private final Map<String, Auction> auctionCache;
-
     private final ConcurrentHashMap<String, ReentrantLock> userLocks;
-
     private final ConcurrentHashMap<String, ReentrantLock> auctionLocks = new ConcurrentHashMap<>();
-
     private final ExecutorService persistenceExecutor = Executors.newFixedThreadPool(2, r -> {
         Thread t = new Thread(r, "BidPersist");
         t.setDaemon(true);
         return t;
     });
-
     private final ProxyBiddingEngine proxyBiddingEngine;
 
     private final ThreadLocal<String> pendingUnfreezeId = new ThreadLocal<>();
-
     private final ThreadLocal<Double> pendingUnfreezeAmount = ThreadLocal.withInitial(() -> 0.0);
-
     private final ThreadLocal<String> pendingUnfreezeAuctionId = new ThreadLocal<>();
 
     public BiddingService(

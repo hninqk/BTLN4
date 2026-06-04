@@ -1,20 +1,26 @@
 package com.auction.ui.util;
-
 import com.auction.core.util.CacheManager;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
+
 import java.io.File;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.util.Base64;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.Graphics2D;
+import java.security.MessageDigest;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public final class ImageLoaderUtil {
-
+    
     private ImageLoaderUtil() {}
 
     public static Image loadItemImage(String imageUrl, double width, double height) {
@@ -29,6 +35,7 @@ public final class ImageLoaderUtil {
         String url = imageUrl == null ? "" : imageUrl.trim();
         if (url.isEmpty()) return createFallbackImage((int) width, (int) height);
 
+        // Cache key includes dimensions (different sizes = different entries)
         String keyBase = url;
         if (url.startsWith("data:image/") && url.contains(";base64,")) {
             keyBase = fastHash(url);
@@ -41,7 +48,7 @@ public final class ImageLoaderUtil {
 
         try {
             if (url.startsWith("data:image/") && url.contains(";base64,")) {
-
+                // Sync temp-file approach for Base64
                 File tempFile = new File(System.getProperty("java.io.tmpdir"), "img_" + keyBase + ".tmp");
                 if (!tempFile.exists()) {
                     String base64Data = url.substring(url.indexOf(";base64,") + 8);
@@ -49,7 +56,7 @@ public final class ImageLoaderUtil {
                     Files.write(tempFile.toPath(), decoded);
                 }
                 Image img = new Image(tempFile.toURI().toString(), width, height, true, true, backgroundLoading);
-
+                // For async loads, evict from cache on error so it can be retried later
                 if (backgroundLoading) {
                     final String key = cacheKey;
                     img.errorProperty().addListener((obs, wasErr, isErr) -> {
@@ -65,7 +72,8 @@ public final class ImageLoaderUtil {
             } else if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file:")) {
                 Image remote = new Image(url, width, height, true, true, backgroundLoading);
                 if (backgroundLoading) {
-
+                    // Store immediately so other callers share the same loading Image.
+                    // Register listener to evict if it errors during async download.
                     final String key = cacheKey;
                     remote.errorProperty().addListener((obs, wasErr, isErr) -> {
                         if (isErr) {
@@ -75,7 +83,7 @@ public final class ImageLoaderUtil {
                     });
                     CacheManager.getInstance().putImage(cacheKey, remote);
                 } else {
-
+                    // Sync load – only cache on success
                     if (!remote.isError()) {
                         CacheManager.getInstance().putImage(cacheKey, remote);
                     }
@@ -98,11 +106,17 @@ public final class ImageLoaderUtil {
         return createFallbackImage((int) width, (int) height);
     }
 
+    /**
+     * Converts a local file to a JPEG Base64 data URL, automatically resizing it
+     * on-the-fly to a maximum dimension of 600px and compressing it to reduce
+     * memory usage and PostgreSQL storage requirements.
+     */
     public static String convertFileToBase64AndResize(File file) {
         try {
             BufferedImage original = ImageIO.read(file);
             if (original == null) return "";
 
+            // Target max dimension: 600px for balanced quality/storage ratio
             int targetWidth = original.getWidth();
             int targetHeight = original.getHeight();
             int maxDim = 600;
@@ -117,6 +131,7 @@ public final class ImageLoaderUtil {
                 }
             }
 
+            // Create scaled instance and fill white background to support transparency safely in JPEG format
             BufferedImage resized = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
             Graphics2D g2d = resized.createGraphics();
             g2d.setColor(java.awt.Color.WHITE);
@@ -127,16 +142,18 @@ public final class ImageLoaderUtil {
             g2d.drawImage(original, 0, 0, targetWidth, targetHeight, null);
             g2d.dispose();
 
+            // Compress to JPEG byte array
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(resized, "jpg", baos);
             byte[] imageBytes = baos.toByteArray();
 
+            // Encode to Base64
             String base64 = Base64.getEncoder().encodeToString(imageBytes);
             return "data:image/jpeg;base64," + base64;
         } catch (Exception e) {
             System.err.println("[ImageLoaderUtil] Error encoding/resizing image: " + e.getMessage());
             try {
-
+                // Fallback: Read raw bytes directly
                 byte[] bytes = Files.readAllBytes(file.toPath());
                 String base64 = Base64.getEncoder().encodeToString(bytes);
                 return "data:image/jpeg;base64," + base64;

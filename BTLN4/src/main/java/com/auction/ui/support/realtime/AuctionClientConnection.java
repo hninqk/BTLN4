@@ -5,15 +5,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javafx.application.Platform;
+
 import java.util.function.Consumer;
 
 public final class AuctionClientConnection implements AuctionRealtimeConnection {
     private final String threadName;
-
     private final String logPrefix;
-
     private final Gson gson = new Gson();
-
     private AuctionClient client;
 
     public AuctionClientConnection(String threadName, String logPrefix) {
@@ -22,7 +20,6 @@ public final class AuctionClientConnection implements AuctionRealtimeConnection 
     }
 
     @Override
-
     public void connect(Consumer<JsonObject> onMessage, Consumer<String> onError, Runnable onConnected) {
         client = new AuctionClient();
         Thread thread = new Thread(() -> client.connect(
@@ -35,7 +32,6 @@ public final class AuctionClientConnection implements AuctionRealtimeConnection 
     }
 
     @Override
-
     public void send(JsonObject message) {
         if (client != null) {
             client.send(message.toString());
@@ -43,13 +39,11 @@ public final class AuctionClientConnection implements AuctionRealtimeConnection 
     }
 
     @Override
-
     public boolean isConnected() {
         return client != null && client.isConnected();
     }
 
     @Override
-
     public void disconnect() {
         if (client != null) {
             client.disconnect();

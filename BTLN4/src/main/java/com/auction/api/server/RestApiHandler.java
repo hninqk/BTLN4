@@ -1,15 +1,18 @@
 package com.auction.api.server;
 
-import com.auction.core.model.*;
-
 import com.auction.core.model.Auction;
+import com.auction.core.model.AuctionStatus;
+import com.auction.core.model.Art;
+import com.auction.core.model.Electronics;
 import com.auction.core.model.Item;
 import com.auction.core.model.Seller;
 import com.auction.core.model.User;
+import com.auction.core.model.Vehicle;
 import com.auction.core.factory.ArtFactory;
 import com.auction.core.factory.ElectronicsFactory;
 import com.auction.core.factory.ItemFactory;
 import com.auction.core.factory.VehicleFactory;
+import com.auction.core.model.*;
 import com.auction.service.AuctionService;
 import com.auction.service.UserService;
 import com.google.gson.Gson;
@@ -19,18 +22,39 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * RestApiHandler – registers all HTTP REST endpoints on the Javalin instance.
+ *
+ * All responses are JSON. All business logic delegates to AuctionService and
+ * UserService (the same singletons used by the WebSocket handler), so there
+ * is exactly ONE path to the database.
+ *
+ * Endpoint summary:
+ * POST /api/login – authenticate, returns User JSON
+ * POST /api/register – register new user
+ * GET /api/auctions – list auctions (?filter=public | all)
+ * GET /api/auctions/{id} – single auction
+ * POST /api/auctions – create auction (seller)
+ * POST /api/auctions/{id}/action – admin finish/cancel
+ * DELETE /api/auctions/{id} – remove auction
+ * GET /api/users – list all users (admin)
+ * GET /api/users/{id} – get single user
+ * DELETE /api/users/{id} – delete user (admin)
+ * PUT /api/users/{id} – update profile (password, shopName)
+ * POST /api/users/topup – bidder top-up balance
+ * GET /api/users/{id}/auctions – seller's own auctions
+ */
 public class RestApiHandler {
 
     private static final Logger log = LoggerFactory.getLogger(RestApiHandler.class);
 
     private final AuctionService auctionService;
-
     private final UserService userService;
-
     private final Gson gson = new Gson();
 
     public RestApiHandler(AuctionService auctionService, UserService userService) {
@@ -38,6 +62,7 @@ public class RestApiHandler {
         this.userService = userService;
     }
 
+    /** Register all routes on the provided Javalin app. */
     public void register(Javalin app) {
         app.before(ctx -> {
             log.info("HTTP {} {}", ctx.method(), ctx.path());
@@ -50,22 +75,27 @@ public class RestApiHandler {
             log.error("Unhandled REST error {} {}", ctx.method(), ctx.path(), e);
             ctx.status(500).contentType("application/json").result(errorJson("Internal server error"));
         });
-        app.options("/*", ctx -> ctx.status(204));
+        app.options("/*", ctx -> ctx.status(204)); // CORS pre-flight
 
+        // Health check
         app.get("/api/health", ctx -> ctx.status(200).result("OK"));
 
+        // Server Time for Client Synchronization
         app.get("/api/time/current", ctx -> ctx.status(200).contentType("application/json")
                 .result("{\"serverTime\":" + System.currentTimeMillis() + "}"));
 
+        // ── Auth ──────────────────────────────────────────────────────────────
         app.post("/api/login", this::handleLogin);
         app.post("/api/register", this::handleRegister);
 
+        // ── Auctions ──────────────────────────────────────────────────────────
         app.get("/api/auctions", this::handleGetAuctions);
         app.get("/api/auctions/{id}", this::handleGetAuctionById);
         app.post("/api/auctions", this::handleCreateAuction);
         app.post("/api/auctions/{id}/action", this::handleAdminAction);
         app.delete("/api/auctions/{id}", this::handleDeleteAuction);
 
+        // ── Users ─────────────────────────────────────────────────────────────
         app.get("/api/users", this::handleGetAllUsers);
         app.get("/api/users/{id}", this::handleGetUserById);
         app.delete("/api/users/{id}", this::handleDeleteUser);
@@ -75,6 +105,10 @@ public class RestApiHandler {
 
         System.out.println("[Server] REST API endpoints registered.");
     }
+
+    // =========================================================================
+    // AUTH
+    // =========================================================================
 
     private void handleLogin(Context ctx) {
         try {
@@ -104,7 +138,7 @@ public class RestApiHandler {
 
             boolean ok = userService.register(username, password, role);
             if (ok) {
-
+                // Return the newly created user so the client can store the session
                 Optional<User> created = userService.findByUsername(username);
                 if (created.isPresent()) {
                     ctx.status(201).contentType("application/json")
@@ -119,6 +153,10 @@ public class RestApiHandler {
             ctx.status(400).contentType("application/json").result(errorJson("Register failed: " + e.getMessage()));
         }
     }
+
+    // =========================================================================
+    // AUCTIONS
+    // =========================================================================
 
     private void handleGetAuctions(Context ctx) {
         try {
@@ -176,7 +214,7 @@ public class RestApiHandler {
                 case "Xe cộ" -> new VehicleFactory(brand);
                 default -> new ElectronicsFactory(warrantyMonths);
             };
-
+            
             Item item = factory.createItem(itemName, desc, startPrice, seller);
             item.setImageUrl(imageUrl);
 
@@ -227,6 +265,10 @@ public class RestApiHandler {
             ctx.status(500).contentType("application/json").result(errorJson(e.getMessage()));
         }
     }
+
+    // =========================================================================
+    // USERS
+    // =========================================================================
 
     private void handleGetAllUsers(Context ctx) {
         try {
@@ -325,6 +367,10 @@ public class RestApiHandler {
             ctx.status(400).contentType("application/json").result(errorJson(e.getMessage()));
         }
     }
+
+    // =========================================================================
+    // HELPER
+    // =========================================================================
 
     private String errorJson(String msg) {
         log.warn("Returning REST error: {}", msg);

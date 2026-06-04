@@ -8,11 +8,11 @@ public class Admin extends User {
         super(username, password);
     }
 
+    /** DB reconstruction constructor */
     public Admin(String id, LocalDateTime createdAt, String username, String password) {
         super(id, createdAt, username, password);
     }
 
     @Override
-
     public String getRole() { return "Admin"; }
 }

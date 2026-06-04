@@ -1,26 +1,27 @@
 package com.auction.ui.controller;
-
-import com.auction.core.model.*;
-import javafx.scene.control.*;
-
 import com.auction.ui.util.AlertHelper;
 import com.auction.core.util.CatboxUploader;
 import com.auction.core.util.CurrencyUtil;
+
 import com.auction.ui.support.logic.AuctionFilterService;
 import com.auction.ui.support.logic.AuctionSnapshotMapper;
 import com.auction.ui.support.logic.DefaultAuctionFilterService;
 import com.auction.ui.support.logic.DefaultAuctionSnapshotMapper;
+import com.auction.core.model.*;
 import com.auction.core.util.SessionManager;
 import com.auction.core.util.TimeSyncManager;
 import com.google.gson.JsonObject;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
+
 import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +29,21 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * SellerManagementController – Seller creates and views their auctions.
+ *
+ * Data is fetched from the server REST API (AppFacade → ApiClient).
+ * Auction creation and cancel still go via WebSocket so all clients
+ * receive real-time broadcasts.
+ *
+ * Auction creation is sent via WebSocket (CREATE_AUCTION) so the server
+ * persists it and broadcasts AUCTION_CREATED to ALL clients (especially Admin).
+ *
+ * Listens for:
+ * – AUCTION_CREATED → add new auction to own table (confirmation)
+ * – AUCTION_STATUS_CHANGED → update status badge in own table
+ * – FULL_SYNC → initial load of seller's auctions from server
+ */
 public class SellerManagementController extends RealtimeController {
 
     public SellerManagementController() {
@@ -35,121 +51,72 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private TextField searchField;
-
     @FXML
-
     private ComboBox<String> statusFilter;
-
     @FXML
-
     private TableView<Auction> auctionTable;
-
     @FXML
-
     private TableColumn<Auction, String> colName;
-
     @FXML
-
     private TableColumn<Auction, String> colStatus;
-
     @FXML
-
     private TableColumn<Auction, String> colPrice;
-
     @FXML
-
     private TableColumn<Auction, String> colEndTime;
 
     @FXML
-
     private Button btnCancel;
-
     @FXML
-
     private Button btnDelete;
 
     @FXML
-
     private Label formTitle;
-
     @FXML
-
     private TextField itemNameField;
-
     @FXML
-
     private ComboBox<String> categoryCombo;
-
     @FXML
-
     private TextArea descriptionArea;
-
     @FXML
-
     private TextField itemImageField;
-
     @FXML
-
     private Label extraAttributeLabel;
-
     @FXML
-
     private TextField extraAttributeField;
-
     @FXML
-
     private TextField startPriceField;
-
     @FXML
-
     private Label formErrorLabel;
-
     @FXML
-
     private Label formSuccessLabel;
-
     @FXML
-
     private DatePicker startDatePicker;
-
     @FXML
-
     private Spinner<Integer> startHourSpinner;
-
     @FXML
-
     private Spinner<Integer> startMinuteSpinner;
-
     @FXML
-
     private DatePicker endDatePicker;
-
     @FXML
-
     private Spinner<Integer> hourSpinner;
-
     @FXML
-
     private Spinner<Integer> minuteSpinner;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final AuctionSnapshotMapper snapshotMapper = new DefaultAuctionSnapshotMapper();
-
     private final AuctionFilterService filterService = new DefaultAuctionFilterService();
-
     private volatile boolean wsConnected = false;
 
+    // In-memory list of this seller's auctions
     private final ObservableList<Auction> sellerAuctions = FXCollections.observableArrayList();
 
     @FXML
-
     public void initialize() {
         setupFilterCombo();
         setupTableColumns();
-        loadSellerAuctionsFromServer();
+        loadSellerAuctionsFromServer(); // async load from server REST API
         disableActionButtons();
 
         DesktopHeaderController.setTitleAndSubtitle("Quản lí sản phẩm", null);
@@ -168,14 +135,17 @@ public class SellerManagementController extends RealtimeController {
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, defaultStart.getMinute());
         startMinuteSpinner.setValueFactory(startMinuteFactory);
 
+        // Cấu hình Spinner Giờ kết thúc
         SpinnerValueFactory<Integer> hourFactory =
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 23, defaultEnd.getHour());
         hourSpinner.setValueFactory(hourFactory);
 
+        // Cấu hình Spinner Phút kết thúc
         SpinnerValueFactory<Integer> minuteFactory =
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 59, defaultEnd.getMinute());
         minuteSpinner.setValueFactory(minuteFactory);
 
+        // Commit text khi mất focus (editable spinner)
         startHourSpinner.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
             if (!isNowFocused) startHourSpinner.increment(0);
         });
@@ -194,8 +164,9 @@ public class SellerManagementController extends RealtimeController {
         setupRealtime();
     }
 
-    @Override
+    // ── WebSocket ─────────────────────────────────────────────────────────────
 
+    @Override
     protected void setupRealtime() {
         realtime.connect(
                 this::handleWsMessage,
@@ -210,7 +181,6 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @Override
-
     protected void handleWsMessage(JsonObject json) {
         try {
             if (json.has("error")) {
@@ -228,6 +198,10 @@ public class SellerManagementController extends RealtimeController {
         }
     }
 
+    /**
+     * Server confirmed the auction was created (triggered by this seller's
+     * CREATE_AUCTION).
+     */
     private void onAuctionCreated(JsonObject json) {
         User me = SessionManager.getInstance().getCurrentUser();
         if (!(me instanceof Seller mySeller))
@@ -235,8 +209,9 @@ public class SellerManagementController extends RealtimeController {
 
         String sellerId = json.has("sellerId") ? json.get("sellerId").getAsString() : "";
         if (!sellerId.equals(mySeller.getId()))
-            return;
+            return; // not my auction
 
+        // Build from WS JSON snapshot — do NOT try local DB, it won't have server data
         buildMinimalAuction(json, mySeller).ifPresent(a -> {
             sellerAuctions.add(0, a);
             auctionTable.refresh();
@@ -245,6 +220,7 @@ public class SellerManagementController extends RealtimeController {
         });
     }
 
+    /** An auction status changed on server. Patch in-memory directly. */
     private void onStatusChanged(JsonObject json) {
         String auctionId = json.get("auctionId").getAsString();
         String newStatusStr = json.get("newStatus").getAsString();
@@ -259,6 +235,7 @@ public class SellerManagementController extends RealtimeController {
             return;
         }
 
+        // DO NOT reload from local DB — local DB is stale on remote machines.
         for (Auction a : sellerAuctions) {
             if (a.getId().equals(auctionId)) {
                 a.setStatus(newStatus);
@@ -282,9 +259,12 @@ public class SellerManagementController extends RealtimeController {
         auctionTable.refresh();
     }
 
+    /** Full sync: reload seller's auctions from REST API. */
     private void onFullSync(JsonObject json) {
         loadSellerAuctionsFromServer();
     }
+
+    // ── Setup ─────────────────────────────────────────────────────────────────
 
     private void setupFilterCombo() {
         statusFilter.setItems(FXCollections.observableArrayList(
@@ -292,7 +272,7 @@ public class SellerManagementController extends RealtimeController {
         statusFilter.getSelectionModel().selectFirst();
         categoryCombo.setItems(FXCollections.observableArrayList("Điện tử", "Nghệ thuật", "Xe cộ"));
         categoryCombo.getSelectionModel().selectFirst();
-
+        
         categoryCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
             if ("Nghệ thuật".equals(newVal)) {
                 extraAttributeLabel.setText("Họa sĩ sáng tác");
@@ -316,6 +296,7 @@ public class SellerManagementController extends RealtimeController {
                 c.getValue().getEndTime().format(FMT)));
     }
 
+    /** Async: fetch this seller's auctions from the server REST API. */
     private void loadSellerAuctionsFromServer() {
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Seller seller))
@@ -334,7 +315,6 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleRowSelect(MouseEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null) {
@@ -348,7 +328,6 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleSearch(ActionEvent event) {
         User user = SessionManager.getInstance().getCurrentUser();
         if (!(user instanceof Seller))
@@ -360,25 +339,24 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleCancel(ActionEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null)
             return;
-        Alert confirm = com.auction.ui.util.AlertHelper.createConfirmation("Xác nhận huỷ",
-                "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?",
+        Alert confirm = com.auction.ui.util.AlertHelper.createConfirmation("Xác nhận huỷ", 
+                "Huỷ phiên đấu giá \"" + sel.getItem().getName() + "\"?", 
                 ButtonType.YES, ButtonType.NO);
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.YES) {
                 if (wsConnected && realtime.isConnected()) {
-
+                    // Send cancel via WS so server persists and broadcasts to all clients
                     JsonObject req = new JsonObject();
                     req.addProperty("type", "ADMIN_ACTION");
                     req.addProperty("action", "cancel");
                     req.addProperty("auctionId", sel.getId());
                     realtime.send(req);
                 } else {
-
+                    // WS unavailable — fall back to REST (no real-time broadcast)
                     showFormError("Server chưa kết nối. Vui lòng thử lại sau.");
                 }
             }
@@ -386,7 +364,6 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleDelete(ActionEvent event) {
         Auction sel = auctionTable.getSelectionModel().getSelectedItem();
         if (sel == null)
@@ -403,14 +380,12 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleCreateAuction(ActionEvent event) {
         handleClearForm(event);
         formTitle.setText("Tạo phiên đấu giá mới");
     }
 
     @FXML
-
     private void handleBrowseImage(ActionEvent event) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Đọi ảnh sản phẩm");
@@ -424,10 +399,12 @@ public class SellerManagementController extends RealtimeController {
         if (selected == null)
             return;
 
+        // Show upload progress in the field while uploading
         itemImageField.setText("Đang tải ảnh lên máy chủ...");
         itemImageField.setDisable(true);
         showFormSuccess("Đang tải ảnh lên hệ thống...");
 
+        // Upload on a background thread – never block the FX thread
         taskRunner.run("cloud-upload", () -> com.auction.core.util.CatboxUploader.upload(selected), publicUrl -> {
             itemImageField.setText(publicUrl);
             itemImageField.setDisable(false);
@@ -442,7 +419,6 @@ public class SellerManagementController extends RealtimeController {
     }
 
     @FXML
-
     private void handleSave(ActionEvent event) {
         clearFormMessages();
         User user = SessionManager.getInstance().getCurrentUser();
@@ -455,6 +431,8 @@ public class SellerManagementController extends RealtimeController {
         String category = categoryCombo.getValue();
         String description = descriptionArea.getText().trim();
         String imageUrl = itemImageField.getText().trim();
+        // imageUrl is now always a public https:// URL from CatboxUploader
+        // (local path fallback removed – every client must be able to load it)
 
         String priceStr = startPriceField.getText().trim();
         String extraAttr = extraAttributeField.getText().trim();
@@ -502,7 +480,8 @@ public class SellerManagementController extends RealtimeController {
         }
 
         if (wsConnected && realtime.isConnected()) {
-
+            // ── Send CREATE_AUCTION via WebSocket ──
+            // Server saves to its DB and broadcasts AUCTION_CREATED to all clients
             JsonObject req = new JsonObject();
             req.addProperty("type", "CREATE_AUCTION");
             req.addProperty("sellerId", seller.getId());
@@ -513,7 +492,7 @@ public class SellerManagementController extends RealtimeController {
             req.addProperty("startPrice", startPrice);
             req.addProperty("startTime", startTime.toString());
             req.addProperty("endTime", endTime.toString());
-
+            
             if ("Nghệ thuật".equals(category)) {
                 req.addProperty("artistName", extraAttr.isEmpty() ? "Unknown" : extraAttr);
             } else if ("Xe cộ".equals(category)) {
@@ -525,18 +504,17 @@ public class SellerManagementController extends RealtimeController {
                     req.addProperty("warrantyMonths", 12);
                 }
             }
-
+            
             realtime.send(req);
             handleClearForm(event);
             showFormSuccess("Đang gửi lên server...");
         } else {
-
+            // WebSocket not available – show an error instead of local DB fallback
             showFormError("Không thể kết nối server. Vui lòng đợi kết nối WebSocket.");
         }
     }
 
     @FXML
-
     private void handleClearForm(ActionEvent event) {
         itemNameField.clear();
         descriptionArea.clear();
@@ -570,6 +548,12 @@ public class SellerManagementController extends RealtimeController {
         formSuccessLabel.setText("");
     }
 
+
+
+    /**
+     * Build a minimal Auction from a WS JSON snapshot (for display while local DB
+     * syncs).
+     */
     private java.util.Optional<Auction> buildMinimalAuction(JsonObject json, Seller seller) {
         return snapshotMapper.fromSellerSnapshot(json, seller);
     }

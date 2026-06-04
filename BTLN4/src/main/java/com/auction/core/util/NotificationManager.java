@@ -1,6 +1,7 @@
 package com.auction.core.util;
 
 import javafx.application.Platform;
+
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -9,7 +10,16 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * NotificationManager – singleton lưu thông báo mới nhất.
+ *
+ * Cung cấp:
+ *  - addNotification(content) để push thông báo từ bất kỳ thread nào.
+ *  - Listener pattern để DesktopHeaderController nhận cập nhật UI.
+ */
 public class NotificationManager {
+
+    // ── Data record ─────────────────────────────────────────────────────────────
 
     public record AppNotification(
             String id,
@@ -22,12 +32,16 @@ public class NotificationManager {
         }
     }
 
+    // ── Listener ─────────────────────────────────────────────────────────────────
+
     public interface NotificationListener {
-
+        /** Called on the JavaFX Application Thread when a single notification is added. */
         void onNotificationAdded(AppNotification notification);
-
+        /** Called when all notifications are marked as read. */
         void onAllRead();
     }
+
+    // ── Singleton ─────────────────────────────────────────────────────────────────
 
     private static volatile NotificationManager instance;
 
@@ -40,14 +54,20 @@ public class NotificationManager {
         return instance;
     }
 
+    // ── State ────────────────────────────────────────────────────────────────────
+
     private static final int MAX_NOTIFICATIONS = 20;
 
+    /** Head = newest notification. */
     private final Deque<AppNotification> notifications = new ArrayDeque<>();
 
     private final CopyOnWriteArrayList<NotificationListener> listeners = new CopyOnWriteArrayList<>();
 
     private NotificationManager() {}
 
+    // ── API ──────────────────────────────────────────────────────────────────────
+
+    /** Push a new notification (safe to call from any thread). */
     public void addNotification(String content) {
         AppNotification notif = new AppNotification(
                 UUID.randomUUID().toString(),
@@ -64,6 +84,7 @@ public class NotificationManager {
         dispatchAdded(notif);
     }
 
+    /** Push a previously read notification (used for restoring state on login). */
     public void addReadNotification(String content) {
         AppNotification notif = new AppNotification(
                 UUID.randomUUID().toString(),
@@ -72,7 +93,7 @@ public class NotificationManager {
                 true
         );
         synchronized (notifications) {
-            notifications.addLast(notif);
+            notifications.addLast(notif); // Add to end so it doesn't push down new ones
             while (notifications.size() > MAX_NOTIFICATIONS) {
                 notifications.removeLast();
             }
@@ -80,6 +101,7 @@ public class NotificationManager {
         dispatchAdded(notif);
     }
 
+    /** Checks if an outbid notification for this item already exists. */
     public boolean containsOutbidFor(String itemName) {
         String expectedMsg = outbidMessage(itemName);
         synchronized (notifications) {
@@ -90,18 +112,21 @@ public class NotificationManager {
         }
     }
 
+    /** Return a snapshot of notifications (newest first). */
     public List<AppNotification> getNotifications() {
         synchronized (notifications) {
             return new ArrayList<>(notifications);
         }
     }
 
+    /** Count unread notifications. */
     public long getUnreadCount() {
         synchronized (notifications) {
             return notifications.stream().filter(n -> !n.read()).count();
         }
     }
 
+    /** Mark all notifications as read. */
     public void markAllRead() {
         synchronized (notifications) {
             List<AppNotification> updated = notifications.stream()
@@ -113,20 +138,25 @@ public class NotificationManager {
         dispatchAllRead();
     }
 
+    /** Register a listener. */
     public void addListener(NotificationListener listener) {
         listeners.add(listener);
     }
 
+    /** Unregister a listener. */
     public void removeListener(NotificationListener listener) {
         listeners.remove(listener);
     }
 
+    /** Clear all notifications (used on logout). */
     public void clear() {
         synchronized (notifications) {
             notifications.clear();
         }
         dispatchAllRead();
     }
+
+    // ── Dispatch ─────────────────────────────────────────────────────────────────
 
     private void dispatchAdded(AppNotification notif) {
         if (Platform.isFxApplicationThread()) {
@@ -148,6 +178,11 @@ public class NotificationManager {
         }
     }
 
+    // ════════════════════════════════════════════════════════════════════════════
+    // CONTENT FACTORY
+    // ════════════════════════════════════════════════════════════════════════════
+
+    /** Thông báo vượt giá. */
     public static String outbidMessage(String itemName) {
         return "[Vượt giá] Cảnh báo! Một bidder khác đã trả giá cao hơn bạn tại sản phẩm \""
                 + itemName + "\".";

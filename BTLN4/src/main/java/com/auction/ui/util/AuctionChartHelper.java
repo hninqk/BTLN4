@@ -6,6 +6,7 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Tooltip;
 import javafx.util.StringConverter;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.Instant;
@@ -13,17 +14,18 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Encapsulates the configuration and update logic for the real-time bid chart.
+ * Implements data-clustering tooltip logic (collapse overlapping nodes).
+ */
 public class AuctionChartHelper {
 
     private final XYChart.Series<Number, Number> priceSeries;
-
     private final LineChart<Number, Number> priceChart;
-
     private final NumberAxis timeAxis;
-
     private DateTimeFormatter axisFormatter = DateTimeFormatter.ofPattern("dd/MM HH:mm");
-
-    private final long CLUSTER_THRESHOLD_MS = 60_000;
+    
+    private final long CLUSTER_THRESHOLD_MS = 60_000; // 1 minute clustering
 
     private static class ClusterData {
         long epochMillis;
@@ -38,7 +40,7 @@ public class AuctionChartHelper {
             this.bidderName = bidderName;
             this.dataNode = dataNode;
         }
-
+        
         public void updateTooltip() {
             if (tooltip != null) {
                 String timeStr = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("Asia/Ho_Chi_Minh"))
@@ -50,7 +52,7 @@ public class AuctionChartHelper {
             }
         }
     }
-
+    
     private final List<ClusterData> clusters = new ArrayList<>();
 
     public AuctionChartHelper(LineChart<Number, Number> priceChart, NumberAxis timeAxis) {
@@ -84,13 +86,15 @@ public class AuctionChartHelper {
         }
     }
 
+    /** Adds a fully-formed BidTransaction to the chart. */
     public void addBid(BidTransaction bid) {
         addRawBid(bid.getAmount(), bid.getTimestamp(), bid.getBidder() != null ? bid.getBidder().getUsername() : "Ẩn danh");
     }
 
+    /** Adds raw amount and timestamp to the chart, applying clustering logic with bidder name. */
     public void addRawBid(double amount, LocalDateTime ts, String bidderName) {
         long epochMillis = ts.atZone(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant().toEpochMilli();
-
+        
         if (!clusters.isEmpty()) {
             ClusterData lastCluster = clusters.get(clusters.size() - 1);
             if (Math.abs(epochMillis - lastCluster.epochMillis) <= CLUSTER_THRESHOLD_MS) {
@@ -103,23 +107,24 @@ public class AuctionChartHelper {
                 return;
             }
         }
-
+        
         XYChart.Data<Number, Number> data = new XYChart.Data<>(epochMillis, amount);
         ClusterData cluster = new ClusterData(epochMillis, amount, bidderName, data);
         clusters.add(cluster);
-
+        
         data.nodeProperty().addListener((obs, oldNode, newNode) -> {
             if (newNode != null) {
                 Tooltip tooltip = new Tooltip();
                 cluster.tooltip = tooltip;
                 cluster.updateTooltip();
                 Tooltip.install(newNode, tooltip);
-
+                
+                // Add hover effect
                 newNode.setOnMouseEntered(e -> newNode.setStyle("-fx-scale-x: 1.5; -fx-scale-y: 1.5; -fx-cursor: hand;"));
                 newNode.setOnMouseExited(e -> newNode.setStyle("-fx-scale-x: 1.0; -fx-scale-y: 1.0;"));
             }
         });
-
+        
         priceSeries.getData().add(data);
     }
 
@@ -129,6 +134,7 @@ public class AuctionChartHelper {
         timeAxis.setAutoRanging(true);
     }
 
+    /** Clears all data from the chart. */
     public void clear() {
         priceSeries.getData().clear();
         clusters.clear();

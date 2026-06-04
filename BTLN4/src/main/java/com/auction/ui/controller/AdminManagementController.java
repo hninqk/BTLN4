@@ -1,15 +1,13 @@
 package com.auction.ui.controller;
-
-import com.auction.core.model.*;
-import javafx.scene.control.*;
-
 import com.auction.core.util.TimeSyncManager;
+
 import com.auction.ui.support.dto.AdminStats;
 import com.auction.ui.support.logic.AdminStatsService;
 import com.auction.ui.support.logic.AuctionFilterService;
 import com.auction.ui.support.logic.AuctionSnapshotMapper;
 import com.auction.ui.support.logic.DefaultAuctionFilterService;
 import com.auction.ui.support.logic.DefaultAuctionSnapshotMapper;
+import com.auction.core.model.*;
 import com.auction.ui.util.AlertHelper;
 import com.auction.core.util.SessionManager;
 import com.google.gson.JsonObject;
@@ -21,7 +19,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -30,101 +30,87 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+/**
+ * AdminManagementController – full system oversight.
+ *
+ * Connects to WebSocket server on init:
+ *  – Sends ADMIN_ACTION (approve/start/finish/cancel) via WS so the server
+ *    persists the change and broadcasts to ALL connected clients.
+ *  – Listens for AUCTION_CREATED → auto-adds new auctions to the table.
+ *  – Listens for AUCTION_STATUS_CHANGED → refreshes the auction table.
+ *  – Listens for FULL_SYNC → loads all auctions from server snapshot.
+ *
+ * Local DB is used only as fallback when WS is unavailable.
+ */
 public class AdminManagementController extends RealtimeController {
 
     public AdminManagementController() {
         super("Admin-WS", "[AdminMgmt]");
     }
 
+    // ── User tab ──────────────────────────────────────────────────────────────
     @FXML private TextField        userSearchField;
-
     @FXML private ComboBox<String> roleFilter;
-
     @FXML private Label            userCountLabel;
-
     @FXML private TableView<User>  userTable;
-
     @FXML private TableColumn<User, String> colUserId;
-
     @FXML private TableColumn<User, String> colUsername;
-
     @FXML private TableColumn<User, String> colRole;
-
     @FXML private TableColumn<User, String> colUserCreated;
 
+    // ── Auction tab ───────────────────────────────────────────────────────────
     @FXML private TextField           auctionSearchField;
-
     @FXML private ComboBox<String>    auctionStatusFilter;
-
     @FXML private Label               auctionCountLabel;
-
     @FXML private TableView<Auction>  allAuctionTable;
-
     @FXML private TableColumn<Auction, Boolean> colAuctionSelect;
-
     @FXML private TableColumn<Auction, String> colAuctionName;
-
     @FXML private TableColumn<Auction, String> colAuctionSeller;
-
     @FXML private TableColumn<Auction, String> colAuctionStatus;
-
     @FXML private TableColumn<Auction, String> colAuctionPrice;
-
     @FXML private TableColumn<Auction, String> colAuctionEnd;
 
+
     @FXML private Button btnStart;
-
     @FXML private Button btnFinish;
-
     @FXML private Button btnCancel;
 
+    // ── Activity Log tab ──────────────────────────────────────────────────────
     @FXML private ListView<String> adminActivityLogList;
 
+    // ── Stats tab ─────────────────────────────────────────────────────────────
     @FXML private Label statTotalUsers;
-
     @FXML private Label statTotalAuctions;
-
     @FXML private Label statPending;
-
     @FXML private Label statOpen;
-
     @FXML private Label statRunning;
-
     @FXML private Label statFinished;
-
     @FXML private Label statBidders;
-
     @FXML private Label statSellers;
-
     @FXML private Label statCanceled;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final AuctionSnapshotMapper snapshotMapper = new DefaultAuctionSnapshotMapper();
-
     private final AuctionFilterService filterService = new DefaultAuctionFilterService();
-
     private final AdminStatsService statsService = new AdminStatsService.Default();
-
     private volatile boolean wsConnected = false;
 
+    // In-memory auction list driven by WS broadcasts (and REST on load)
     private final ObservableList<Auction> auctionList = FXCollections.observableArrayList();
-
+    // Cached user list (loaded once; refreshed via handleRefreshUsers)
     private final ObservableList<User> userList = FXCollections.observableArrayList();
-
     private final Map<String, Integer> auctionBidCounts = new ConcurrentHashMap<>();
-
     private final Map<Auction, BooleanProperty> auctionSelectionMap = new ConcurrentHashMap<>();
 
     @FXML
-
     public void initialize() {
         DesktopHeaderController.setTitleAndSubtitle("Quản trị hệ thống", null);
         setupFilters();
         setupUserTableColumns();
         setupAuctionTableColumns();
-        loadUsers();
-        loadAuctionsFromServer();
+        loadUsers();               // async REST load
+        loadAuctionsFromServer();  // async REST load; overridden by FULL_SYNC once WS connects
         disableAuctionButtons();
         if (btnStart != null) {
             btnStart.setVisible(false);
@@ -135,11 +121,13 @@ public class AdminManagementController extends RealtimeController {
         allAuctionTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, nw) -> updateAuctionButtons(nw));
 
+        // Connect WebSocket – broadcasts drive all real-time auction table updates
         setupRealtime();
     }
 
-    @Override
+    // ── WebSocket ─────────────────────────────────────────────────────────────
 
+    @Override
     protected void setupRealtime() {
         realtime.connect(
                 this::handleWsMessage,
@@ -155,7 +143,6 @@ public class AdminManagementController extends RealtimeController {
     }
 
     @Override
-
     protected void handleWsMessage(JsonObject json) {
         try {
             if (json.has("error")) {
@@ -168,7 +155,7 @@ public class AdminManagementController extends RealtimeController {
                 case "AUCTION_CREATED"        -> onAuctionCreated(json);
                 case "AUCTION_STATUS_CHANGED" -> onStatusChanged(json);
                 case "BID_UPDATE"             -> onBidUpdate(json);
-
+                // BALANCE_UPDATE is targeted to bidders – admin ignores it
             }
         } catch (Exception e) {
             System.err.println("[AdminMgmt] WS parse error: " + e.getMessage());
@@ -176,7 +163,6 @@ public class AdminManagementController extends RealtimeController {
     }
 
     @Override
-
     public void cleanup() {
         super.cleanup();
     }
@@ -200,6 +186,7 @@ public class AdminManagementController extends RealtimeController {
         });
     }
 
+    /** Server sent all auctions. Replace local list. */
     private void onFullSync(JsonObject json) {
         if (!json.has("auctions")) return;
         com.google.gson.JsonArray arr = json.get("auctions").getAsJsonArray();
@@ -217,6 +204,7 @@ public class AdminManagementController extends RealtimeController {
         System.out.println("[AdminMgmt] FULL_SYNC received: " + synced.size() + " auctions.");
     }
 
+    /** A seller just created a new auction. */
     private void onAuctionCreated(JsonObject json) {
         buildAuctionFromJson(json).ifPresent(a -> {
             auctionList.add(0, a);
@@ -229,6 +217,7 @@ public class AdminManagementController extends RealtimeController {
         });
     }
 
+    /** An auction's status changed (admin action broadcast). */
     private void onStatusChanged(JsonObject json) {
         String auctionId    = json.get("auctionId").getAsString();
         String newStatusStr = json.get("newStatus").getAsString();
@@ -240,6 +229,8 @@ public class AdminManagementController extends RealtimeController {
         try { newStatus = AuctionStatus.valueOf(newStatusStr); }
         catch (IllegalArgumentException e) { return; }
 
+        // Patch the in-memory auction directly from WS data.
+        // DO NOT reload from local DB – local DB is stale on remote machines.
         for (int i = 0; i < auctionList.size(); i++) {
             Auction a = auctionList.get(i);
             if (a.getId().equals(auctionId)) {
@@ -260,6 +251,7 @@ public class AdminManagementController extends RealtimeController {
         logActivity(String.format("Trạng thái phiên %s đổi thành %s", auctionId, newStatusStr));
     }
 
+    /** A new bid was placed — update bid count & highest price in the table row. */
     private void onBidUpdate(JsonObject json) {
         String auctionId = json.has("auctionId") ? json.get("auctionId").getAsString() : null;
         double amount    = json.get("amount").getAsDouble();
@@ -274,7 +266,7 @@ public class AdminManagementController extends RealtimeController {
                         a.setEndTime(LocalDateTime.parse(json.get("endTime").getAsString()));
                     } catch (Exception ignored) {}
                 }
-
+                // Inject a bid entry so bid count updates
                 String bidderName = json.has("bidderUsername") ? json.get("bidderUsername").getAsString() : "?";
                 String bidderId   = json.has("bidderId")       ? json.get("bidderId").getAsString()       : "remote";
                 String timeStr    = json.has("time")           ? json.get("time").getAsString()           : com.auction.core.util.TimeSyncManager.getNow().toString();
@@ -289,6 +281,8 @@ public class AdminManagementController extends RealtimeController {
         updateAuctionButtons(allAuctionTable.getSelectionModel().getSelectedItem());
         logActivity(String.format("Đấu giá mới: %,.0f ₫ (Phiên: %s)", amount, auctionId));
     }
+
+    // ── Setup ─────────────────────────────────────────────────────────────────
 
     private void setupFilters() {
         roleFilter.setItems(FXCollections.observableArrayList("Tất cả", "Bidder", "Seller", "Admin"));
@@ -333,6 +327,8 @@ public class AdminManagementController extends RealtimeController {
         return auctionBidCounts.getOrDefault(auction.getId(), auction.getBidHistory().size());
     }
 
+    // ── Button state ─────────────────────────────────────────────────────────
+
     private void disableAuctionButtons() {
         if (btnStart != null) btnStart.setDisable(true);
         if (btnFinish != null) btnFinish.setDisable(false);
@@ -340,9 +336,12 @@ public class AdminManagementController extends RealtimeController {
     }
 
     private void updateAuctionButtons(Auction a) {
-
+        // Do nothing, validation happens on click
     }
 
+    // ── Data loading ─────────────────────────────────────────────────────────
+
+    /** Async: load all users from server REST API. */
     private void loadUsers() {
         if (userCountLabel != null) userCountLabel.setText("Đang tải...");
         taskRunner.run("admin-users", app::getAllUsers, users -> {
@@ -356,6 +355,7 @@ public class AdminManagementController extends RealtimeController {
         });
     }
 
+    /** Async: initial load of all auctions from server REST API. */
     private void loadAuctionsFromServer() {
         if (auctionCountLabel != null) auctionCountLabel.setText("Đang tải...");
         taskRunner.run("admin-auctions", app::getAllAuctions, auctions -> {
@@ -375,6 +375,8 @@ public class AdminManagementController extends RealtimeController {
             if (auctionCountLabel != null) auctionCountLabel.setText("Lỗi tải phiên đấu giá");
         });
     }
+
+    // ── User tab actions ──────────────────────────────────────────────────────
 
     @FXML private void handleUserSearch(ActionEvent event) {
         List<User> filtered = filterService.filterUsers(userList, userSearchField.getText(), roleFilter.getValue());
@@ -399,6 +401,9 @@ public class AdminManagementController extends RealtimeController {
     @FXML private void handleRefreshUsers(ActionEvent event) {
         userSearchField.clear(); roleFilter.getSelectionModel().selectFirst(); loadUsers();
     }
+
+    // ── Auction tab actions (via WebSocket) ───────────────────────────────────
+
 
     @FXML private void handleForceStart(ActionEvent event) {
         showAlert(Alert.AlertType.INFORMATION, "Không còn thao tác",
@@ -439,7 +444,7 @@ public class AdminManagementController extends RealtimeController {
         String message;
         if (invalidCount > 0) {
             message = String.format("Hệ thống sẽ chỉ tiến hành %s cho %d phiên đang ở trạng thái %s.\n" +
-                                    "(%d phiên còn lại không hợp lệ sẽ bị bỏ qua). Bạn có muốn tiếp tục?",
+                                    "(%d phiên còn lại không hợp lệ sẽ bị bỏ qua). Bạn có muốn tiếp tục?", 
                                     actionName, validCount, statusName, invalidCount);
         } else {
             message = String.format("Bạn đang chọn %d phiên đấu giá để %s. Bạn có muốn tiếp tục?", validCount, targetVerb);
@@ -470,6 +475,9 @@ public class AdminManagementController extends RealtimeController {
         }
     }
 
+    // Quick actions removed
+
+    /** Send ADMIN_ACTION via WebSocket so server persists + broadcasts to all clients. */
     private void sendAdminAction(String action, String auctionId) {
         if (!wsConnected || !realtime.isConnected()) {
             showAlert(Alert.AlertType.ERROR, "Mất kết nối",
@@ -514,6 +522,12 @@ public class AdminManagementController extends RealtimeController {
         auctionCountLabel.setText("Kết quả: " + filtered.size() + " phiên");
     }
 
+    // ── Stats ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Refreshes statistics from the in-memory cached lists.
+     * Does NOT make any network calls – call after loadUsers() or loadAuctionsFromServer() complete.
+     */
     private void refreshStats() {
         List<User>    users    = new ArrayList<>(userList);
         List<Auction> auctions = new ArrayList<>(auctionList);
@@ -531,10 +545,17 @@ public class AdminManagementController extends RealtimeController {
 
     @FXML private void handleRefreshStats(ActionEvent event) { loadUsers(); }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     private void showAlert(Alert.AlertType type, String title, String message) {
         AlertHelper.showAlert(type, title, message);
     }
 
+    /**
+     * Build an Auction object from a WS JSON snapshot.
+     * Does NOT fall back to local DB — local DB is stale on remote machines.
+     * All data comes exclusively from the server WS snapshot.
+     */
     private java.util.Optional<Auction> buildAuctionFromJson(JsonObject json) {
         return snapshotMapper.fromServerSnapshot(json)
                 .map(snapshot -> {

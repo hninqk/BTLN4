@@ -4,6 +4,7 @@ import com.auction.ui.support.dto.AuctionSnapshot;
 import com.auction.core.model.Auction;
 import com.auction.core.model.Seller;
 import com.google.gson.JsonObject;
+
 import java.util.Optional;
 
 public interface AuctionSnapshotMapper {

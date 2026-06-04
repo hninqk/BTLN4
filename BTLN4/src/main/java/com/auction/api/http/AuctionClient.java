@@ -1,24 +1,47 @@
 package com.auction.api.http;
 
 import com.auction.api.config.AppConfig;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
+/**
+ * AuctionClient – WebSocket client for real-time multi-machine communication.
+ *
+ * Supports the extended message protocol:
+ * send(json) – sends any JSON message to the server
+ * Incoming messages are forwarded to the onMessage callback.
+ *
+ * Caller must wrap UI updates in Platform.runLater().
+ */
 public class AuctionClient {
 
     private WebSocket ws;
-
     private volatile boolean connected = false;
 
+    // Called when the WS connection is successfully opened
     private Runnable onOpen;
 
+    /**
+     * Opens the WebSocket connection.
+     *
+     * @param onMessage callback for every incoming text frame
+     * @param onError   callback on connection failure (nullable)
+     */
     public void connect(Consumer<String> onMessage, Consumer<String> onError) {
         connect(onMessage, onError, null);
     }
 
+    /**
+     * Opens the WebSocket connection with an optional onOpen callback.
+     *
+     * @param onMessage callback for every incoming text frame
+     * @param onError   callback on connection failure (nullable)
+     * @param onOpen    called once when the WS handshake is complete (nullable)
+     */
     public void connect(Consumer<String> onMessage, Consumer<String> onError, Runnable onOpen) {
         this.onOpen = onOpen;
         String url = AppConfig.webSocketUrl();
@@ -86,6 +109,9 @@ public class AuctionClient {
         }
     }
 
+    /**
+     * Sends a JSON message to the server.
+     */
     public void send(String json) {
         if (ws != null && connected) {
             ws.sendText(json, true);
@@ -94,6 +120,9 @@ public class AuctionClient {
         }
     }
 
+    /**
+     * Closes the WebSocket gracefully.
+     */
     public void disconnect() {
         if (ws != null && connected) {
             try {

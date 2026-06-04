@@ -1,16 +1,21 @@
 package com.auction.infra.repository;
 
 import com.auction.core.model.*;
+import com.auction.infra.db.DatabaseConnection;
 
 import java.sql.*;
-
-import com.auction.infra.db.DatabaseConnection;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JdbcItemRepository – CRUD for items table.
+ * Handles Art, Electronics, Vehicle polymorphism via 'category' column.
+ */
 public class JdbcItemRepository {
+
+    // ─────────────────────────── CREATE ───────────────────────────
 
     public void save(Item item, User owner) {
         String sql;
@@ -67,6 +72,8 @@ public class JdbcItemRepository {
         }
     }
 
+    // ─────────────────────────── READ ───────────────────────────
+
     public Optional<Item> findById(String id, User owner) {
         String sql = "SELECT * FROM items WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -96,6 +103,8 @@ public class JdbcItemRepository {
         return items;
     }
 
+    // ─────────────────────────── UPDATE ───────────────────────────
+
     public void update(Item item) {
         String sql = """
             UPDATE items SET
@@ -116,6 +125,8 @@ public class JdbcItemRepository {
         }
     }
 
+    // ─────────────────────────── DELETE ───────────────────────────
+
     public boolean deleteById(String id) {
         String sql = "DELETE FROM items WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -127,6 +138,8 @@ public class JdbcItemRepository {
         }
         return false;
     }
+
+    // ─────────────────────────── MAPPING ───────────────────────────
 
     Item mapRow(ResultSet rs, User owner) throws SQLException {
         String id          = rs.getString("id");
