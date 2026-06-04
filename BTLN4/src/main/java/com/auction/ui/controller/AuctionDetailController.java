@@ -538,7 +538,7 @@ public class AuctionDetailController extends BaseController
         Item item = currentAuction.getItem();
         nameLabel.setText(item.getName());
         DesktopHeaderController.setTitleAndSubtitle(item.getName(), null);
-        categoryLabel.setText(item.getCategory() + " (" + item.getCategoryInfo() + ")");
+        categoryLabel.setText(item.getCategory());
         String shopName = currentAuction.getSeller().getShopName();
         sellerLabel.setText(
                 (shopName != null && !shopName.trim().isEmpty()) ? shopName : currentAuction.getSeller().getUsername());

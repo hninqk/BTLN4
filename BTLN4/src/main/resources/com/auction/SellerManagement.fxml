@@ -102,11 +102,7 @@
                                       styleClass="text-area" maxWidth="Infinity" prefRowCount="3"/>
                         </VBox>
 
-                        <VBox spacing="6">
-                            <Label fx:id="extraAttributeLabel" text="Thông tin phụ (Hãng/Họa sĩ/Bảo hành)" styleClass="form-label"/>
-                            <TextField fx:id="extraAttributeField" promptText="VD: 12 tháng, Toyota, Van Gogh..."
-                                       styleClass="text-field" maxWidth="Infinity"/>
-                        </VBox>
+
 
                         <VBox spacing="6">
                             <Label text="Ảnh sản phẩm (URL hoặc file path)" styleClass="form-label"/>
