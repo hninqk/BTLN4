@@ -16,14 +16,14 @@ public class AuctionTest {
 
     @BeforeEach
     void setUp() {
-        auction = new Auction(null, null, LocalDateTime.now().plusHours(2));
+        auction = new Auction(null, null, com.auction.core.util.TimeSyncManager.getNow().plusHours(2));
         auction.setStatus(AuctionStatus.OPEN);
     }
 
     private BidTransaction createBid(double amount) {
         return new BidTransaction(
                 "bid_test_01",
-                LocalDateTime.now(),
+                com.auction.core.util.TimeSyncManager.getNow(),
                 null,
                 this.auction,
                 amount);
